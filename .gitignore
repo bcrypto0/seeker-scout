@@ -1,0 +1,10 @@
+node_modules/
+android/
+ios/
+.expo/
+dist/
+*.keystore
+*-keypair.json
+config.yaml
+indexer/catalog.json
+.env

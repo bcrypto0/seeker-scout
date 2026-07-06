@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Seeker Scout",
+    "slug": "seeker-scout",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0E0E12",
+    "android": {
+      "package": "com.bilal.seekerscout",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0E0E12"
+      }
+    },
+    "plugins": ["expo-dev-client"]
+  }
+}
