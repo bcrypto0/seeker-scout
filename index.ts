@@ -1,7 +1,4 @@
-import 'react-native-get-random-values';
-import { Buffer } from 'buffer';
-global.Buffer = global.Buffer || Buffer;
-
+import './src/polyfills';
 import { registerRootComponent } from 'expo';
 import App from './App';
 
