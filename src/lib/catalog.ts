@@ -1,10 +1,10 @@
 import { DappEntry, RewardOpportunity } from './types';
 
 /**
- * Hosted catalog produced by `npm run index-catalog` (indexer/catalog.json).
- * Host it on GitHub Pages / Cloudflare and point this URL at it.
+ * Hosted catalog produced by `npm run index-catalog` (indexer/catalog.json),
+ * deployed to Cloudflare Pages. Re-run the indexer + redeploy to update live.
  */
-const CATALOG_URL = 'https://example.com/seeker-scout/catalog.json'; // TODO
+const CATALOG_URL = 'https://seeker-scout-catalog.pages.dev/catalog.json';
 
 /**
  * Real seed data captured from the dApp Store explore feed (July 2026) —
@@ -66,9 +66,17 @@ export const SEED_REWARDS: RewardOpportunity[] = [
 
 export async function fetchCatalog(): Promise<DappEntry[]> {
   try {
-    const res = await fetch(CATALOG_URL);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(CATALOG_URL, { signal: controller.signal });
+    clearTimeout(timeout);
     if (!res.ok) throw new Error(`catalog ${res.status}`);
-    return (await res.json()) as DappEntry[];
+    const data = (await res.json()) as DappEntry[];
+    // Guard against a hosted file that's empty or not an array.
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('empty catalog');
+    }
+    return data;
   } catch {
     return SEED_CATALOG;
   }

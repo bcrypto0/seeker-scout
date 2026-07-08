@@ -6,10 +6,12 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0E0E12",
+    "icon": "./assets/icon.png",
     "android": {
       "package": "com.bilal.seekerscout",
       "versionCode": 1,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0E0E12"
       }
     },

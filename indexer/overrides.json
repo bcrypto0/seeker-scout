@@ -1,0 +1,6 @@
+[
+  { "id": "ag.jup.jupiter.android", "seedVaultNative": true },
+  { "id": "app.backpack.mobile.standalone", "seedVaultNative": true },
+  { "id": "app.phantom", "seedVaultNative": true },
+  { "id": "com.solflare.mobile", "seedVaultNative": true }
+]
