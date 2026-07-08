@@ -10,7 +10,7 @@ import {
 /** Identity shown to the wallet in the authorization prompt. */
 export const APP_IDENTITY = {
   name: 'Seeker Scout',
-  uri: 'https://seekerscout.app', // TODO: your real domain
+  uri: 'https://seekerscout.com',
 };
 
 /**
