@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppCard } from '../components/AppCard';
 import { fetchCatalog } from '../lib/catalog';
 import { Category, DappEntry } from '../lib/types';
@@ -35,7 +36,7 @@ export function DiscoverScreen() {
   );
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <Text style={styles.h1}>Discover</Text>
       <ScrollView
         horizontal
@@ -61,7 +62,7 @@ export function DiscoverScreen() {
         renderItem={({ item }) => <AppCard app={item} />}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

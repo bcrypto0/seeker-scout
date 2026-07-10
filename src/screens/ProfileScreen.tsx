@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   connectWallet,
   verifyGenesisToken,
@@ -51,7 +52,7 @@ export function ProfileScreen() {
     : '';
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <Text style={styles.h1}>Profile</Text>
 
       {!address ? (
@@ -105,7 +106,7 @@ export function ProfileScreen() {
           </Pressable>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppCard } from '../components/AppCard';
 import { fetchCatalog } from '../lib/catalog';
 import { DappEntry } from '../lib/types';
@@ -25,7 +26,7 @@ export function SearchScreen() {
   }, [apps, q]);
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <Text style={styles.h1}>Search</Text>
       <TextInput
         style={styles.input}
@@ -40,7 +41,7 @@ export function SearchScreen() {
         renderItem={({ item }) => <AppCard app={item} />}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

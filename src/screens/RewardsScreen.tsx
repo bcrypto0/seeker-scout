@@ -1,5 +1,6 @@
 import React from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { SEED_REWARDS } from '../lib/catalog';
 import { colors } from '../theme';
 
@@ -9,7 +10,7 @@ import { colors } from '../theme';
  */
 export function RewardsScreen() {
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <Text style={styles.h1}>Rewards</Text>
       <Text style={styles.sub}>
         Active boosts, airdrops, and deadlines for Seeker owners.
@@ -29,7 +30,7 @@ export function RewardsScreen() {
         )}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
