@@ -25,7 +25,9 @@
  *   DAPPSTORE_FILE=fixture.json node indexer/...    # transform a local file
  *   DAPPSTORE_URL=<url> node indexer/...            # alternate endpoint
  */
-import { writeFileSync, readFileSync, existsSync, renameSync } from 'node:fs';
+import {
+  writeFileSync, readFileSync, existsSync, renameSync, mkdirSync, readdirSync,
+} from 'node:fs';
 
 const ENDPOINT = process.env.DAPPSTORE_URL ?? 'https://seekertracker.com/api/dappstore';
 
@@ -206,6 +208,53 @@ async function main() {
     renameSync(tmp, firstSeenPath);
   } else if (mutated) {
     console.log('first-seen tracking: read-only mode — changes not persisted');
+  }
+
+  // Daily rank history (battle plan move #1) — one compact snapshot per day,
+  // same-day reruns overwrite. This dataset compounds and CANNOT be
+  // backfilled; it feeds rank deltas (#2), sparklines, movers and the
+  // State-of-the-Store report. Same guards as first-seen: full live feeds
+  // only, read-only runs never write.
+  if (fullFeed) {
+    const day = new Date().toISOString().slice(0, 10);
+    const historyDir = new URL('./history/', import.meta.url);
+    mkdirSync(historyDir, { recursive: true });
+
+    // Rank deltas (#2 data side) vs the newest snapshot older than today.
+    const prevFile = readdirSync(historyDir)
+      .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f) && f.slice(0, 10) < day)
+      .sort()
+      .pop();
+    if (prevFile) {
+      try {
+        const prevRows = JSON.parse(
+          readFileSync(new URL(`./history/${prevFile}`, import.meta.url), 'utf8'),
+        );
+        const prevRank = new Map(prevRows.map((r) => [r.id, r.rank]));
+        let moved = 0;
+        entries.forEach((e, i) => {
+          const was = prevRank.get(e.id);
+          if (was !== undefined) {
+            e.rankDelta = was - (i + 1); // positive = climbed
+            if (e.rankDelta !== 0) moved += 1;
+          }
+        });
+        console.log(`rank deltas vs ${prevFile.slice(0, 10)}: ${moved} apps moved`);
+      } catch {
+        console.warn('previous history snapshot unreadable — no deltas this run');
+      }
+    }
+
+    if (!readOnly) {
+      const rows = entries.map((e, i) => ({
+        id: e.id, rank: i + 1, trendScore: e.trendScore, rating: e.rating,
+        reviews: e.reviews, lastUpdated: e.lastUpdated,
+      }));
+      const tmp = new URL(`./history/${day}.json.tmp`, import.meta.url);
+      writeFileSync(tmp, JSON.stringify(rows));
+      renameSync(tmp, new URL(`./history/${day}.json`, import.meta.url));
+      console.log(`history snapshot written: ${day} (${rows.length} rows)`);
+    }
   }
 
   writeFileSync(
