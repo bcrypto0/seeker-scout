@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AdBanner } from '../components/AdBanner';
 import { AppCard } from '../components/AppCard';
 import { fetchCatalog } from '../lib/catalog';
 import { Category, DappEntry } from '../lib/types';
@@ -104,6 +105,7 @@ export function DiscoverScreen() {
         ref={listRef}
         data={filtered}
         keyExtractor={(a) => a.id}
+        ListHeaderComponent={<AdBanner />}
         renderItem={({ item }) => <AppCard app={item} />}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
@@ -123,9 +125,10 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1, borderColor: colors.border, borderRadius: 999,
-    paddingHorizontal: 12, paddingVertical: 6,
+    paddingHorizontal: 12, paddingVertical: 7,
   },
   chipActive: { backgroundColor: colors.green, borderColor: colors.green },
-  chipText: { color: colors.textDim, fontSize: 13 },
+  // Explicit lineHeight: Android clips descenders (g, y) without it.
+  chipText: { color: colors.textDim, fontSize: 13, lineHeight: 17 },
   chipTextActive: { color: '#00140B', fontWeight: '700' },
 });

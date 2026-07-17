@@ -9,7 +9,7 @@
  * the live catalog. Wrangler auth: OAuth session in ~/.wrangler (no API token).
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -53,6 +53,20 @@ try {
   mkdirSync(stage, { recursive: true });
   writeFileSync(join(stage, 'catalog.json'), readFileSync(CATALOG));
 
+  // 3b. Promo banners ride along when valid; a broken banners.json must
+  // never block the catalog deploy.
+  const bannersSrc = join(ROOT, 'indexer', 'banners.json');
+  if (existsSync(bannersSrc)) {
+    try {
+      const banners = JSON.parse(readFileSync(bannersSrc, 'utf8'));
+      if (!Array.isArray(banners)) throw new Error('not an array');
+      writeFileSync(join(stage, 'banners.json'), JSON.stringify(banners, null, 1));
+      log(`staged ${banners.length} promo banners`);
+    } catch (e) {
+      log(`WARN: banners.json invalid (${e.message}) — not staged`);
+    }
+  }
+
   if (DRY_RUN) {
     log(`DRY RUN: staged ${apps.length} apps at ${stage}; skipping deploy + live verify`);
     log('=== catalog refresh OK (dry run) ===');
@@ -60,7 +74,9 @@ try {
   }
 
   // 4. Deploy to CF Pages via the wrangler OAuth session.
-  execFileSync(NPX, ['wrangler', 'pages', 'deploy', stage,
+  // NPX lives under "Program Files" — must be quoted because shell:true
+  // builds a command line (unquoted, the scheduled task dies at 'C:\Program').
+  execFileSync(`"${NPX}"`, ['wrangler', 'pages', 'deploy', stage,
     '--project-name', PAGES_PROJECT, '--branch', 'main', '--commit-dirty=true'], {
     cwd: ROOT, stdio: 'inherit', timeout: 300_000, shell: true,
     env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },

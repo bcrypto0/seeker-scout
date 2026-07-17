@@ -43,6 +43,26 @@ export interface DappEntry {
   trendScore: number;
 }
 
+/**
+ * Remote-configured promo/ad banner (hosted banners.json) — lets us rotate
+ * house promos and sold ad slots without shipping an app update.
+ */
+export interface PromoBanner {
+  id: string;
+  /** Bold headline */
+  title: string;
+  /** One-liner under the title */
+  tagline?: string;
+  /** Small corner chip, e.g. "Our apps" | "Sponsored" | "Ad slot" */
+  label?: string;
+  /** Optional accent (hex) for the card border */
+  color?: string;
+  /** dApp Store package — opens solanadappstore://details?id=<pkg> */
+  storePackage?: string;
+  /** External URL fallback when no storePackage */
+  url?: string;
+}
+
 export interface RewardOpportunity {
   id: string;
   app: string;

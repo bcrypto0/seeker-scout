@@ -1,10 +1,11 @@
-import { DappEntry, RewardOpportunity } from './types';
+import { DappEntry, PromoBanner, RewardOpportunity } from './types';
 
 /**
  * Hosted catalog produced by `npm run index-catalog` (indexer/catalog.json),
  * deployed to Cloudflare Pages. Re-run the indexer + redeploy to update live.
  */
 const CATALOG_URL = 'https://seeker-scout-catalog.pages.dev/catalog.json';
+const BANNERS_URL = 'https://seeker-scout-catalog.pages.dev/banners.json';
 
 /**
  * Real seed data captured from the dApp Store explore feed (July 2026) —
@@ -63,6 +64,21 @@ export const SEED_REWARDS: RewardOpportunity[] = [
   { id: 'seeker-season-2', app: 'dApp Store', title: 'Seeker Season 2 boosts', detail: 'Weekly dApp exclusives and boosted rewards for Seeker owners.' },
   // v0.2: live feed with claim deadlines + push notifications.
 ];
+
+/** Remote promo banners — [] on any failure (no banner is a fine banner). */
+export async function fetchBanners(): Promise<PromoBanner[]> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(BANNERS_URL, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`banners ${res.status}`);
+    const data = (await res.json()) as PromoBanner[];
+    return Array.isArray(data) ? data.filter((b) => b && b.id && b.title) : [];
+  } catch {
+    return [];
+  }
+}
 
 export async function fetchCatalog(): Promise<DappEntry[]> {
   try {

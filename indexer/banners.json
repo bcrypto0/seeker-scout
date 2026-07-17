@@ -1,0 +1,23 @@
+[
+  {
+    "id": "review-cta",
+    "title": "Enjoying Seeker Scout? ⭐",
+    "tagline": "Leave a review on the dApp Store — early reviews decide what the radar surfaces next.",
+    "label": "Seeker Scout",
+    "storePackage": "com.bilal.seekerscout"
+  },
+  {
+    "id": "cook-kitchen",
+    "title": "COOK 🍳 launch a meme coin from your phone",
+    "tagline": "Pick your rail — COOK Kitchen, Pump.fun or Jupiter Studio. Coming to the dApp Store.",
+    "label": "Our apps",
+    "url": "https://cookkitchen.fun"
+  },
+  {
+    "id": "ad-slot",
+    "title": "Your dApp here 📡",
+    "tagline": "Promote your app to Seeker owners right inside the radar — seekerscout.com to book a slot.",
+    "label": "Ad slot",
+    "url": "https://seekerscout.com"
+  }
+]
