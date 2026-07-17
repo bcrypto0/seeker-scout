@@ -25,7 +25,7 @@
  *   DAPPSTORE_FILE=fixture.json node indexer/...    # transform a local file
  *   DAPPSTORE_URL=<url> node indexer/...            # alternate endpoint
  */
-import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, renameSync } from 'node:fs';
 
 const ENDPOINT = process.env.DAPPSTORE_URL ?? 'https://seekertracker.com/api/dappstore';
 
@@ -112,6 +112,100 @@ async function main() {
       if (e) Object.assign(e, o);
       else entries.push(o);
     }
+  }
+
+  // First-seen tracking (since 2026-07-14): ids new to the feed are stamped
+  // with today's date; ids from the pre-tracking baseline stay null (unknown).
+  // first-seen.json is ratchet state that can't be regenerated from the feed,
+  // so every mutation is guarded: fixture runs (DAPPSTORE_FILE) and
+  // FIRSTSEEN_READONLY=1 never persist, partial feeds never baseline or stamp,
+  // corrupt state is quarantined (not deleted), a missing file recovers stamps
+  // from the previous catalog.json, and writes are temp+rename atomic.
+  const FIRSTSEEN_MIN_FEED = 1000; // don't trust a smaller feed
+  const FIRSTSEEN_MAX_NEW = 100; // bigger one-day influx = feed anomaly
+  const readOnly =
+    !!process.env.DAPPSTORE_FILE || process.env.FIRSTSEEN_READONLY === '1';
+  const firstSeenPath = new URL('./first-seen.json', import.meta.url);
+  const prevCatalogPath = new URL('./catalog.json', import.meta.url);
+
+  let firstSeen = null;
+  let recovered = false;
+  if (existsSync(firstSeenPath)) {
+    try {
+      const parsed = JSON.parse(readFileSync(firstSeenPath, 'utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('not an object map');
+      }
+      firstSeen = parsed;
+    } catch (err) {
+      console.warn(`first-seen.json unreadable (${err.message})`);
+      if (!readOnly) {
+        const quarantine = new URL(
+          `./first-seen.corrupt-${Date.now()}.json`, import.meta.url,
+        );
+        renameSync(firstSeenPath, quarantine);
+        console.warn('corrupt state preserved aside for manual recovery');
+      }
+    }
+  }
+  if (!firstSeen && existsSync(prevCatalogPath)) {
+    // Recover stamps from the previous run's catalog instead of silently
+    // re-baselining (which would erase all accumulated first-seen dates).
+    try {
+      const prev = JSON.parse(readFileSync(prevCatalogPath, 'utf8'));
+      if (Array.isArray(prev) && prev.length >= FIRSTSEEN_MIN_FEED) {
+        firstSeen = Object.fromEntries(
+          prev.map((e) => [e.id, e.firstSeen ?? null]),
+        );
+        recovered = true; // persist the recovery — catalog.json is not durable
+        console.warn(
+          `first-seen state recovered from previous catalog.json (${prev.length} ids)`,
+        );
+      }
+    } catch {
+      /* previous catalog unreadable — fall through to fresh baseline */
+    }
+  }
+
+  const fullFeed = entries.length >= FIRSTSEEN_MIN_FEED;
+  let mutated = recovered;
+  if (!firstSeen) {
+    if (fullFeed) {
+      firstSeen = Object.fromEntries(entries.map((e) => [e.id, null]));
+      mutated = true;
+      console.warn('first-seen tracking: fresh pre-tracking baseline created');
+    } else {
+      firstSeen = {};
+      console.warn(
+        `first-seen tracking: no state and feed too small (${entries.length}) — skipped`,
+      );
+    }
+  } else if (!fullFeed) {
+    console.warn(
+      `first-seen tracking: feed too small (${entries.length}) — not stamping`,
+    );
+  } else {
+    const unseen = entries.filter((e) => !(e.id in firstSeen));
+    if (unseen.length > FIRSTSEEN_MAX_NEW) {
+      console.warn(
+        `first-seen tracking: ${unseen.length} unseen ids > ${FIRSTSEEN_MAX_NEW} — feed anomaly, not stamping`,
+      );
+    } else if (unseen.length) {
+      const today = new Date().toISOString().slice(0, 10);
+      for (const e of unseen) firstSeen[e.id] = today;
+      mutated = true;
+      console.log(`${unseen.length} apps first seen today`);
+    }
+  }
+  for (const e of entries) {
+    if (firstSeen[e.id]) e.firstSeen = firstSeen[e.id];
+  }
+  if (mutated && !readOnly) {
+    const tmp = new URL('./first-seen.json.tmp', import.meta.url);
+    writeFileSync(tmp, JSON.stringify(firstSeen, null, 1));
+    renameSync(tmp, firstSeenPath);
+  } else if (mutated) {
+    console.log('first-seen tracking: read-only mode — changes not persisted');
   }
 
   writeFileSync(

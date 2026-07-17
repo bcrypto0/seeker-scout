@@ -3,15 +3,26 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DappEntry } from '../lib/types';
 import { colors, freshness } from '../theme';
 
+const NEW_WINDOW_MS = 14 * 86_400_000;
+
 export function AppCard({ app }: { app: DappEntry }) {
   const fresh = freshness(app.lastUpdated);
+  const isNew =
+    !!app.firstSeen && Date.now() - new Date(app.firstSeen).getTime() < NEW_WINDOW_MS;
   return (
     <Pressable
       style={styles.card}
       onPress={() => Linking.openURL(`solanadappstore://details?id=${app.id}`)}
     >
       <View style={styles.row}>
-        <Text style={styles.name}>{app.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {app.name}
+        </Text>
+        {isNew && (
+          <View style={[styles.badge, { borderColor: colors.green }]}>
+            <Text style={[styles.badgeText, { color: colors.green }]}>NEW</Text>
+          </View>
+        )}
         <View style={[styles.badge, { borderColor: fresh.color }]}>
           <Text style={[styles.badgeText, { color: fresh.color }]}>
             {fresh.label}

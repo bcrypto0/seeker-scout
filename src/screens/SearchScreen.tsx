@@ -20,7 +20,7 @@ export function SearchScreen() {
     return apps.filter(
       (a) =>
         a.name.toLowerCase().includes(needle) ||
-        a.description.toLowerCase().includes(needle) ||
+        (a.description ?? '').toLowerCase().includes(needle) ||
         a.category.toLowerCase().includes(needle),
     );
   }, [apps, q]);

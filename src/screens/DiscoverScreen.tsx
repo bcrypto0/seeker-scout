@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -19,20 +19,47 @@ const CATEGORIES: (Category | 'All')[] = [
   'Social & Identity', 'AI & Agents', 'Lifestyle',
 ];
 
+type SortMode = 'trending' | 'newest';
+
+const SORTS: { key: SortMode; label: string }[] = [
+  { key: 'trending', label: '🔥 Trending' },
+  { key: 'newest', label: '🆕 Newest' },
+];
+
+/**
+ * "Newest" = most recent activity: first store listing (firstSeen) or latest
+ * release (lastUpdated), whichever is later — so newly-listed apps carrying
+ * the NEW badge rank by the same date the badge is derived from.
+ */
+const newestKey = (a: DappEntry) =>
+  (a.firstSeen && a.firstSeen > a.lastUpdated ? a.firstSeen : a.lastUpdated) ||
+  '';
+
 export function DiscoverScreen() {
   const [apps, setApps] = useState<DappEntry[]>([]);
   const [cat, setCat] = useState<Category | 'All'>('All');
+  const [sort, setSort] = useState<SortMode>('trending');
+  const listRef = useRef<FlatList<DappEntry>>(null);
 
   useEffect(() => {
     fetchCatalog().then(setApps);
   }, []);
 
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [sort, cat]);
+
   const filtered = useMemo(
     () =>
       apps
         .filter((a) => cat === 'All' || a.category === cat)
-        .sort((a, b) => b.trendScore - a.trendScore),
-    [apps, cat],
+        .sort((a, b) =>
+          sort === 'newest'
+            ? newestKey(b).localeCompare(newestKey(a)) ||
+              b.trendScore - a.trendScore
+            : b.trendScore - a.trendScore,
+        ),
+    [apps, cat, sort],
   );
 
   return (
@@ -48,6 +75,7 @@ export function DiscoverScreen() {
           <Pressable
             key={c}
             onPress={() => setCat(c)}
+            hitSlop={{ top: 8, bottom: 8 }}
             style={[styles.chip, cat === c && styles.chipActive]}
           >
             <Text style={[styles.chipText, cat === c && styles.chipTextActive]}>
@@ -56,7 +84,24 @@ export function DiscoverScreen() {
           </Pressable>
         ))}
       </ScrollView>
+      <View style={styles.sortRow}>
+        {SORTS.map((s) => (
+          <Pressable
+            key={s.key}
+            onPress={() => setSort(s.key)}
+            hitSlop={{ top: 8, bottom: 8 }}
+            style={[styles.chip, sort === s.key && styles.chipActive]}
+          >
+            <Text
+              style={[styles.chipText, sort === s.key && styles.chipTextActive]}
+            >
+              {s.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
       <FlatList
+        ref={listRef}
         data={filtered}
         keyExtractor={(a) => a.id}
         renderItem={({ item }) => <AppCard app={item} />}
@@ -72,7 +117,10 @@ const styles = StyleSheet.create({
     color: colors.text, fontSize: 28, fontWeight: '800',
     paddingHorizontal: 16, marginBottom: 8,
   },
-  chips: { flexGrow: 0, marginBottom: 12 },
+  chips: { flexGrow: 0, marginBottom: 8 },
+  sortRow: {
+    flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 12,
+  },
   chip: {
     borderWidth: 1, borderColor: colors.border, borderRadius: 999,
     paddingHorizontal: 12, paddingVertical: 6,

@@ -24,6 +24,11 @@ export interface DappEntry {
   topPick?: boolean;
   /** ISO date of last release (updatedOn) */
   lastUpdated: string;
+  /**
+   * ISO date the indexer first saw this app in the store feed (tracked from
+   * 2026-07-14). Absent for apps that predate tracking.
+   */
+  firstSeen?: string;
   /** Store rating 0-5 */
   rating: number;
   /** Total review count */
