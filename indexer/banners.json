@@ -14,6 +14,13 @@
     "url": "https://cookkitchen.fun"
   },
   {
+    "id": "lounge-teaser",
+    "title": "The Owners' Lounge 🔒 coming soon",
+    "tagline": "Verified Seeker owners only — no bots, ever. Founding badges for the first 100. Verify in Profile to be ready.",
+    "label": "Coming soon",
+    "color": "#9945FF"
+  },
+  {
     "id": "ad-slot",
     "title": "Your dApp here 📡",
     "tagline": "Promote your app to Seeker owners right inside the radar — seekerscout.com to book a slot.",
