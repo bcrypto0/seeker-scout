@@ -1,0 +1,14 @@
+name = "seeker-lounge"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+# Founding-number claims for the Owners' Lounge (docs/BATTLE_PLAN_V02.md,
+# "CEO decision" section). One claim per Genesis Token mint, forever.
+[[d1_databases]]
+binding = "DB"
+database_name = "seeker-lounge"
+database_id = "7a8a7f11-17cd-40f1-afba-9af1b14af5c8"
+
+# RPC endpoint: set via `wrangler secret put RPC_URL` (Triton recommended).
+# Deliberately NOT in [vars] — a var here would clobber the secret on every
+# deploy. The worker falls back to the public mainnet RPC when unset.

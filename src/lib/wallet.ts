@@ -50,11 +50,21 @@ export async function connectWallet(): Promise<WalletConnection> {
 
 export type VerifyResult = 'verified' | 'not-found' | 'error';
 
+export type GenesisCheck = { status: VerifyResult; mint?: string };
+
 /**
  * Verify the wallet holds a Seeker Genesis Token.
  * Returns 'verified' | 'not-found' (checked, none held) | 'error' (couldn't reach RPC).
  */
 export async function verifyGenesisToken(owner: string): Promise<VerifyResult> {
+  return (await findGenesisToken(owner)).status;
+}
+
+/**
+ * Like verifyGenesisToken, but also returns WHICH mint is the SGT — the
+ * Owners' Lounge claims are keyed on the Genesis Token mint (one per Seeker).
+ */
+export async function findGenesisToken(owner: string): Promise<GenesisCheck> {
   try {
     const connection = new Connection(RPC_URL, 'confirmed');
     const ownerPk = new PublicKey(owner);
@@ -68,7 +78,7 @@ export async function verifyGenesisToken(owner: string): Promise<VerifyResult> {
       .map((a) => a.account.data?.parsed?.info?.mint as string | undefined)
       .filter((m): m is string => !!m)
       .map((m) => new PublicKey(m));
-    if (mints.length === 0) return 'not-found';
+    if (mints.length === 0) return { status: 'not-found' };
 
     // 2. Inspect each mint's Token-2022 extensions for the SGT fingerprint.
     for (let i = 0; i < mints.length; i += 100) {
@@ -87,15 +97,51 @@ export async function verifyGenesisToken(owner: string): Promise<VerifyResult> {
             meta?.metadataAddress?.toBase58() === SGT_METADATA_ADDRESS;
           const group = getTokenGroupMemberState(mint);
           const groupOk = group?.group?.toBase58() === SGT_GROUP_MINT_ADDRESS;
-          if (authOk && metaOk && groupOk) return 'verified';
+          if (authOk && metaOk && groupOk) {
+            return { status: 'verified', mint: mints[i + j].toBase58() };
+          }
         } catch {
           // not an SGT-shaped mint; skip
         }
       }
     }
-    return 'not-found';
+    return { status: 'not-found' };
   } catch (e) {
     console.warn('genesis token check failed', e);
-    return 'error';
+    return { status: 'error' };
   }
+}
+
+/**
+ * Sign an arbitrary UTF-8 message with the connected wallet via MWA
+ * (Seed Vault prompt on the Seeker). Returns raw signed bytes — depending on
+ * the wallet these are either the 64-byte signature alone or the signature
+ * concatenated with the message; callers should handle both.
+ */
+export async function signMessageBytes(
+  address: string,
+  authToken: string,
+  message: string,
+): Promise<Uint8Array> {
+  return await transact(async (wallet) => {
+    try {
+      await wallet.reauthorize({
+        auth_token: authToken,
+        identity: APP_IDENTITY,
+      });
+    } catch {
+      // Stale auth token (wallet restarted, session expired) — fall back to
+      // a fresh authorize; the user sees one extra approval, not a failure.
+      await wallet.authorize({
+        chain: 'solana:mainnet',
+        identity: APP_IDENTITY,
+      });
+    }
+    const payload = new TextEncoder().encode(message);
+    const signed = await wallet.signMessages({
+      addresses: [new PublicKey(address).toBuffer().toString('base64')],
+      payloads: [payload],
+    });
+    return signed[0];
+  });
 }
