@@ -1,17 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppCard } from '../components/AppCard';
-import { fetchCatalog } from '../lib/catalog';
+import { SkeletonList } from '../components/Skeleton';
+import { fetchCatalog, isCatalogCached } from '../lib/catalog';
 import { DappEntry } from '../lib/types';
-import { colors } from '../theme';
+import { colors, heading } from '../theme';
 
 export function SearchScreen() {
   const [apps, setApps] = useState<DappEntry[]>([]);
+  const [loading, setLoading] = useState(() => !isCatalogCached());
   const [q, setQ] = useState('');
 
   useEffect(() => {
-    fetchCatalog().then(setApps);
+    fetchCatalog().then((a) => {
+      setApps(a);
+      setLoading(false);
+    });
   }, []);
 
   const results = useMemo(() => {
@@ -35,22 +40,23 @@ export function SearchScreen() {
         value={q}
         onChangeText={setQ}
       />
-      <FlatList
-        data={results}
-        keyExtractor={(a) => a.id}
-        renderItem={({ item }) => <AppCard app={item} />}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      />
+      {loading ? (
+        <SkeletonList />
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={(a) => a.id}
+          renderItem={({ item }) => <AppCard app={item} />}
+          contentContainerStyle={{ paddingBottom: 24 }}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
-  h1: {
-    color: colors.text, fontSize: 28, fontWeight: '800',
-    paddingHorizontal: 16, marginBottom: 8,
-  },
+  h1: { ...heading, paddingHorizontal: 16, marginBottom: 8 },
   input: {
     backgroundColor: colors.card, color: colors.text,
     borderWidth: 1, borderColor: colors.border, borderRadius: 12,

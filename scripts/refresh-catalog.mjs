@@ -53,17 +53,18 @@ try {
   mkdirSync(stage, { recursive: true });
   writeFileSync(join(stage, 'catalog.json'), readFileSync(CATALOG));
 
-  // 3b. Promo banners ride along when valid; a broken banners.json must
-  // never block the catalog deploy.
-  const bannersSrc = join(ROOT, 'indexer', 'banners.json');
-  if (existsSync(bannersSrc)) {
+  // 3b. Remote-config side files (banners, rewards) ride along when valid;
+  // a broken side file must never block the catalog deploy.
+  for (const name of ['banners.json', 'rewards.json']) {
+    const src = join(ROOT, 'indexer', name);
+    if (!existsSync(src)) continue;
     try {
-      const banners = JSON.parse(readFileSync(bannersSrc, 'utf8'));
-      if (!Array.isArray(banners)) throw new Error('not an array');
-      writeFileSync(join(stage, 'banners.json'), JSON.stringify(banners, null, 1));
-      log(`staged ${banners.length} promo banners`);
+      const data = JSON.parse(readFileSync(src, 'utf8'));
+      if (!Array.isArray(data)) throw new Error('not an array');
+      writeFileSync(join(stage, name), JSON.stringify(data, null, 1));
+      log(`staged ${name}: ${data.length} entries`);
     } catch (e) {
-      log(`WARN: banners.json invalid (${e.message}) — not staged`);
+      log(`WARN: ${name} invalid (${e.message}) — not staged`);
     }
   }
 

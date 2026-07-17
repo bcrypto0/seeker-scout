@@ -245,6 +245,31 @@ async function main() {
       }
     }
 
+    // rankHistory (sparkline feed, UI lands v0.3): up to 6 prior daily ranks
+    // + today's, oldest→newest.
+    const histFiles = readdirSync(historyDir)
+      .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f) && f.slice(0, 10) < day)
+      .sort()
+      .slice(-6);
+    if (histFiles.length) {
+      const maps = histFiles
+        .map((f) => {
+          try {
+            const rows = JSON.parse(
+              readFileSync(new URL(`./history/${f}`, import.meta.url), 'utf8'),
+            );
+            return new Map(rows.map((r) => [r.id, r.rank]));
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean);
+      entries.forEach((e, i) => {
+        const seq = maps.map((m) => m.get(e.id)).filter((v) => v !== undefined);
+        if (seq.length) e.rankHistory = [...seq, i + 1];
+      });
+    }
+
     if (!readOnly) {
       const rows = entries.map((e, i) => ({
         id: e.id, rank: i + 1, trendScore: e.trendScore, rating: e.rating,

@@ -7,12 +7,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import {
   connectWallet,
   verifyGenesisToken,
   VerifyResult,
 } from '../lib/wallet';
-import { colors } from '../theme';
+import { colors, heading } from '../theme';
 
 type Verify = VerifyResult | 'checking' | undefined;
 
@@ -31,7 +32,12 @@ export function ProfileScreen() {
       setAddress(conn.address);
       setAuthToken(conn.authToken);
       setVerify('checking');
-      setVerify(await verifyGenesisToken(conn.address));
+      const result = await verifyGenesisToken(conn.address);
+      if (result === 'verified') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+          .catch(() => {});
+      }
+      setVerify(result);
     } catch (e: any) {
       // MWA throws if the user dismisses the wallet prompt.
       setError(e?.message ? String(e.message) : 'Connection cancelled.');
@@ -112,13 +118,7 @@ export function ProfileScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
-  h1: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: '800',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
+  h1: { ...heading, paddingHorizontal: 16, marginBottom: 8 },
   sub: { color: colors.textDim, fontSize: 13, paddingHorizontal: 16 },
   btn: {
     backgroundColor: colors.purple,

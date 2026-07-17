@@ -135,7 +135,8 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.border,
+    // Solid fill — the hairline border token is invisible as a dot fill.
+    backgroundColor: colors.overlay,
   },
   dotActive: { backgroundColor: colors.green },
 });

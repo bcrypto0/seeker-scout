@@ -41,6 +41,10 @@ export interface DappEntry {
   version?: string;
   /** Composite ranking: Bayesian rating + freshness + volume (see indexer) */
   trendScore: number;
+  /** Rank movement vs the previous daily snapshot; positive = climbed */
+  rankDelta?: number;
+  /** Up to 7 daily ranks, oldest→newest (sparkline data; UI lands v0.3) */
+  rankHistory?: number[];
 }
 
 /**
@@ -63,12 +67,26 @@ export interface PromoBanner {
   url?: string;
 }
 
-export interface RewardOpportunity {
+/**
+ * Structured reward entry (hosted rewards.json, remote-config like banners) —
+ * the anti-SolanaFloor design: status is DATA (endsAt/verified), not prose,
+ * and every entry can deep-link both the announcement and the store listing.
+ */
+export interface RewardEntry {
   id: string;
+  /** App or program name shown on the card */
   app: string;
   title: string;
   detail: string;
-  /** ISO date; undefined = ongoing */
-  deadline?: string;
+  /** 'perk' = partner offer (default); 'season' = SKR season module, pinned */
+  kind?: 'perk' | 'season';
+  iconUrl?: string;
+  /** dApp Store package — enables the "Get app" deep link */
+  packageId?: string;
+  /** Announcement / details URL */
   url?: string;
+  /** ISO date the offer ends; past date auto-moves the card to "Past" */
+  endsAt?: string;
+  /** ISO date we last confirmed the offer is real and live */
+  verified?: string;
 }

@@ -2,17 +2,21 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { AdBanner } from '../components/AdBanner';
 import { AppCard } from '../components/AppCard';
-import { fetchCatalog } from '../lib/catalog';
+import { SkeletonList } from '../components/Skeleton';
+import { Ticker } from '../components/Ticker';
+import { fetchCatalog, isCatalogCached } from '../lib/catalog';
 import { Category, DappEntry } from '../lib/types';
-import { colors } from '../theme';
+import { colors, heading } from '../theme';
 
 const CATEGORIES: (Category | 'All')[] = [
   'All', 'DeFi & Trading', 'Games', 'Wallets', 'DePIN', 'NFTs',
@@ -38,17 +42,37 @@ const newestKey = (a: DappEntry) =>
 
 export function DiscoverScreen() {
   const [apps, setApps] = useState<DappEntry[]>([]);
+  // Skeletons only on a cold cache — a warm cache resolves in a microtask
+  // and the skeleton would just flash for a frame.
+  const [loading, setLoading] = useState(() => !isCatalogCached());
+  const [refreshing, setRefreshing] = useState(false);
   const [cat, setCat] = useState<Category | 'All'>('All');
   const [sort, setSort] = useState<SortMode>('trending');
   const listRef = useRef<FlatList<DappEntry>>(null);
 
   useEffect(() => {
-    fetchCatalog().then(setApps);
+    fetchCatalog().then((a) => {
+      setApps(a);
+      setLoading(false);
+    });
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchCatalog(true).then((a) => {
+      setApps(a);
+      setRefreshing(false);
+    });
+  };
 
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [sort, cat]);
+
+  const setSortHaptic = (s: SortMode) => {
+    Haptics.selectionAsync().catch(() => {});
+    setSort(s);
+  };
 
   const filtered = useMemo(
     () =>
@@ -63,9 +87,33 @@ export function DiscoverScreen() {
     [apps, cat, sort],
   );
 
+  // Ecosystem pulse for the marquee: top climbers, newest listings, counts.
+  const tickerItems = useMemo(() => {
+    if (!apps.length) return [];
+    const items: string[] = [];
+    [...apps]
+      .filter((a) => (a.rankDelta ?? 0) > 0)
+      .sort((a, b) => (b.rankDelta ?? 0) - (a.rankDelta ?? 0))
+      .slice(0, 3)
+      .forEach((a) => items.push(`${a.name} ▲${a.rankDelta}`));
+    [...apps]
+      .filter((a) => a.firstSeen)
+      .sort((a, b) => (b.firstSeen ?? '').localeCompare(a.firstSeen ?? ''))
+      .slice(0, 2)
+      .forEach((a) => items.push(`🆕 ${a.name}`));
+    items.push(`${apps.length.toLocaleString()} apps tracked`);
+    const weekAgo = new Date(Date.now() - 7 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const newThisWeek = apps.filter((a) => (a.firstSeen ?? '') >= weekAgo).length;
+    if (newThisWeek) items.push(`${newThisWeek} new this week`);
+    return items;
+  }, [apps]);
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <Text style={styles.h1}>Discover</Text>
+      <Ticker items={tickerItems} />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -89,7 +137,7 @@ export function DiscoverScreen() {
         {SORTS.map((s) => (
           <Pressable
             key={s.key}
-            onPress={() => setSort(s.key)}
+            onPress={() => setSortHaptic(s.key)}
             hitSlop={{ top: 8, bottom: 8 }}
             style={[styles.chip, sort === s.key && styles.chipActive]}
           >
@@ -101,24 +149,33 @@ export function DiscoverScreen() {
           </Pressable>
         ))}
       </View>
-      <FlatList
-        ref={listRef}
-        data={filtered}
-        keyExtractor={(a) => a.id}
-        ListHeaderComponent={<AdBanner />}
-        renderItem={({ item }) => <AppCard app={item} />}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      />
+      {loading ? (
+        <SkeletonList />
+      ) : (
+        <FlatList
+          ref={listRef}
+          data={filtered}
+          keyExtractor={(a) => a.id}
+          ListHeaderComponent={<AdBanner />}
+          renderItem={({ item }) => <AppCard app={item} />}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.green]}
+              progressBackgroundColor={colors.card}
+            />
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
-  h1: {
-    color: colors.text, fontSize: 28, fontWeight: '800',
-    paddingHorizontal: 16, marginBottom: 8,
-  },
+  h1: { ...heading, paddingHorizontal: 16, marginBottom: 8 },
   chips: { flexGrow: 0, marginBottom: 8 },
   sortRow: {
     flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 12,

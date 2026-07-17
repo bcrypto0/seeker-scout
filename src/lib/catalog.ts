@@ -1,4 +1,4 @@
-import { DappEntry, PromoBanner, RewardOpportunity } from './types';
+import { DappEntry, PromoBanner, RewardEntry } from './types';
 
 /**
  * Hosted catalog produced by `npm run index-catalog` (indexer/catalog.json),
@@ -6,6 +6,7 @@ import { DappEntry, PromoBanner, RewardOpportunity } from './types';
  */
 const CATALOG_URL = 'https://seeker-scout-catalog.pages.dev/catalog.json';
 const BANNERS_URL = 'https://seeker-scout-catalog.pages.dev/banners.json';
+const REWARDS_URL = 'https://seeker-scout-catalog.pages.dev/rewards.json';
 
 /**
  * Real seed data captured from the dApp Store explore feed (July 2026) —
@@ -59,10 +60,32 @@ export const SEED_CATALOG: DappEntry[] = [
   { id: 'com.solclaw.app', name: 'SolClaw', subtitle: 'Your Solana-Native Agent', category: 'AI & Agents', lastUpdated: '2026-06-02', rating: 3.7, reviews: 821, trendScore: 62 },
 ];
 
-export const SEED_REWARDS: RewardOpportunity[] = [
-  { id: 'skr-staking', app: 'Seeker Wallet', title: 'SKR staking', detail: 'Native staking APY paid in SKR, directly in the wallet.' },
-  { id: 'seeker-season-2', app: 'dApp Store', title: 'Seeker Season 2 boosts', detail: 'Weekly dApp exclusives and boosted rewards for Seeker owners.' },
-  // v0.2: live feed with claim deadlines + push notifications.
+/** Bundled fallback — mirrors the initial hosted rewards.json. */
+export const REWARDS_SEED: RewardEntry[] = [
+  {
+    id: 'skr-season-2', kind: 'season', app: 'Seeker',
+    title: 'SKR Season 2 is live',
+    detail: 'Your Activity Tracker score (onchain activity, daily use, dApps explored) sets your tier for future SKR seasons. Exploring apps counts.',
+    url: 'https://solanamobile.com/skr', verified: '2026-07-17',
+  },
+  {
+    id: 'skr-staking', kind: 'season', app: 'Seeker',
+    title: 'Stake SKR natively',
+    detail: 'Native SKR staking directly from the Seeker — currently around 16% APY.',
+    url: 'https://stake.solanamobile.com', verified: '2026-07-17',
+  },
+  {
+    id: 'xplace-membership', app: 'XPlace Credit Card', packageId: 'x.place',
+    title: '20% off memberships + 2.5% XP airdrop',
+    detail: 'Seeker owners unlock 20% off all memberships, a 2.5% XP airdrop allocation, bonus XP on upgrades, and custom Seeker cards.',
+    verified: '2026-07-17',
+  },
+  {
+    id: 'zabana-skr-delivery', app: 'Zabana', packageId: 'com.example.zabana',
+    title: 'Free delivery paying with SKR',
+    detail: 'Free delivery on all products when paying with SKR, plus a 2× rewards points boost. Update to the latest version to claim.',
+    verified: '2026-07-17',
+  },
 ];
 
 /** Remote promo banners — [] on any failure (no banner is a fine banner). */
@@ -80,7 +103,45 @@ export async function fetchBanners(): Promise<PromoBanner[]> {
   }
 }
 
-export async function fetchCatalog(): Promise<DappEntry[]> {
+/** Live rewards feed — falls back to the bundled seed on any failure. */
+export async function fetchRewards(): Promise<RewardEntry[]> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(REWARDS_URL, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`rewards ${res.status}`);
+    const data = (await res.json()) as RewardEntry[];
+    // Strict per-entry validation: rewards.json is hand-edited remote config,
+    // and one malformed entry must never crash the Rewards tab.
+    const valid = Array.isArray(data)
+      ? data.filter(
+          (r) =>
+            r &&
+            typeof r.id === 'string' &&
+            typeof r.app === 'string' &&
+            typeof r.title === 'string' &&
+            typeof r.detail === 'string',
+        )
+      : [];
+    if (valid.length === 0) throw new Error('no valid entries');
+    return valid;
+  } catch {
+    return REWARDS_SEED;
+  }
+}
+
+// One session-scoped catalog fetch shared by Discover, Search, and the
+// detail screen (rank lookups) — the hosted file is ~1MB, don't re-pull it.
+let catalogCache: DappEntry[] | null = null;
+
+/** True when the live catalog is already in memory (skip skeletons). */
+export function isCatalogCached(): boolean {
+  return catalogCache !== null;
+}
+
+export async function fetchCatalog(force = false): Promise<DappEntry[]> {
+  if (catalogCache && !force) return catalogCache;
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -92,8 +153,9 @@ export async function fetchCatalog(): Promise<DappEntry[]> {
     if (!Array.isArray(data) || data.length === 0) {
       throw new Error('empty catalog');
     }
+    catalogCache = data;
     return data;
   } catch {
-    return SEED_CATALOG;
+    return SEED_CATALOG; // not cached — retry live on next screen mount
   }
 }

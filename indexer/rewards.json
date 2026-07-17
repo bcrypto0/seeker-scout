@@ -1,0 +1,37 @@
+[
+  {
+    "id": "skr-season-2",
+    "kind": "season",
+    "app": "Seeker",
+    "title": "SKR Season 2 is live",
+    "detail": "Your Activity Tracker score (onchain activity, daily use, dApps explored) sets your tier for future SKR seasons. Exploring apps counts.",
+    "url": "https://solanamobile.com/skr",
+    "verified": "2026-07-17"
+  },
+  {
+    "id": "skr-staking",
+    "kind": "season",
+    "app": "Seeker",
+    "title": "Stake SKR natively",
+    "detail": "Native SKR staking directly from the Seeker — currently around 16% APY.",
+    "url": "https://stake.solanamobile.com",
+    "verified": "2026-07-17"
+  },
+  {
+    "id": "xplace-membership",
+    "app": "XPlace Credit Card",
+    "packageId": "x.place",
+    "iconUrl": "https://r2.solanamobiledappstore.com/i/dVJk-MChLpjLhv4L46n2D",
+    "title": "20% off memberships + 2.5% XP airdrop",
+    "detail": "Seeker owners unlock 20% off all memberships, a 2.5% XP airdrop allocation, bonus XP on upgrades, and custom Seeker cards.",
+    "verified": "2026-07-17"
+  },
+  {
+    "id": "zabana-skr-delivery",
+    "app": "Zabana",
+    "packageId": "com.example.zabana",
+    "title": "Free delivery paying with SKR",
+    "detail": "Free delivery on all products when paying with SKR, plus a 2× rewards points boost. Update to the latest version to claim.",
+    "verified": "2026-07-17"
+  }
+]
