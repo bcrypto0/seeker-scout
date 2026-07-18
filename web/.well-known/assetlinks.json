@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bilal.seekerscout",
+      "sha256_cert_fingerprints": [
+        "29:A2:A4:AA:FC:9F:BA:E0:D7:AA:80:8A:B0:E3:99:C9:E9:45:36:F1:60:98:C1:41:ED:5F:4B:C4:9A:F8:94:C9"
+      ]
+    }
+  }
+]
