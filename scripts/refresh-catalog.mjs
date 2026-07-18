@@ -68,6 +68,20 @@ try {
     }
   }
 
+  // 2b. On-chain enrichment (Track A) — stamps verified release data onto
+  // apps with a known publisher. Non-fatal: RPC hiccups must never block the
+  // catalog deploy. Runs on indexer/catalog.json before staging re-reads it.
+  try {
+    execFileSync(NODE, [join(ROOT, 'indexer', 'enrich-onchain.mjs')], {
+      cwd: ROOT, stdio: 'inherit', timeout: 120_000,
+      env: { ...process.env, ...(DRY_RUN ? { FIRSTSEEN_READONLY: '1' } : {}) },
+    });
+    // Re-read the enriched catalog into the staged copy.
+    writeFileSync(join(stage, 'catalog.json'), readFileSync(CATALOG));
+  } catch (e) {
+    log(`WARN: on-chain enrichment skipped (${e.message})`);
+  }
+
   if (DRY_RUN) {
     log(`DRY RUN: staged ${apps.length} apps at ${stage}; skipping deploy + live verify`);
     log('=== catalog refresh OK (dry run) ===');

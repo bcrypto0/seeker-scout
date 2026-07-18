@@ -45,6 +45,10 @@ export interface DappEntry {
   rankDelta?: number;
   /** Up to 7 daily ranks, oldest→newest (sparkline data; UI lands v0.3) */
   rankHistory?: number[];
+  /** True when release history was verified on-chain (DAS/Triton) */
+  onchainVerified?: boolean;
+  /** Count of immutable on-chain Release NFTs for this app */
+  onchainReleaseCount?: number;
 }
 
 /**
