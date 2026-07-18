@@ -53,7 +53,37 @@ in order of preference:
       eventually a self-sustaining publisher set that detects new apps
       BEFORE seekertracker.
 
-## Next action
-Build (A) as an indexer module (no app release needed — pure catalog
-enrichment). Decide (B) discovery path — needs one more probe session on the
-official backend endpoint. NOT a tonight task; ~1–2 weeks background.
+## Track A — DONE (2026-07-18, commit d138432)
+`indexer/onchain.mjs` (DAS resolver) + `indexer/enrich-onchain.mjs` (catalog
+stamper) + accumulating `indexer/publishers.json`. Verified on our publisher.
+App UI badge lands v0.3.
+
+## Track B recon — DONE (2026-07-19). Discovery paths mapped:
+
+1. **Store's private GraphQL backend** = `https://dappstore.solanamobile.com/graphql`
+   (confirmed real: `{__typename}` → 200, but ALL real queries → HTTP 400 =
+   **persisted-query / trusted-document allowlist**; `/api/*` paths → 401).
+   This is what seekertracker/SolanaFloor call **with a partner key**. It is an
+   intentionally gated private API — DO NOT attempt to bypass the allowlist.
+2. **Arweave** = dead end for the catalog. 0 txns under dApp-Store tag names;
+   release metadata is on `r2.solanamobiledappstore.com` (Cloudflare R2), not
+   Arweave. (The store *frontend* uses AR.IO for its own assets — red herring.)
+3. **On-chain enumeration** = no global registry; the Track A resolver
+   discovers releases per KNOWN publisher and accumulates `publishers.json`.
+   Fully independent but bootstrapping all ~1,166 publishers from scratch is
+   slow without a seed list.
+
+### Track B recommendation (2 legitimate routes)
+- **PRIMARY — request a partner API key** from Solana Mobile (business ask; we
+  now have standing as a live publisher). Then query the real explore endpoint
+  directly and drop seekertracker entirely. Fold this ask into the SAME email
+  as the referral-link request (both to publisher support).
+- **FALLBACK — on-chain accumulation** (fully independent, no permission
+  needed): seed `publishers.json` from the Track A resolver, then watch new
+  dApp Store NFT mints via Triton **Yellowstone gRPC** (already available from
+  the IT project) to catch new apps/releases — potentially BEFORE seekertracker.
+  Slower to full coverage but needs nobody's blessing and is the true moat.
+
+### Next action
+Send the partner-key + referral email (CEO). In parallel, the Yellowstone
+mint-watcher is the buildable fallback whenever we want full independence.
