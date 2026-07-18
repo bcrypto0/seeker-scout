@@ -180,12 +180,21 @@ const styles = StyleSheet.create({
   sortRow: {
     flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 12,
   },
+  // Fixed height + flex centering — Android clips text-only chips when the
+  // height derives from font metrics (emoji chips got a taller line box and
+  // rendered fine, which is how the bug hid in the sort row).
   chip: {
+    height: 34,
+    justifyContent: 'center',
     borderWidth: 1, borderColor: colors.border, borderRadius: 999,
-    paddingHorizontal: 12, paddingVertical: 7,
+    paddingHorizontal: 12,
   },
   chipActive: { backgroundColor: colors.green, borderColor: colors.green },
-  // Explicit lineHeight: Android clips descenders (g, y) without it.
-  chipText: { color: colors.textDim, fontSize: 13, lineHeight: 17 },
+  chipText: {
+    color: colors.textDim,
+    fontSize: 13,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
   chipTextActive: { color: '#00140B', fontWeight: '700' },
 });
