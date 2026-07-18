@@ -14,6 +14,7 @@ import {
 import { DiscoverScreen } from './src/screens/DiscoverScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { RewardsScreen } from './src/screens/RewardsScreen';
+import { LoungeScreen } from './src/screens/LoungeScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AppDetailScreen } from './src/screens/AppDetailScreen';
 import { colors } from './src/theme';
@@ -25,6 +26,7 @@ const ICONS: Record<string, string> = {
   Discover: '✦',
   Search: '⌕',
   Rewards: '◈',
+  Lounge: '◇',
   Profile: '●',
 };
 
@@ -56,6 +58,7 @@ function Tabs() {
       <Tab.Screen name="Discover" component={DiscoverScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Rewards" component={RewardsScreen} />
+      <Tab.Screen name="Lounge" component={LoungeScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
