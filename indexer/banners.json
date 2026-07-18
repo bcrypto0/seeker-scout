@@ -7,11 +7,12 @@
     "storePackage": "com.bilal.seekerscout"
   },
   {
-    "id": "buy-seeker",
-    "title": "Don't have a Seeker yet? 📱",
-    "tagline": "The phone built for Solana — Seed Vault, Genesis Token, SKR seasons. Order yours.",
-    "label": "Seeker",
-    "url": "https://solanamobile.com/seeker"
+    "id": "seeker-summer-cards20",
+    "title": "Seeker Summer ☀️ 20% off a Seeker",
+    "tagline": "Code CARDS20 at store.solanamobile.com with Solana Pay — first 5,000 orders get a free $50 Collector Crypt pack. Ends Aug 30.",
+    "label": "Deal",
+    "color": "#F5C518",
+    "url": "https://store.solanamobile.com"
   },
   {
     "id": "lounge-teaser",
