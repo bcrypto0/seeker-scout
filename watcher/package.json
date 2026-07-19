@@ -1,0 +1,15 @@
+{
+  "name": "seeker-scout-watcher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Yellowstone gRPC mint-watcher — discovers new dApp Store apps on-chain, independent of any third-party feed.",
+  "scripts": {
+    "selftest": "node watch.mjs --selftest",
+    "watch": "node watch.mjs"
+  },
+  "dependencies": {
+    "@triton-one/yellowstone-grpc": "^1.3.0",
+    "@solana/web3.js": "^1.98.0"
+  }
+}
