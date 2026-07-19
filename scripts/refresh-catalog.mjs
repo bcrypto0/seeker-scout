@@ -68,6 +68,22 @@ try {
     }
   }
 
+  // 3c. Rewards freshness/enrichment pass on the STAGED copy (curated source
+  // stays intact). Auto-fills icons from the catalog, drops ancient-expired,
+  // warns on dead packages + stale verification. Non-fatal.
+  const stagedRewards = join(stage, 'rewards.json');
+  if (existsSync(stagedRewards)) {
+    try {
+      execFileSync(NODE, [
+        join(ROOT, 'indexer', 'rewards-pipeline.mjs'),
+        join(stage, 'catalog.json'),
+        stagedRewards,
+      ], { cwd: ROOT, stdio: 'inherit', timeout: 30_000 });
+    } catch (e) {
+      log(`WARN: rewards pipeline skipped (${e.message})`);
+    }
+  }
+
   // 2b. On-chain enrichment (Track A) — stamps verified release data onto
   // apps with a known publisher. Non-fatal: RPC hiccups must never block the
   // catalog deploy. Runs on indexer/catalog.json before staging re-reads it.
