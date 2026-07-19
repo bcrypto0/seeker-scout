@@ -29,17 +29,31 @@ Runs the full decode + publisher-extraction pipeline against our own v0.2.0
 release NFT's real on-chain creation transaction. Must print
 `✅ SELF-TEST PASS`.
 
-## Run live
+## Run live (one-off)
 ```
-# gRPC endpoint = the Triton HTTP RPC host on :443; token = the URL path token
 set TRITON_GRPC_ENDPOINT=https://<your-triton-host>.mainnet.rpcpool.com
 set TRITON_X_TOKEN=<the-path-token-from-your-triton-rpc-url>
 npm run watch
 ```
-Long-lived process with auto-reconnect + backoff. Discoveries are logged and
-written to `../indexer/publishers.json`. Best run as a background service /
-scheduled task on the same box as the daily indexer.
+Long-lived process with auto-reconnect + backoff. Logs `stream live` once
+connected; writes discoveries to `../indexer/publishers.json`.
 
-Note: the Triton gRPC token is a credential — it's read from env, never
-committed. dApp Store mints are infrequent (a handful/day), so a live "hit"
-may take a while; the self-test is the correctness proof.
+## Permanent service (installed 2026-07-19)
+Runs at every logon, hidden, self-restarting — no admin required:
+
+1. **Config in the registry (once), not in any file:**
+   ```powershell
+   [Environment]::SetEnvironmentVariable("TRITON_GRPC_ENDPOINT","https://<host>.mainnet.rpcpool.com","User")
+   [Environment]::SetEnvironmentVariable("TRITON_X_TOKEN","<path-token>","User")
+   ```
+2. **`run-watcher.bat`** (this dir) reads those from `HKCU\Environment` at
+   runtime, `cd`s here, runs the watcher, self-restarts on exit. No secret in
+   the file.
+3. **`%APPDATA%\...\Start Menu\Programs\Startup\SeekerScoutWatcher.vbs`**
+   launches the bat hidden at logon (machine-local; not in the repo). This
+   sidesteps Task Scheduler's 72h execution limit and needs no elevation.
+4. Log: `%LOCALAPPDATA%\SeekerScout\watcher.log`.
+
+The Triton token lives ONLY in the user registry — never committed. dApp
+Store mints are infrequent (a handful/day), so a live `[hit]` may take a
+while; `npm run selftest` is the correctness proof.
