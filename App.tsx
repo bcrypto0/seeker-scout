@@ -5,12 +5,24 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import {
   useFonts,
   Inter_400Regular,
   Inter_600SemiBold,
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
+
+// Show watchlist notifications even while the app is foregrounded (they only
+// fire on open) — without this, expo-notifications suppresses them by default.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 import { DiscoverScreen } from './src/screens/DiscoverScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { RewardsScreen } from './src/screens/RewardsScreen';

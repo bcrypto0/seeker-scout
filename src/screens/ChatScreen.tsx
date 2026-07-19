@@ -30,6 +30,21 @@ const POLL_MS = 5000;
 const tierTag = (m: ChatMessage) =>
   m.tier === 'founding' ? `🏆 #${m.number}` : m.tier === 'early' ? `⭐ #${m.number}` : `#${m.number}`;
 
+/** Union by id (keeps optimistic sends the poll hasn't caught yet), drop
+ *  locally-reported ids, sort ascending. */
+function mergeMessages(
+  prev: ChatMessage[],
+  next: ChatMessage[],
+  hidden: Set<number>,
+): ChatMessage[] {
+  const byId = new Map<number, ChatMessage>();
+  for (const m of prev) byId.set(m.id, m);
+  for (const m of next) byId.set(m.id, m);
+  return [...byId.values()]
+    .filter((m) => !hidden.has(m.id))
+    .sort((a, b) => a.id - b.id);
+}
+
 export function ChatScreen() {
   const nav = useNavigation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -39,14 +54,12 @@ export function ChatScreen() {
   const [authing, setAuthing] = useState(false);
   const [error, setError] = useState<string>();
   const listRef = useRef<FlatList<ChatMessage>>(null);
-  const lastId = useRef(0);
+  const hiddenRef = useRef<Set<number>>(new Set());
+  const nearBottomRef = useRef(true);
 
   const poll = useCallback(async () => {
     const msgs = await fetchMessages(0);
-    if (msgs.length) {
-      lastId.current = msgs[msgs.length - 1].id;
-      setMessages(msgs);
-    }
+    setMessages((prev) => mergeMessages(prev, msgs, hiddenRef.current));
   }, []);
 
   useEffect(() => {
@@ -84,8 +97,8 @@ export function ChatScreen() {
     try {
       const msg = await sendMessage(token, t);
       setText('');
-      setMessages((m) => [...m, msg]);
-      lastId.current = msg.id;
+      setMessages((m) => mergeMessages(m, [msg], hiddenRef.current));
+      nearBottomRef.current = true; // sending implies you're at the bottom
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     } catch (e: any) {
       const m = e?.message ? String(e.message) : 'Send failed.';
@@ -105,6 +118,7 @@ export function ChatScreen() {
         style: 'destructive',
         onPress: () => {
           reportMessage(token, msg.id);
+          hiddenRef.current.add(msg.id); // stay hidden across polls
           setMessages((m) => m.filter((x) => x.id !== msg.id));
         },
       },
@@ -126,7 +140,17 @@ export function ChatScreen() {
         data={messages}
         keyExtractor={(m) => String(m.id)}
         contentContainerStyle={{ padding: 16, gap: 12 }}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        onScroll={(e) => {
+          const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+          nearBottomRef.current =
+            contentSize.height - (contentOffset.y + layoutMeasurement.height) < 120;
+        }}
+        scrollEventThrottle={100}
+        onContentSizeChange={() => {
+          // Only auto-scroll if the user is already near the bottom — don't
+          // yank someone reading history when a polled message arrives.
+          if (nearBottomRef.current) listRef.current?.scrollToEnd({ animated: false });
+        }}
         ListEmptyComponent={
           <Text style={styles.emptyChat}>
             No messages yet — verified Seeker owners, say hello. 👋

@@ -63,13 +63,27 @@ async function verifyToken(secret, token) {
   }
 }
 
-/** Strip URLs and collapse whitespace — the core drainer-link defense. */
+/**
+ * Strip anything link-shaped — the core drainer-link defense. Blocklist by
+ * SHAPE, not an allowlist of TLDs (which misses t.me, .cash, .ru, IPs, …).
+ * Over-stripping in chat is fine; safety beats the rare false positive.
+ */
 function sanitize(raw) {
   if (typeof raw !== 'string') return '';
   let t = raw.replace(/\s+/g, ' ').trim();
-  // Remove anything URL-shaped (http(s), www., bare domains, wallet-drainer
-  // patterns) — chat is for talk, not links.
-  t = t.replace(/\b((https?:\/\/|www\.)\S+|\S+\.(xyz|com|io|fun|app|net|org|gg|to|link|click|co)\b\S*)/gi, '[link removed]');
+  const R = '[link removed]';
+  // 1. Explicit schemes / user-info @ / www.
+  t = t.replace(/\b(?:https?|ftp|tg|solana):\/\/\S+/gi, R);
+  t = t.replace(/\bwww\.\S+/gi, R);
+  // 2. IPv4 (optionally with port/path).
+  t = t.replace(/\b\d{1,3}(?:\.\d{1,3}){3}(?:[:/]\S*)?/g, R);
+  // 3. Any domain: label(.label)*.<tld≥2 letters> with an optional path.
+  //    TLD requires ≥2 LETTERS so decimals (3.5) and initialisms (e.g., U.S.)
+  //    survive, while t.me / dab.cash / discord.gg / evil.ru get stripped.
+  t = t.replace(
+    /\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?:\/\S*)?/gi,
+    R,
+  );
   return t.slice(0, MAX_LEN);
 }
 
@@ -127,20 +141,26 @@ export async function handleChat(request, env, url, verifyClaim) {
     const text = sanitize(body?.text);
     if (!text || text === '[link removed]') return json({ error: 'empty message' }, 400);
 
-    // Block + rate-limit check.
-    const m = await env.DB.prepare('SELECT last_post_at, blocked FROM chat_members WHERE wallet = ?')
+    // Block check.
+    const m = await env.DB.prepare('SELECT blocked FROM chat_members WHERE wallet = ?')
       .bind(claims.wallet).first();
     if (m?.blocked) return json({ error: 'account blocked' }, 403);
-    if (m?.last_post_at && Date.now() - Date.parse(m.last_post_at) < RATE_MS) {
-      return json({ error: 'slow down' }, 429);
-    }
+
+    // Atomic rate-limit claim: ensure the row exists, then conditionally
+    // UPDATE last_post_at only if it's stale. D1 serializes writes, so
+    // concurrent sends can't both win the slot (fixes the TOCTOU race).
     const now = new Date().toISOString();
+    const cutoff = new Date(Date.now() - RATE_MS).toISOString();
+    await env.DB.prepare('INSERT OR IGNORE INTO chat_members (wallet) VALUES (?)')
+      .bind(claims.wallet).run();
+    const claim = await env.DB.prepare(
+      'UPDATE chat_members SET last_post_at = ? WHERE wallet = ? AND (last_post_at IS NULL OR last_post_at < ?)',
+    ).bind(now, claims.wallet, cutoff).run();
+    if (!claim.meta?.changes) return json({ error: 'slow down' }, 429);
+
     await env.DB.prepare(
       'INSERT INTO messages (number, wallet, tier, text, created_at) VALUES (?, ?, ?, ?, ?)',
     ).bind(claims.number, claims.wallet, claims.tier, text, now).run();
-    await env.DB.prepare(
-      'INSERT INTO chat_members (wallet, last_post_at) VALUES (?, ?) ON CONFLICT(wallet) DO UPDATE SET last_post_at = ?',
-    ).bind(claims.wallet, now, now).run();
     const row = await env.DB.prepare(
       'SELECT id, number, tier, text, created_at FROM messages WHERE wallet = ? ORDER BY id DESC LIMIT 1',
     ).bind(claims.wallet).first();
