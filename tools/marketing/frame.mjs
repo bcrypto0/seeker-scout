@@ -20,11 +20,11 @@ const SHOT_Y = 470;
 const RADIUS = 44;
 
 const SHOTS = [
-  { src: 'discover', out: '01-discover', headline: 'Every dApp, ranked live', sub: 'Seeker Scout — your radar for the dApp Store' },
-  { src: 'games', out: '02-games', headline: 'Cut through by category', sub: 'Seeker Scout — your radar for the dApp Store' },
-  { src: 'detail', out: '03-detail', headline: 'Every app, in depth', sub: 'Rank, trend score, and the full story' },
-  { src: 'rewards', out: '04-rewards', headline: 'Perks that are actually live', sub: 'Verified rewards + SKR Season tracking' },
-  { src: 'lounge', out: '05-lounge', headline: 'Claim your founding number', sub: "The Owners' Lounge — verified Seeker owners only" },
+  { src: 'discover', out: '01-discover', headline: 'Every dApp, ranked live', sub: 'Scout Pick, top climbers, freshness — at a glance' },
+  { src: 'detail', out: '02-detail', headline: 'Every app, in depth', sub: '7-day rank trend, on-chain verified, one-tap install' },
+  { src: 'rewards', out: '03-rewards', headline: 'Perks that are actually live', sub: 'Verified Seeker rewards + SKR Season tracking' },
+  { src: 'lounge', out: '04-lounge', headline: 'Claim your founding number', sub: "The Owners' Lounge — verified Seeker owners only" },
+  { src: 'chat', out: '05-chat', headline: 'A room with no bots', sub: 'Genesis-verified members only — say hello' },
 ];
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/'/g, '&apos;');
