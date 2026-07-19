@@ -6,6 +6,7 @@ import { colors, freshness } from '../theme';
 import { AppIcon } from './AppIcon';
 import { DeltaChip } from './DeltaChip';
 import { PressableCard } from './PressableCard';
+import { WatchButton } from './WatchButton';
 
 const NEW_WINDOW_MS = 14 * 86_400_000;
 
@@ -27,9 +28,6 @@ export function AppCard({ app }: { app: DappEntry }) {
               {app.name}
             </Text>
             <DeltaChip delta={app.rankDelta} />
-            {/* Max two badges on a card row — NEW supersedes freshness (a
-                just-listed app is fresh by definition); everything shows in
-                full on the detail screen. */}
             {isNew ? (
               <View style={[styles.badge, { borderColor: colors.green }]}>
                 <Text style={[styles.badgeText, { color: colors.green }]}>NEW</Text>
@@ -48,6 +46,9 @@ export function AppCard({ app }: { app: DappEntry }) {
                 </Text>
               </View>
             )}
+            {app.onchainVerified && (
+              <Text style={styles.chain}>⛓</Text>
+            )}
           </View>
           <Text style={styles.desc} numberOfLines={1}>
             {app.subtitle || app.description}
@@ -57,6 +58,7 @@ export function AppCard({ app }: { app: DappEntry }) {
             {app.category} · updated {app.lastUpdated}
           </Text>
         </View>
+        <WatchButton id={app.id} size={20} />
       </View>
     </PressableCard>
   );
@@ -73,7 +75,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   row: { flexDirection: 'row', alignItems: 'center' },
-  body: { flex: 1, marginLeft: 12 },
+  body: { flex: 1, marginLeft: 12, marginRight: 6 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { color: colors.text, fontSize: 15, fontWeight: '700', flexShrink: 1 },
   badge: {
@@ -83,6 +85,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   badgeText: { fontSize: 9, fontWeight: '700' },
+  chain: { fontSize: 11 },
   desc: { color: colors.textDim, marginTop: 4, fontSize: 12 },
   meta: {
     color: colors.textDim,

@@ -12,6 +12,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../components/AppIcon';
 import { DeltaChip } from '../components/DeltaChip';
+import { Sparkline } from '../components/Sparkline';
+import { WatchButton } from '../components/WatchButton';
 import { fetchCatalog } from '../lib/catalog';
 import { DappEntry } from '../lib/types';
 import { colors, fonts, freshness } from '../theme';
@@ -68,7 +70,10 @@ export function AppDetailScreen() {
         <View style={styles.header}>
           <AppIcon uri={app.iconUrl} size={72} />
           <View style={styles.headerBody}>
-            <Text style={styles.name}>{app.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.name} numberOfLines={1}>{app.name}</Text>
+              <WatchButton id={app.id} size={26} />
+            </View>
             {!!app.publisher && (
               <Text style={styles.publisher} numberOfLines={1}>
                 {app.publisher.trim()}
@@ -109,6 +114,20 @@ export function AppDetailScreen() {
           )}
         </View>
 
+        {!!app.rankHistory && app.rankHistory.length >= 2 && (
+          <View style={styles.trendCard}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.trendLabel}>7-DAY RANK</Text>
+              <Text style={styles.trendSub}>
+                {app.rankHistory[app.rankHistory.length - 1] <= app.rankHistory[0]
+                  ? 'Climbing'
+                  : 'Sliding'}
+              </Text>
+            </View>
+            <Sparkline data={app.rankHistory} width={120} height={34} />
+          </View>
+        )}
+
         {!!(app.description || app.subtitle) && (
           <Text style={styles.description}>
             {app.description || app.subtitle}
@@ -142,6 +161,12 @@ function InfoCard({ app }: { app: DappEntry }) {
     { label: 'Last updated', value: app.lastUpdated || '—' },
     ...(app.firstSeen
       ? [{ label: 'Listed on store', value: app.firstSeen }]
+      : []),
+    ...(app.onchainVerified
+      ? [{
+          label: 'On-chain',
+          value: `⛓ Verified · ${app.onchainReleaseCount ?? 1} release${(app.onchainReleaseCount ?? 1) === 1 ? '' : 's'}`,
+        }]
       : []),
     ...(app.website
       ? [{ label: 'Website', value: app.website, url: app.website }]
@@ -204,7 +229,16 @@ const styles = StyleSheet.create({
   backText: { color: colors.textDim, fontSize: 15, fontWeight: '600' },
   header: { flexDirection: 'row', paddingHorizontal: 16, alignItems: 'center' },
   headerBody: { flex: 1, marginLeft: 14 },
-  name: { color: colors.text, fontSize: 22, fontFamily: fonts.heavy },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  name: { color: colors.text, fontSize: 22, fontFamily: fonts.heavy, flexShrink: 1 },
+  trendCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.card, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border,
+    marginHorizontal: 16, marginTop: 18, padding: 14,
+  },
+  trendLabel: { color: colors.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  trendSub: { color: colors.text, fontSize: 15, fontFamily: fonts.semi, marginTop: 3 },
   publisher: { color: colors.textDim, fontSize: 13, marginTop: 2 },
   badges: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   badge: {

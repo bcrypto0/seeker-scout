@@ -15,6 +15,7 @@
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha512';
 import { base58 } from '@scure/base';
+import { handleChat } from './chat.js';
 
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
 
@@ -95,6 +96,78 @@ function isGenuineSgt(mintInfo) {
   return metaOk && groupOk;
 }
 
+/**
+ * Verify a fresh, wallet-signed message proving control of a genuine Seeker
+ * Genesis Token that the wallet holds. Steps 1-3 of the claim flow, shared
+ * with chat auth. Returns null on success, or an {error,status} to return.
+ */
+async function verifyGenesisSig(body, env) {
+  const { wallet, mint, ts, signature } = body ?? {};
+  if (
+    typeof wallet !== 'string' || typeof mint !== 'string' ||
+    typeof ts !== 'string' || typeof signature !== 'string'
+  ) {
+    return { error: 'missing fields', status: 400 };
+  }
+  // 1. Freshness: 10 min past (retries) / 2 min future (skew).
+  const dt = Date.now() - Date.parse(ts);
+  if (!Number.isFinite(dt) || dt > MAX_MESSAGE_AGE_MS || dt < -MAX_CLOCK_SKEW_MS) {
+    return { error: 'stale message', status: 400 };
+  }
+  // 2. Signature by the wallet over the canonical message.
+  let walletBytes, sigBytes;
+  try {
+    walletBytes = base58.decode(wallet);
+    sigBytes = base58.decode(signature);
+    base58.decode(mint);
+  } catch {
+    return { error: 'bad encoding', status: 400 };
+  }
+  if (walletBytes.length !== 32 || sigBytes.length !== 64) {
+    return { error: 'bad key or signature length', status: 400 };
+  }
+  const msgBytes = new TextEncoder().encode(claimMessage(wallet, mint, ts));
+  let sigOk = false;
+  try {
+    sigOk = ed.verify(sigBytes, msgBytes, walletBytes, { zip215: false });
+  } catch {
+    sigOk = false;
+  }
+  if (!sigOk) return { error: 'signature verification failed', status: 401 };
+  // 3. On-chain: genuine SGT held by this wallet.
+  try {
+    const [mintInfo, holdings] = await Promise.all([
+      rpc(env, 'getAccountInfo', [mint, { encoding: 'jsonParsed' }]),
+      rpc(env, 'getTokenAccountsByOwner', [wallet, { mint }, { encoding: 'jsonParsed' }]),
+    ]);
+    if (!isGenuineSgt(mintInfo)) return { error: 'not a Seeker Genesis Token', status: 403 };
+    const holds = (holdings?.value ?? []).some(
+      (a) => Number(a?.account?.data?.parsed?.info?.tokenAmount?.amount ?? '0') >= 1,
+    );
+    if (!holds) return { error: 'wallet does not hold this token', status: 403 };
+  } catch (e) {
+    return { error: `chain check unavailable: ${e.message}`, status: 502 };
+  }
+  return null; // verified
+}
+
+/**
+ * Chat auth: verify Genesis ownership AND that the wallet already claimed a
+ * founding number (chat is members-only). Returns {number,tier} or {error,status}.
+ */
+async function verifyMembership(body, env) {
+  const bad = await verifyGenesisSig(body, env);
+  if (bad) return bad;
+  try {
+    const row = await env.DB.prepare('SELECT id FROM claims WHERE genesis_mint = ?')
+      .bind(body.mint).first();
+    if (!row) return { error: 'claim your founding number first', status: 403 };
+    return { number: row.id, tier: tierOf(row.id) };
+  } catch {
+    return { error: 'storage error', status: 500 };
+  }
+}
+
 async function handleClaim(request, env) {
   let body;
   try {
@@ -102,84 +175,24 @@ async function handleClaim(request, env) {
   } catch {
     return json({ error: 'invalid JSON' }, 400);
   }
-  const { wallet, mint, ts, signature } = body ?? {};
-  if (
-    typeof wallet !== 'string' ||
-    typeof mint !== 'string' ||
-    typeof ts !== 'string' ||
-    typeof signature !== 'string'
-  ) {
-    return json({ error: 'missing fields' }, 400);
-  }
+  const { mint } = body ?? {};
 
-  // 0. Already claimed? Answer straight from D1 — zero crypto, zero RPC.
-  // This is the replay/DoS short-circuit AND makes re-claims self-healing
-  // (a claimant on a flaky network just gets their number back).
-  try {
-    const existing = await env.DB.prepare(
-      'SELECT id FROM claims WHERE genesis_mint = ?',
-    )
-      .bind(mint)
-      .first();
-    if (existing) {
-      return json({ number: existing.id, tier: tierOf(existing.id) });
+  // 0. Already claimed? Answer straight from D1 — replay/DoS short-circuit,
+  // and re-claims are self-healing. (Field validation happens in step 1.)
+  if (typeof mint === 'string') {
+    try {
+      const existing = await env.DB.prepare('SELECT id FROM claims WHERE genesis_mint = ?')
+        .bind(mint).first();
+      if (existing) return json({ number: existing.id, tier: tierOf(existing.id) });
+    } catch {
+      return json({ error: 'storage error' }, 500);
     }
-  } catch {
-    return json({ error: 'storage error' }, 500);
   }
 
-  // 1. Freshness — the signed message embeds the timestamp. Asymmetric
-  // window: 10 min past (retries without re-signing) / 2 min future (skew).
-  const dt = Date.now() - Date.parse(ts);
-  if (!Number.isFinite(dt) || dt > MAX_MESSAGE_AGE_MS || dt < -MAX_CLOCK_SKEW_MS) {
-    return json({ error: 'stale message' }, 400);
-  }
-
-  // 2. Signature by the wallet over the canonical message.
-  let walletBytes, sigBytes;
-  try {
-    walletBytes = base58.decode(wallet);
-    sigBytes = base58.decode(signature);
-    base58.decode(mint); // validates encoding
-  } catch {
-    return json({ error: 'bad encoding' }, 400);
-  }
-  if (walletBytes.length !== 32 || sigBytes.length !== 64) {
-    return json({ error: 'bad key or signature length' }, 400);
-  }
-  const msgBytes = new TextEncoder().encode(claimMessage(wallet, mint, ts));
-  let sigOk = false;
-  try {
-    // zip215:false = strict RFC 8032 (rejects malleable signatures).
-    sigOk = ed.verify(sigBytes, msgBytes, walletBytes, { zip215: false });
-  } catch {
-    sigOk = false;
-  }
-  if (!sigOk) return json({ error: 'signature verification failed' }, 401);
-
-  // 3. On-chain: genuine SGT + held by this wallet.
-  try {
-    const [mintInfo, holdings] = await Promise.all([
-      rpc(env, 'getAccountInfo', [mint, { encoding: 'jsonParsed' }]),
-      rpc(env, 'getTokenAccountsByOwner', [
-        wallet,
-        { mint },
-        { encoding: 'jsonParsed' },
-      ]),
-    ]);
-    if (!isGenuineSgt(mintInfo)) {
-      return json({ error: 'not a Seeker Genesis Token' }, 403);
-    }
-    const holds = (holdings?.value ?? []).some(
-      (a) =>
-        Number(
-          a?.account?.data?.parsed?.info?.tokenAmount?.amount ?? '0',
-        ) >= 1,
-    );
-    if (!holds) return json({ error: 'wallet does not hold this token' }, 403);
-  } catch (e) {
-    return json({ error: `chain check unavailable: ${e.message}` }, 502);
-  }
+  // 1-3. Fresh signed message + genuine Genesis Token held by the wallet.
+  const bad = await verifyGenesisSig(body, env);
+  if (bad) return json({ error: bad.error }, bad.status);
+  const { wallet } = body;
 
   // 4. Assign the next number. Plain INSERT (no OR IGNORE — an ignored
   // insert on an AUTOINCREMENT table would burn a founding number); a
@@ -215,6 +228,9 @@ export default {
     }
     if (request.method === 'POST' && url.pathname === '/claim') {
       return handleClaim(request, env);
+    }
+    if (url.pathname.startsWith('/chat/')) {
+      return handleChat(request, env, url, (body) => verifyMembership(body, env));
     }
     try {
       if (request.method === 'GET' && url.pathname === '/status') {

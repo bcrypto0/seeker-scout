@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { connectWallet, findGenesisToken } from '../lib/wallet';
 import {
@@ -31,6 +32,7 @@ const tierLabel = (c: LoungeClaim) =>
  * members' chat. Verified Seeker owners only (Genesis Token via Seed Vault).
  */
 export function LoungeScreen() {
+  const nav = useNavigation<any>();
   const [stats, setStats] = useState<LoungeStats | null>(null);
   const [address, setAddress] = useState<string>();
   const [authToken, setAuthToken] = useState<string>();
@@ -168,9 +170,12 @@ export function LoungeScreen() {
           {error && <Text style={styles.err}>{error}</Text>}
         </View>
 
+        <Pressable style={styles.chatBtn} onPress={() => nav.navigate('Chat')}>
+          <Text style={styles.chatBtnText}>💬  Open the members' chat</Text>
+        </Pressable>
+
         <Text style={styles.section}>COMING TO THE LOUNGE</Text>
         {[
-          ['💬', 'Members’ chat', 'Talk with verified Seeker owners — every member is Genesis-verified, so there are no bots and no spam accounts.'],
           ['🎖️', 'Founding perks', 'Founder and Pioneer badges unlock early access to what ships next.'],
           ['🗳️', 'Member votes', 'Founding members help pick features and the weekly Scout Pick.'],
         ].map(([icon, title, detail]) => (
@@ -234,6 +239,12 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   claimBadgeSub: { color: colors.textDim, fontSize: 11, marginTop: 4 },
+  chatBtn: {
+    backgroundColor: colors.purple, borderRadius: 14,
+    marginHorizontal: 16, marginTop: 16,
+    paddingVertical: 15, alignItems: 'center', minHeight: 48, justifyContent: 'center',
+  },
+  chatBtnText: { color: colors.text, fontWeight: '800', fontSize: 15 },
   section: {
     color: colors.textDim, fontSize: 11, fontWeight: '800', letterSpacing: 1,
     paddingHorizontal: 16, marginTop: 22, marginBottom: 8,

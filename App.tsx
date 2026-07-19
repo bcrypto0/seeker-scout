@@ -17,6 +17,7 @@ import { RewardsScreen } from './src/screens/RewardsScreen';
 import { LoungeScreen } from './src/screens/LoungeScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AppDetailScreen } from './src/screens/AppDetailScreen';
+import { ChatScreen } from './src/screens/ChatScreen';
 import { colors } from './src/theme';
 
 const Tab = createBottomTabNavigator();
@@ -84,6 +85,11 @@ export default function App() {
             name="AppDetail"
             component={AppDetailScreen}
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="Chat"
+            component={ChatScreen}
+            options={{ animation: 'slide_from_right' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
