@@ -19,8 +19,14 @@
  *   node watch.mjs --selftest   # validate decode+extract on our own NFT (no stream)
  *   node watch.mjs              # live stream
  */
-import Client from '@triton-one/yellowstone-grpc';
+import grpcPkg from '@triton-one/yellowstone-grpc';
 import { Connection, PublicKey } from '@solana/web3.js';
+
+// CJS→ESM interop: the Client class is nested at pkg.default.default here.
+const Client =
+  typeof grpcPkg === 'function'
+    ? grpcPkg
+    : (grpcPkg?.default ?? grpcPkg);
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const TOKEN_METADATA_PROGRAM = 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s';
@@ -273,8 +279,12 @@ async function live() {
         accounts: {}, slots: {}, blocks: {}, blocksMeta: {}, entry: {},
         accountsDataSlice: [], transactionsStatus: {},
       };
+      let seen = 0;
       await new Promise((resolve, reject) => {
         stream.on('data', (u) => {
+          seen++;
+          if (seen === 1) console.log('[watch] stream live — receiving Token Metadata txns');
+          if (seen % 5000 === 0) console.log(`[watch] healthy — ${seen} txns scanned`);
           if (!u?.transaction) return;
           backoff = 1000;
           try {
