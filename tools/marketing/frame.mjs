@@ -49,6 +49,24 @@ const maskSvg = `<svg width="${SHOT_W}" height="${SHOT_H}" xmlns="http://www.w3.
   <rect width="${SHOT_W}" height="${SHOT_H}" rx="${RADIUS}" fill="#fff"/>
 </svg>`;
 
+// A PRISTINE synthetic status bar painted over whatever the device shows —
+// NEVER trust the real/demo status bar (real clock, signal, notification
+// icons must never reach a store screenshot). Height scales with SHOT_W.
+const STATUS_H = Math.round((SHOT_W / 1200) * 100);
+const statusBarSvg = `<svg width="${SHOT_W}" height="${STATUS_H}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${SHOT_W}" height="${STATUS_H}" fill="#0B0B0F"/>
+  <text x="34" y="48" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#F5F5F7">9:41</text>
+  <g fill="#F5F5F7">
+    <rect x="748" y="34" width="6" height="14" rx="1.5"/>
+    <rect x="759" y="28" width="6" height="20" rx="1.5"/>
+    <rect x="770" y="22" width="6" height="26" rx="1.5"/>
+    <rect x="781" y="16" width="6" height="32" rx="1.5"/>
+  </g>
+  <rect x="806" y="20" width="42" height="24" rx="5" fill="none" stroke="#F5F5F7" stroke-width="2.5"/>
+  <rect x="810" y="24" width="34" height="16" rx="2" fill="#F5F5F7"/>
+  <rect x="850" y="27" width="4" height="10" rx="2" fill="#F5F5F7"/>
+</svg>`;
+
 const borderSvg = `<svg width="${SHOT_W}" height="${SHOT_H}" xmlns="http://www.w3.org/2000/svg">
   <rect x="1.5" y="1.5" width="${SHOT_W - 3}" height="${SHOT_H - 3}" rx="${RADIUS}" fill="none" stroke="#14F195" stroke-width="3"/>
 </svg>`;
@@ -62,6 +80,9 @@ async function frameOne(inDir, outDir, shot) {
   const device = await sharp(srcPath)
     .resize(SHOT_W, SHOT_H)
     .composite([
+      // Paint the clean status bar OVER the device's real one first, then
+      // round the corners and add the border.
+      { input: Buffer.from(statusBarSvg), top: 0, left: 0, blend: 'over' },
       { input: Buffer.from(maskSvg), blend: 'dest-in' },
       { input: Buffer.from(borderSvg), blend: 'over' },
     ])
