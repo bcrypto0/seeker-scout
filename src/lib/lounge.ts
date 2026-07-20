@@ -27,6 +27,15 @@ const base58Encode = (bytes: Uint8Array): string => {
   return out;
 };
 
+/**
+ * Anonymous app-open ping — fire-and-forget on launch. No wallet, no device
+ * id, no PII; just bumps a per-day counter so we can quote a real
+ * opens/impressions number (ad-sales metric). Never throws, never blocks.
+ */
+export function pingOpen(): void {
+  fetch(`${LOUNGE_URL}/ping`, { method: 'POST' }).catch(() => {});
+}
+
 export async function getLoungeStats(): Promise<LoungeStats | null> {
   try {
     const res = await fetch(`${LOUNGE_URL}/stats`);

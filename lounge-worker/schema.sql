@@ -40,3 +40,10 @@ CREATE TABLE IF NOT EXISTS reports (
   reporter TEXT NOT NULL,
   PRIMARY KEY (message_id, reporter)
 );
+
+-- Anonymous daily app-open counter (DAU/impressions proxy for ad sales).
+-- No device id, no PII — just a per-day tally the app POSTs on launch.
+CREATE TABLE IF NOT EXISTS opens (
+  day TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0
+);

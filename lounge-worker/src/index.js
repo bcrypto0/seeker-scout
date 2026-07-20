@@ -232,6 +232,38 @@ export default {
     if (url.pathname.startsWith('/chat/')) {
       return handleChat(request, env, url, (body) => verifyMembership(body, env));
     }
+    // Anonymous app-open ping (fire-and-forget from the app on launch).
+    if (request.method === 'POST' && url.pathname === '/ping') {
+      try {
+        await env.DB.prepare(
+          'INSERT INTO opens (day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count = count + 1',
+        ).bind(new Date().toISOString().slice(0, 10)).run();
+      } catch {
+        /* best-effort; never fail an open */
+      }
+      return new Response(null, { status: 204, headers: CORS });
+    }
+    // Metrics for the ad-sales dashboard: daily opens + 7d total + claims + msgs.
+    if (request.method === 'GET' && url.pathname === '/metrics') {
+      try {
+        const rows = await env.DB.prepare(
+          'SELECT day, count FROM opens ORDER BY day DESC LIMIT 30',
+        ).all();
+        const claims = await env.DB.prepare('SELECT COUNT(*) AS n FROM claims').first();
+        const msgs = await env.DB.prepare('SELECT COUNT(*) AS n FROM messages').first();
+        const days = rows.results ?? [];
+        const opens7d = days.slice(0, 7).reduce((s, r) => s + r.count, 0);
+        return json({
+          opens7d,
+          opensToday: days[0]?.day === new Date().toISOString().slice(0, 10) ? days[0].count : 0,
+          opensByDay: days,
+          claims: claims?.n ?? 0,
+          messages: msgs?.n ?? 0,
+        });
+      } catch {
+        return json({ error: 'storage error' }, 500);
+      }
+    }
     try {
       if (request.method === 'GET' && url.pathname === '/status') {
         const mint = url.searchParams.get('mint');

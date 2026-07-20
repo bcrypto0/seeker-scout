@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -31,6 +31,7 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AppDetailScreen } from './src/screens/AppDetailScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { colors } from './src/theme';
+import { pingOpen } from './src/lib/lounge';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -86,6 +87,11 @@ export default function App() {
     Inter_600SemiBold,
     Inter_800ExtraBold,
   });
+
+  // Anonymous open ping — once per cold start, fire-and-forget (ad metric).
+  useEffect(() => {
+    pingOpen();
+  }, []);
 
   return (
     <SafeAreaProvider>
