@@ -1,4 +1,4 @@
-import { DappEntry, PromoBanner, RewardEntry } from './types';
+import { AppPerk, DappEntry, PromoBanner, RewardEntry } from './types';
 
 /**
  * Hosted catalog produced by `npm run index-catalog` (indexer/catalog.json),
@@ -7,6 +7,7 @@ import { DappEntry, PromoBanner, RewardEntry } from './types';
 const CATALOG_URL = 'https://seeker-scout-catalog.pages.dev/catalog.json';
 const BANNERS_URL = 'https://seeker-scout-catalog.pages.dev/banners.json';
 const REWARDS_URL = 'https://seeker-scout-catalog.pages.dev/rewards.json';
+const PERKS_URL = 'https://seeker-scout-catalog.pages.dev/perks.json';
 
 /**
  * Real seed data captured from the dApp Store explore feed (July 2026) —
@@ -131,9 +132,41 @@ export async function fetchRewards(): Promise<RewardEntry[]> {
   }
 }
 
+/**
+ * Auto-detected app perks (v0.4) — [] on any failure; the Rewards screen
+ * simply hides the section. Machine-generated remote config, but validate
+ * per-entry anyway (one malformed row must never crash the tab).
+ */
+export async function fetchPerks(): Promise<AppPerk[]> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(PERKS_URL, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`perks ${res.status}`);
+    const data = (await res.json()) as AppPerk[];
+    return Array.isArray(data)
+      ? data.filter(
+          (p) =>
+            p &&
+            typeof p.id === 'string' &&
+            typeof p.name === 'string' &&
+            typeof p.snippet === 'string' &&
+            Array.isArray(p.kinds) &&
+            p.kinds.length > 0,
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 // One session-scoped catalog fetch shared by Discover, Search, and the
 // detail screen (rank lookups) — the hosted file is ~1MB, don't re-pull it.
 let catalogCache: DappEntry[] | null = null;
+// In-flight dedup: concurrent callers (Discover mount + Rewards prefetch)
+// share ONE download instead of racing two ~1MB fetches.
+let catalogInflight: Promise<DappEntry[]> | null = null;
 
 /** True when the live catalog is already in memory (skip skeletons). */
 export function isCatalogCached(): boolean {
@@ -142,6 +175,17 @@ export function isCatalogCached(): boolean {
 
 export async function fetchCatalog(force = false): Promise<DappEntry[]> {
   if (catalogCache && !force) return catalogCache;
+  if (catalogInflight && !force) return catalogInflight;
+  const attempt = doFetchCatalog();
+  catalogInflight = attempt;
+  try {
+    return await attempt;
+  } finally {
+    if (catalogInflight === attempt) catalogInflight = null;
+  }
+}
+
+async function doFetchCatalog(): Promise<DappEntry[]> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);

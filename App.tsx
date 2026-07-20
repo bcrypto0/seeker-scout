@@ -89,8 +89,9 @@ export default function App() {
   });
 
   // Anonymous open ping — once per cold start, fire-and-forget (ad metric).
+  // Dev-client sessions are excluded so testing never inflates the number.
   useEffect(() => {
-    pingOpen();
+    if (!__DEV__) pingOpen();
   }, []);
 
   return (

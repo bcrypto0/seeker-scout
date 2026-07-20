@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -8,25 +8,72 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../components/AppIcon';
 import { PressableCard } from '../components/PressableCard';
-import { fetchRewards } from '../lib/catalog';
-import { RewardEntry } from '../lib/types';
+import {
+  fetchCatalog,
+  fetchPerks,
+  fetchRewards,
+  isCatalogCached,
+} from '../lib/catalog';
+import { AppPerk, DappEntry, RewardEntry } from '../lib/types';
 import { colors, fonts, heading } from '../theme';
+
+/** Display labels for detected perk kinds (indexer emits the keys). */
+const KIND_LABELS: Record<string, string> = {
+  airdrop: 'Airdrop',
+  'play-to-earn': 'Play-to-earn',
+  staking: 'Staking',
+  earn: 'Earn',
+  cashback: 'Cashback',
+  rewards: 'Rewards',
+  points: 'Points',
+  mining: 'Mining',
+};
+
+const PAGE = 25;
 
 /**
  * Rewards v2 (battle plan §3): structured, status-aware, deep-linked — "the
  * only rewards feed that tells you what's still claimable." Fed by hosted
  * rewards.json (remote config; new rewards ship with no app release).
+ * v0.4 adds the auto-detected "all apps with rewards" section (perks.json)
+ * — pulamea.skr's review ask.
  */
 export function RewardsScreen() {
   const [rewards, setRewards] = useState<RewardEntry[]>([]);
   const [showPast, setShowPast] = useState(false);
+  const [perks, setPerks] = useState<AppPerk[]>([]);
+  const [kind, setKind] = useState<string>('all');
+  const [visible, setVisible] = useState(PAGE);
+  // Catalog join map, prefetched so perk taps are instant + synchronous
+  // (no await on the tap path — see PerkCard).
+  const [byId, setById] = useState<Map<string, DappEntry>>(new Map());
+
+  const loadCatalog = useCallback(() => {
+    fetchCatalog().then((list) =>
+      setById(new Map(list.map((a) => [a.id, a] as const))),
+    );
+  }, []);
 
   useEffect(() => {
     fetchRewards().then(setRewards);
-  }, []);
+    loadCatalog();
+  }, [loadCatalog]);
+
+  // Perks are the headline feature — a failed fetch must not hide it for
+  // the whole session. Retry on every tab focus until we have data (and
+  // retry the catalog join too if only the seed fallback landed).
+  useFocusEffect(
+    useCallback(() => {
+      if (perks.length === 0) {
+        fetchPerks().then((p) => p.length > 0 && setPerks(p));
+      }
+      if (!isCatalogCached()) loadCatalog();
+    }, [perks.length, loadCatalog]),
+  );
 
   // Local-midnight day boundary: an offer stays ACTIVE through the whole of
   // its endsAt day in the user's timezone (not UTC).
@@ -40,9 +87,30 @@ export function RewardsScreen() {
     };
   }, [rewards, today]);
 
+  // Kind filter chips: only kinds that actually occur, ordered by count.
+  const kindCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of perks) for (const k of p.kinds) counts[k] = (counts[k] ?? 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [perks]);
+
+  const filtered = useMemo(
+    () => (kind === 'all' ? perks : perks.filter((p) => p.kinds.includes(kind as never))),
+    [perks, kind],
+  );
+
+  const pickKind = (k: string) => {
+    Haptics.selectionAsync().catch(() => {});
+    setKind(k);
+    setVisible(PAGE); // reset paging when the filter changes
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 24 }}
+        removeClippedSubviews
+      >
         <Text style={styles.h1}>Rewards</Text>
         <Text style={styles.sub}>
           Verified perks and SKR season progress for Seeker owners.
@@ -71,10 +139,121 @@ export function RewardsScreen() {
             {showPast && past.map((r) => <RewardCard key={r.id} r={r} expired />)}
           </>
         )}
+
+        {perks.length > 0 && (
+          <>
+            <Text style={styles.section}>
+              ALL APPS WITH REWARDS ({perks.length})
+            </Text>
+            <Text style={styles.perksSub}>
+              Auto-detected from every dApp Store listing — updated daily.
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}
+            >
+              <Chip
+                label={`All ${perks.length}`}
+                active={kind === 'all'}
+                onPress={() => pickKind('all')}
+              />
+              {kindCounts.map(([k, n]) => (
+                <Chip
+                  key={k}
+                  label={`${KIND_LABELS[k] ?? k} ${n}`}
+                  active={kind === k}
+                  onPress={() => pickKind(k)}
+                />
+              ))}
+            </ScrollView>
+            {filtered.slice(0, visible).map((p) => (
+              <PerkCard key={p.id} p={p} app={byId.get(p.id)} />
+            ))}
+            {filtered.length > visible && (
+              <Pressable
+                style={styles.more}
+                onPress={() => setVisible((v) => v + 50)}
+              >
+                <Text style={styles.moreText}>
+                  Show more ({filtered.length - visible} left)
+                </Text>
+              </Pressable>
+            )}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+/** Filter chip — Discover's device-proven recipe (fixed height, centered). */
+const Chip = React.memo(function Chip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={{ top: 8, bottom: 8 }}
+      style={[styles.chip, active && styles.chipActive]}
+    >
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+});
+
+/**
+ * Auto-detected perk row. Tap is SYNCHRONOUS — the catalog entry was
+ * prefetched into the join map, so it either opens the in-app detail page
+ * instantly or deep-links to the store listing instantly. Never awaits on
+ * the tap path (an awaited ~1MB fetch here stalled taps up to 8s).
+ * Memoized: PAST-toggle / chip changes must not reconcile every card.
+ */
+const PerkCard = React.memo(function PerkCard({
+  p,
+  app,
+}: {
+  p: AppPerk;
+  app?: DappEntry;
+}) {
+  const nav = useNavigation<any>();
+  const open = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    if (app) nav.navigate('AppDetail', { app });
+    else Linking.openURL(`solanadappstore://details?id=${p.id}`).catch(() => {});
+  };
+
+  return (
+    <PressableCard style={styles.perkCard} onPress={open}>
+      <View style={styles.cardRow}>
+        <AppIcon uri={p.iconUrl} size={36} />
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <View style={styles.titleRow}>
+            <Text style={styles.perkName} numberOfLines={1}>
+              {p.name}
+            </Text>
+            <Text style={styles.perkKinds} numberOfLines={1}>
+              {p.kinds.map((k) => KIND_LABELS[k] ?? k).join(' · ')}
+            </Text>
+          </View>
+          {!!p.snippet && (
+            <Text style={styles.perkSnippet} numberOfLines={2}>
+              {p.snippet}
+            </Text>
+          )}
+        </View>
+      </View>
+    </PressableCard>
+  );
+});
 
 /** YYYY-MM-DD in the device's local timezone. */
 function localDay(): string {
@@ -199,4 +378,40 @@ const styles = StyleSheet.create({
   },
   btnSolidText: { color: '#00140B', fontSize: 12, fontWeight: '800' },
   verified: { color: colors.textDim, fontSize: 10, marginTop: 10 },
+  perksSub: {
+    color: colors.textDim, fontSize: 12,
+    paddingHorizontal: 16, marginTop: -4, marginBottom: 10,
+  },
+  chipRow: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
+  chip: {
+    height: 34, paddingHorizontal: 14, borderRadius: 17,
+    borderWidth: 1, borderColor: colors.border,
+    justifyContent: 'center', backgroundColor: colors.card,
+  },
+  chipActive: { backgroundColor: colors.green, borderColor: colors.green },
+  chipText: {
+    color: colors.textDim, fontSize: 13, fontWeight: '700',
+    includeFontPadding: false,
+  },
+  chipTextActive: { color: '#00140B' },
+  perkCard: {
+    backgroundColor: colors.card, borderRadius: 14, padding: 12,
+    marginHorizontal: 16, marginBottom: 8,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  perkName: {
+    color: colors.text, fontSize: 14, fontFamily: fonts.semi,
+    flexShrink: 1,
+  },
+  perkKinds: {
+    color: colors.green, fontSize: 10, fontWeight: '800',
+    letterSpacing: 0.4, marginLeft: 8, flexShrink: 0, maxWidth: 150,
+  },
+  perkSnippet: { color: colors.textDim, fontSize: 12, marginTop: 3, lineHeight: 17 },
+  more: {
+    marginHorizontal: 16, marginTop: 4, height: 44, borderRadius: 12,
+    borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  moreText: { color: colors.green, fontSize: 13, fontWeight: '700' },
 });

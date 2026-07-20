@@ -1,0 +1,3828 @@
+[
+ {
+  "id": "io.getgrass.www",
+  "name": "Grass",
+  "category": "DePIN",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/31d722cd0aa5c99f1439f73d548f556183c11614c438a1fd51b42cd74d94e32e.png",
+  "kinds": [
+   "earn",
+   "rewards",
+   "points"
+  ],
+  "snippet": "This innovative tool allows you to earn points while sharing your surplus bandwidth, transforming unused digital potential into tangible rewards.",
+  "trendScore": 87,
+  "rating": 4.3,
+  "reviews": 3348
+ },
+ {
+  "id": "network.jito.www.twa",
+  "name": "Jito",
+  "category": "Top Picks",
+  "iconUrl": "https://solanamobiledappstore.com/t4G0p_8CarTRSB3QXzAj_X7pFo9F0-27aUKbhExJWMQ",
+  "kinds": [
+   "staking",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Liquid staking for Solana.",
+  "trendScore": 85,
+  "rating": 4.6,
+  "reviews": 4688
+ },
+ {
+  "id": "com.poof.app6a0c94282a336f164428382b",
+  "name": "Aeonian",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/1d73389c4250a2ffbffd2c33a92deaf0a2488e3c0bbfa9d1e6d1d0267fa64aeb.png",
+  "kinds": [
+   "earn",
+   "rewards",
+   "points"
+  ],
+  "snippet": "Earn Reward Points for every trade, battle, and social action.",
+  "trendScore": 79,
+  "rating": 4.4,
+  "reviews": 20
+ },
+ {
+  "id": "com.brainstake.app",
+  "name": "BrainStake",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/f3756a7f656d1a10de75bb158e79aaf0b798138ae7cdcb12642da01b6bec8a7b.png",
+  "kinds": [
+   "staking",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Play free daily challenges, compete in prize pools by staking SOL, or create community pools and earn 2.5% as creator.",
+  "trendScore": 79,
+  "rating": 3.7,
+  "reviews": 82
+ },
+ {
+  "id": "com.wss.epikoregal",
+  "name": "Epiko Regal Tower Defense",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/c54fa4c08951dfea522e2ec7312cf3c30ca5581e9727f8d9ae0cdf0da3fda49f.png",
+  "kinds": [
+   "earn",
+   "rewards",
+   "points"
+  ],
+  "snippet": "Collect trophies, earn points, and anticipate grand rewards.",
+  "trendScore": 79,
+  "rating": 3.9,
+  "reviews": 538
+ },
+ {
+  "id": "ai.kamiyo.app",
+  "name": "KAMIYO",
+  "category": "AI & Agents",
+  "iconUrl": "https://solanamobiledappstore.com/v-lCYFJEA43OtuPiUvR9R5kty0Jis0cURueyYXswJCM",
+  "kinds": [
+   "staking",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Stake - Stake tokens to support AI agents and earn rewards…",
+  "trendScore": 78,
+  "rating": 4,
+  "reviews": 353
+ },
+ {
+  "id": "xyz.getkees",
+  "name": "KEES",
+  "category": "NFTs",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/4abc17d8c3e665ee75b4e7109972aaee0fd8926a46cf37d38806c76e9bdaead7.png",
+  "kinds": [
+   "earn",
+   "rewards",
+   "points"
+  ],
+  "snippet": "Earn XP with every claim, climb the global leaderboard, unlock exclusive avatars, and upgrade your verification level for bonus rewards.",
+  "trendScore": 78,
+  "rating": 3.8,
+  "reviews": 35
+ },
+ {
+  "id": "com.blockfinex.excha",
+  "name": "Blockfinex: Trade Crypto",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/X97BU5K7jgyCrL1KCaF8DTcKMNkYBTopD0EAiSktpc4",
+  "kinds": [
+   "earn",
+   "rewards",
+   "points"
+  ],
+  "snippet": "Claim rewards as you trade and earn points…",
+  "trendScore": 77,
+  "rating": 4.1,
+  "reviews": 117
+ },
+ {
+  "id": "com.claimsol.dapp",
+  "name": "Claim SOL",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/Rr6kp91ML5LmfJI6yF5tcBXOwgVOERqdhS2TNOKRUAQ",
+  "kinds": [
+   "airdrop",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Close up to 25 accounts per transaction, instantly reclaim SOL, earn $CLAIM rewards, and benefit from referrals and airdrops — all 100% on-chain.",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 202
+ },
+ {
+  "id": "com.poof.app69ab2ce4d39f944d46919f70",
+  "name": "Yeshi",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/esmPB8B4XvfzaQG6PJFpgbEtQ2xDHs7GNg3gRUKNksI",
+  "kinds": [
+   "airdrop",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "→ Get monthly airdrops for top users…",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 29
+ },
+ {
+  "id": "com.phettagotchi.app",
+  "name": "Phettagotchi",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/osgOQMUUUVpJZMqpp1cWUQUgD2j6KIv8vD_vtvxg_no",
+  "kinds": [
+   "staking",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Explore a procedurally generated pixel-art world, complete quests for NPCs, battle wild creatures and trainers, visit shops and healers, and stake $PHETTA to…",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 77
+ },
+ {
+  "id": "com.snakeseeker",
+  "name": "Snake",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/09P8VQ98WIf4Xb2-5f2kGX2TjEj2XthTgHoAEZY2puk",
+  "kinds": [
+   "airdrop",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn TRACKER token airdrops when you hold 100K+ TRACKER…",
+  "trendScore": 77,
+  "rating": 4.1,
+  "reviews": 86
+ },
+ {
+  "id": "fun.playsolmate.app",
+  "name": "Solmate",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/ksd6m9eDX0jxPKk4DaESZV20gHxehfQRXw45Ge2knS0",
+  "kinds": [
+   "staking",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Stake SOL.",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 122
+ },
+ {
+  "id": "supply.ore.app",
+  "name": "ORE",
+  "category": "Top Picks",
+  "iconUrl": "https://solanamobiledappstore.com/41fqQtC7PJM4bXUvmWo64wkqAfsAGGObdu2DZRGhMRk",
+  "kinds": [
+   "earn",
+   "rewards",
+   "mining"
+  ],
+  "snippet": "Compete to earn cryptocurrency by prospecting on which lands will yield rewards.",
+  "trendScore": 77,
+  "rating": 4.1,
+  "reviews": 2153
+ },
+ {
+  "id": "xyz.seekerrewards",
+  "name": "SKRewards",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/6wMiVfQB9yTJlQ01sLY4ZGXGqNyn0JXw3p9Xya1IofA",
+  "kinds": [
+   "staking",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "SKRewards is a reward platform where users stake $SKR, select a staking duration, and earn yields over time.",
+  "trendScore": 76,
+  "rating": 3.5,
+  "reviews": 35
+ },
+ {
+  "id": "fun.studiq.www.twa",
+  "name": "StudIQ Campus Store",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/LuFiwx_qcL7Th0Itqh3ayZb2CTIEapZUvD2Y-DAKrmY",
+  "kinds": [
+   "earn",
+   "rewards",
+   "points"
+  ],
+  "snippet": "Buy, sell & earn on campus with SOL, USDC or cash…",
+  "trendScore": 76,
+  "rating": 3.6,
+  "reviews": 17
+ },
+ {
+  "id": "com.beeman.solagamecube",
+  "name": "SolaGameCube",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/H2pq8-VJNCGAQ7GNDzCPkHJKt7fmNuYhaDmboN7b3jA",
+  "kinds": [
+   "play-to-earn",
+   "earn",
+   "points"
+  ],
+  "snippet": "SolaGameCube is a mobile gaming platform on Solana where users play exciting games, earn points through gameplay and ads, and redeem them for SKR tokens in t…",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 87
+ },
+ {
+  "id": "com.sharklabs.mobile",
+  "name": "SharkPool",
+  "category": "Productivity",
+  "iconUrl": "https://solanamobiledappstore.com/E6AhFtP9ErsjuuFaD0hnPUkhaaTIgz9dTKlCKO3vWVc",
+  "kinds": [
+   "staking",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Solana education app: courses, quests, staking rewards & community leaderboards.",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 74
+ },
+ {
+  "id": "com.poof.app69c92293833782ad6269211b",
+  "name": "Seeker Drop",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/f2d304c60ce21e1d0656909f4b5eb915421a011e0dd04116c6faad34e88b4184.jpg",
+  "kinds": [
+   "airdrop",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Seeker Drop is a task-to-earn and airdrop platform built on Solana, designed to connect projects with real users through meaningful engagement.",
+  "trendScore": 76,
+  "rating": 3.6,
+  "reviews": 71
+ },
+ {
+  "id": "app.vercel.cryptosweeper_frontend.twa",
+  "name": "CryptoSweeper",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/XZkM9DIdJXzg4HJ8HRZ3Aorx_LoLfwhcUjGsmVNCHHU",
+  "kinds": [
+   "play-to-earn",
+   "earn",
+   "rewards"
+  ],
+  "snippet": "CryptoSweeper reinvents the classic minesweeper game as a Play-to-Earn experience on the Solana blockchain.",
+  "trendScore": 74,
+  "rating": 3.7,
+  "reviews": 359
+ },
+ {
+  "id": "com.poopdodge.game",
+  "name": "Poop Dodge",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/HteLyqlkT_-OdOUdxT-uWWG-r5IB-Kjd7ZQM1c1xwIE",
+  "kinds": [
+   "earn",
+   "rewards",
+   "points"
+  ],
+  "snippet": "Dodge poop, earn $POOP!",
+  "trendScore": 72,
+  "rating": 2.9,
+  "reviews": 89
+ },
+ {
+  "id": "fun.mattle.twa",
+  "name": "MattleFun",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/224bef97d1a57226047cfee90f718d8268c6715da5d9ff309629d1ba7eeeb19b.png",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "Battle endless waves of monsters, earn points, and grow stronger through both skill and strategy.",
+  "trendScore": 92,
+  "rating": 4.6,
+  "reviews": 5620
+ },
+ {
+  "id": "x.place",
+  "name": "XPlace Credit Card",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/dVJk-MChLpjLhv4L46n2DZRof-AlokDY9ryG7Kiutxo.jpg",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Where crypto meets lifestyle — XPlace offers a smarter way to spend, earn, and grow wealth without compromise.",
+  "trendScore": 91,
+  "rating": 4.6,
+  "reviews": 2503
+ },
+ {
+  "id": "com.tokenrun.app",
+  "name": "TokenRun",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/6d58ab7f8d23f617eebcdd2ce7086d14cbd24ad876492852514db442b419c06f.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "TokenRun is the world’s first move-to-earn adventure app powered by GEODNET’s decentralized proof-of-location technology.",
+  "trendScore": 91,
+  "rating": 4.5,
+  "reviews": 6594
+ },
+ {
+  "id": "xyz.nomadz.app",
+  "name": "Nomadz",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/614bdce059342410fe3ffb817194fa99a16b53ed71170fc23408c5dfaeba5204.png",
+  "kinds": [
+   "rewards",
+   "points"
+  ],
+  "snippet": "Mint Nomad ID and unlock rewards for Seeker users.",
+  "trendScore": 89,
+  "rating": 4.5,
+  "reviews": 1575
+ },
+ {
+  "id": "io.werate.werateapp",
+  "name": "weRate",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/XE2vzSOSIBrfPHjFuKjy33GyTWd6JmzJqZgtG0tVIa8.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn.",
+  "trendScore": 88,
+  "rating": 4.6,
+  "reviews": 1889
+ },
+ {
+  "id": "com.lootgo.app",
+  "name": "LootGO",
+  "category": "Top Picks",
+  "iconUrl": "https://solanamobiledappstore.com/0jHD2JMGYKYm-bVF50mAuuElhdxeTYrUuvDO_68YczM",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "LootGO turns walking into a crypto treasure hunt—explore, open chests, earn memecoins and special rewards, and build your portfolio while staying active and…",
+  "trendScore": 88,
+  "rating": 4.5,
+  "reviews": 4795
+ },
+ {
+  "id": "com.crushcoin.app",
+  "name": "CrushCoin",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/517a6c36cb07a2749d9b14b39026c557dc39998314c5c1709e42a4a6e6a29d83.png",
+  "kinds": [
+   "play-to-earn",
+   "earn"
+  ],
+  "snippet": "Collect, win, and earn in CrushCoin — the first P2E app optimised for Seeker.",
+  "trendScore": 87,
+  "rating": 4.6,
+  "reviews": 606
+ },
+ {
+  "id": "com.fxtec.rosewood",
+  "name": "Unbound",
+  "category": "Productivity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/126bd2809cc01bbf7bcf3d212ed3a1961736829396cc90276e8a3cf99c5334e1.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Connect instantly in over 190 countries, pay your way with crypto or card, and earn rewards for using the service.",
+  "trendScore": 84,
+  "rating": 4.2,
+  "reviews": 1234
+ },
+ {
+  "id": "com.uprock.mining",
+  "name": "UpRock: DePIN AI Rewards",
+  "category": "DePIN",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/eb2494eb7caebc0c81b8f048029953d051611b45918cb703b0e59196bd4489c8.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn while you sleep.",
+  "trendScore": 83,
+  "rating": 4.1,
+  "reviews": 2985
+ },
+ {
+  "id": "io.candy.android.app",
+  "name": "Candy Studio",
+  "category": "Content & Streaming",
+  "iconUrl": "https://solanamobiledappstore.com/T_xfe3a0HHEPPXuu2TH09AHs_PxkLINUfTe6EOXYnO8",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn rewards now.",
+  "trendScore": 82,
+  "rating": 4.1,
+  "reviews": 4507
+ },
+ {
+  "id": "com.ai375.go",
+  "name": "375go V3",
+  "category": "DePIN",
+  "iconUrl": "https://solanamobiledappstore.com/QMQj8IY-C5rRtOn5b5tENcMgNkDIPfIzbx1siqNFhgs",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Move, SCAN, earn, repeat!",
+  "trendScore": 82,
+  "rating": 4.2,
+  "reviews": 1689
+ },
+ {
+  "id": "honey.land.game",
+  "name": "Honeyland",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/lRjrCndPXqyrZ39YFIhIlqbGggCZvPLLLEZWSthhFQ0",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Explore the vast lands across the universe in Honeyland, manage your bees, and earn tools and resources to help you along the way.",
+  "trendScore": 82,
+  "rating": 4.2,
+  "reviews": 3247
+ },
+ {
+  "id": "com.jimbo.app",
+  "name": "Jimbo’s Adventure",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/fce11c7afdae7231c7c735f665e5b59cfabc6a7a124a1a0959cffc6a112abf33.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Designed for quick sessions and long-term progression, the game lets you complete missions, compete on the leaderboard, and earn rewards through the Seeker…",
+  "trendScore": 82,
+  "rating": 4.4,
+  "reviews": 97
+ },
+ {
+  "id": "app.playsolmates.game",
+  "name": "PlaySolMates",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/VEWhi3TPYqRBpESFK9Y3YxfSPQtziqAZroF8R_dgCx8",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Play online, challenge bots, create private matches, and earn rewards through competitive gameplay and VIP arenas.",
+  "trendScore": 82,
+  "rating": 4.3,
+  "reviews": 812
+ },
+ {
+  "id": "app.circle3.dapp",
+  "name": "Circle3: Crypto Social",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/AKfsiqcKnd-_pXK3IFqinFVFbq7XT0LBa_fVgcnzwdU.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Chat with traders, join exclusive squads, swap tokens, and earn rewards — all with end-to-end encryption.",
+  "trendScore": 82,
+  "rating": 4.3,
+  "reviews": 102
+ },
+ {
+  "id": "com.chainshorts.app",
+  "name": "Chainshorts",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/7d2784946140958e05442b77c6e67186be83afb673eff390cfc270f77d6c3665.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Chainshorts - read crypto news, earn SKR, play lucky draws.",
+  "trendScore": 81,
+  "rating": 4.1,
+  "reviews": 183
+ },
+ {
+  "id": "com.seekeroracle.app",
+  "name": "Seeker Airdrop Oracle",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/f2fdc0def0affc09bb39df392a2bcc84d1003c71093281ff663e2dc0664a0a79.png",
+  "kinds": [
+   "airdrop",
+   "staking"
+  ],
+  "snippet": "Season 2 airdrop tier prediction for Seekers…",
+  "trendScore": 81,
+  "rating": 4.2,
+  "reviews": 92
+ },
+ {
+  "id": "club.seekerburn.app",
+  "name": "Seeker Burn Club",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/45c11568ef395d582d1445053c2dc16fa5446feceb11a66ce797ab41a4d375a0.jpg",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Compete on leaderboards, complete missions, and earn rewards.",
+  "trendScore": 81,
+  "rating": 4.1,
+  "reviews": 163
+ },
+ {
+  "id": "io.tramplin.app",
+  "name": "Tramplin.io",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/LLrq1PDItVRy_rAEsEP001Og00-oh3BdqK95aYIjn8M.png",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "Tramplin is a non-custodial Premium staking platform that redistributes Solana's native staking rewards in a randomized, verifiable way — giving every SOL ho…",
+  "trendScore": 81,
+  "rating": 4,
+  "reviews": 802
+ },
+ {
+  "id": "com.offline.mine",
+  "name": "MINE - Offline Network",
+  "category": "DePIN",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/t0vFHjfQ2IkW9apezTiuBh3HDUocAh6rFn0jX0v8RZA.png",
+  "kinds": [
+   "rewards",
+   "mining"
+  ],
+  "snippet": "Mine is a mesh-mining rewards app built on the Offline Protocol.",
+  "trendScore": 81,
+  "rating": 4.3,
+  "reviews": 51
+ },
+ {
+  "id": "com.elizabeth.meme",
+  "name": "Elizabeth In Istanbul",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/fb5077b568bfb60e7ca1b57b7b3a0f272e6a0c002a8066fda0896f356bd3f177.jpg",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Play, explore Istanbul, and earn rewards!",
+  "trendScore": 81,
+  "rating": 4.4,
+  "reviews": 58
+ },
+ {
+  "id": "com.fensory.app",
+  "name": "Fensory",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/f85c05194e15ecdb709a68d2f4b4d8659175731e795656e75e16d8d6bcf1813e.jpeg",
+  "kinds": [
+   "staking",
+   "earn"
+  ],
+  "snippet": "Yield is earned by depositing SOL and stables into top lending, staking and vaults in Solana ecosystem | Now Trade 24/7 your favourite stocks on Fensory…",
+  "trendScore": 80,
+  "rating": 3.9,
+  "reviews": 227
+ },
+ {
+  "id": "natix.ai.drive.map.move.earn.web3",
+  "name": "NATIX Drive&",
+  "category": "DePIN",
+  "iconUrl": "https://solanamobiledappstore.com/bIw9XQY5xEHwwLV76Xmv2vLaI5e58ELehiOnvii8jhA",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn in-app points and redeem them for products, services, and soon our native crypto token NTXT.",
+  "trendScore": 80,
+  "rating": 4.1,
+  "reviews": 1030
+ },
+ {
+  "id": "com.battlecities.game",
+  "name": "Battle Cities",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/KXoqclpr3jeaeXAYW1y3Eek4CKxnkHUfuiRHv2Dnbqw.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Battle, Earn Rewards, and Own the City…",
+  "trendScore": 80,
+  "rating": 4.8,
+  "reviews": 12
+ },
+ {
+  "id": "com.sleepagotchi.soft.app",
+  "name": "Sleepagotchi",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/3kq_KVyb-2r7nOcA8PuH4gnqtaeOi2WjhFuAfiMz1pg",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn rewards while you sleep, then use them to unlock new heroes, explore magical worlds, and decorate the cozy room of your new virtual friend—Dino!",
+  "trendScore": 80,
+  "rating": 4.3,
+  "reviews": 4259
+ },
+ {
+  "id": "me.biq.app",
+  "name": "biq",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/e909c6868310214c4cd3a5e0fb5348b5bef297a89e8d92bfbcd203da45e28b7b.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Show up and earn.",
+  "trendScore": 80,
+  "rating": 4.1,
+  "reviews": 548
+ },
+ {
+  "id": "xyz.ensofi.app",
+  "name": "EnsoFi",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/hozcTowDtDbkBgHPzVeUX7hfFCtuDWCxXQXHv9HKtgY",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "EnsoFi makes it simple to earn the best yields on Solana.",
+  "trendScore": 79,
+  "rating": 4.3,
+  "reviews": 838
+ },
+ {
+  "id": "app.hubra.app",
+  "name": "Hubra",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/7e4826eef145b3db7f7e01b1d11721cc044ef106dc2e3c0937d8e93b4d394137.png",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "Hubra is a complete staking surface for Solana.",
+  "trendScore": 79,
+  "rating": 3.9,
+  "reviews": 417
+ },
+ {
+  "id": "beta.lsd.tech.twa",
+  "name": "LSD",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/r3alhBiqd55pytH73JU6fSPEke28FCC_R-7kp3av_G8",
+  "kinds": [
+   "staking",
+   "earn"
+  ],
+  "snippet": "LSD is an AI assisted liquid staking protocol on Solana that lets users stake SOL, receive lsdSOL, and earn optimized, risk-adjusted returns.",
+  "trendScore": 79,
+  "rating": 4.2,
+  "reviews": 402
+ },
+ {
+  "id": "com.asymmetra.rektreactnativeprod",
+  "name": "Rekt",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/o8YAR72rDohYEt2f7GsyrLo1SaWXJ1WdiIJoTEAmhIQ.png",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "Users earn points tied to trading volume, climb leaderboards, and stay engaged with fast-paced outcomes, all while lear…",
+  "trendScore": 79,
+  "rating": 3.9,
+  "reviews": 489
+ },
+ {
+  "id": "com.duckerforge.theone",
+  "name": "The One",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/c86aaf93c0343fcdaa6b68764259e22016adcf6f23c717c76a504cce363f3675.png",
+  "kinds": [
+   "airdrop",
+   "rewards"
+  ],
+  "snippet": "THE ONE is a community side reward paid out on Solana Seeker Airdrop…",
+  "trendScore": 79,
+  "rating": 3.8,
+  "reviews": 46
+ },
+ {
+  "id": "com.poof.app69f0e649525daf9178c8a6b8",
+  "name": "URTribe",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/tYzRTcGJi9ObZkOCFJ5o6-abpvzkxTOREhL3sDty-FE.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "More than a job platform, URTribe blends freelancing, challenges, social engagement, streak rewards, and on-chain reputation into one earning ecosystem power…",
+  "trendScore": 79,
+  "rating": 4.2,
+  "reviews": 50
+ },
+ {
+  "id": "com.golfn.app",
+  "name": "GolfN: Play. Earn.",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/9zlnpnqG-FtErpqu_P0t3Yhcrga86MfWWDfkNPSbKtg.jpg",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn.",
+  "trendScore": 79,
+  "rating": 3.9,
+  "reviews": 2384
+ },
+ {
+  "id": "app.tutorial.ai",
+  "name": "Tutorial AI",
+  "category": "Productivity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/a4dfd57c9f9c4ef94b2eace443e5772ca8667e88c134ca7ef49b7a942e093c2a.png",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "Build a daily streak, earn XP, and remember more of what you study…",
+  "trendScore": 79,
+  "rating": 3.8,
+  "reviews": 67
+ },
+ {
+  "id": "com.tribe.wallet",
+  "name": "Terminal",
+  "category": "Wallets",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/3c18e79abfbe5296019cb7cfa131ddfea3302ce83137f4114c8ca74769a84659.png",
+  "kinds": [
+   "staking",
+   "earn"
+  ],
+  "snippet": "Stake SOL to earn with liquid eatSOL, explore dApps in a built-in tracker-blocking web3 browser, and track every move in a clean activ…",
+  "trendScore": 79,
+  "rating": 4.8,
+  "reviews": 10
+ },
+ {
+  "id": "xyz.fragmetric.app.twa",
+  "name": "Fragmetric",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/xP5BR4eiXDa2BoM5hRaN66Ha8g7idMN3wIB9MFL5yaw",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "Fragmetric is a liquid restaking protocol that fairly distributes rewards using token extensions and normalizes staking tokens for efficient restaking, ensur…",
+  "trendScore": 78,
+  "rating": 4.2,
+  "reviews": 501
+ },
+ {
+  "id": "cool.hotshot.app",
+  "name": "HOTSHOT",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/a8e98195cdb4b5c2b56f55dca59d4cf0904653256766a1ba3b47e57b5978c990.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Creator, backers, and voters all earn a share of the winning token.",
+  "trendScore": 78,
+  "rating": 3.7,
+  "reviews": 28
+ },
+ {
+  "id": "xyz.hourlyharvest",
+  "name": "Hourly Harvest",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/608c3e439776be56381032973b64f909881044cdfcb9640da873a2acb3c9b341.png",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "Hourly Harvest is an active-yield staking platform for $SKR on Solana.",
+  "trendScore": 78,
+  "rating": 4.5,
+  "reviews": 11
+ },
+ {
+  "id": "com.linezit.app",
+  "name": "LINEZIT",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/MUrxf4OnV0q5Ckn91Rv8Ezh9vWswwiqOiubscBxkYCI.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Users post requests for products they want delivered, and travelers or locals can earn rewards by purchasing and bringing those items to a designated meetup…",
+  "trendScore": 78,
+  "rating": 4.5,
+  "reviews": 4
+ },
+ {
+  "id": "fr.nexaexchange.dex",
+  "name": "NEXA EXCHANGE",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/213990ace9ee231abe9c0cdce3d9ec3dcecbd2a605fbe027a639a8ba5cb6dda5.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn NX points automatically on every swap and every filled order.",
+  "trendScore": 78,
+  "rating": 5,
+  "reviews": 3
+ },
+ {
+  "id": "com.acurast.attested.executor.sbs.canary",
+  "name": "Acurast Processor Lite",
+  "category": "DePIN",
+  "iconUrl": "https://solanamobiledappstore.com/rq0zTHfWyCFDrdx-4hM8yrqHGTw7YkqHKDJwiKtbLv8",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Provide compute with your phone and earn rewards.",
+  "trendScore": 78,
+  "rating": 4,
+  "reviews": 1276
+ },
+ {
+  "id": "com.deepdiving.app",
+  "name": "DeepDiving",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/NveZvK_lM1LZWymgVaNCX9737Ceb1m0iMgJQOgrAMuc",
+  "kinds": [
+   "play-to-earn",
+   "earn"
+  ],
+  "snippet": "DeepDiving is a play-to-earn arcade mining game built exclusively for Solana.",
+  "trendScore": 78,
+  "rating": 4.1,
+  "reviews": 229
+ },
+ {
+  "id": "run.muzzle.seeker.twa",
+  "name": "Muzzle Run Football",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/4g_-B5VFT-zlv33UmWYMotXbhePlOgHPinnGvjLZ7As.png",
+  "kinds": [
+   "play-to-earn",
+   "earn"
+  ],
+  "snippet": "Play To Earn Soccer Management With 3D Sim…",
+  "trendScore": 78,
+  "rating": 3.7,
+  "reviews": 7
+ },
+ {
+  "id": "com.srkcreatures.game",
+  "name": "SRK Creatures",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/9YkGGfKLgSciOdzK6tPn5nlSW-gitLsnJzKtpmXO2Fs",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Play, Match & Earn SRK Rewards on Solana!",
+  "trendScore": 78,
+  "rating": 4.2,
+  "reviews": 76
+ },
+ {
+  "id": "com.fg924.solana_academy",
+  "name": "Solana Academy",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/540a4b367808b13719f07e4642e93fe82658df823ebefd8ac2ab8ad133c94a8b.png",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "Level up from beginner to expert, earn points, and compete on the leaderboard.",
+  "trendScore": 78,
+  "rating": 4,
+  "reviews": 52
+ },
+ {
+  "id": "com.yerasyl.todoapp.dapp",
+  "name": "ReLife",
+  "category": "Productivity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/8b89b7dac29b1c8f6255e254cf17d1a249447a81a72876c37578e72726bae2da.png",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "Earn XP, level up, and improve your life stats across six areas while staying consistent.",
+  "trendScore": 78,
+  "rating": 3.9,
+  "reviews": 43
+ },
+ {
+  "id": "com.bountyseeker.app",
+  "name": "BountySeeker",
+  "category": "Social & Identity",
+  "iconUrl": "https://solanamobiledappstore.com/AWZO5-IxYNJunPbJg2kkZZaz02XyXplxv-ZNvz5CJqY",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "BountySeeker automatically aggregates bounty and task listings from Superteam Earn, Gibwork, GitHub, and Immunefi, then matches them to your registered skills.",
+  "trendScore": 78,
+  "rating": 4.1,
+  "reviews": 162
+ },
+ {
+  "id": "com.wurk.fun",
+  "name": "WURK",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/_Z0tjK13E8tkbwY9_IGnsc_NWADw9P5OdNI9HGmO_8U.jpg",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "It gives you a place to create tasks, complete jobs, earn rewards.",
+  "trendScore": 78,
+  "rating": 4.1,
+  "reviews": 81
+ },
+ {
+  "id": "xyz.bondum.mobile",
+  "name": "Bondum",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/vRQ27dxXp9b1JTIsx5WKvDt67VpSHuFDRLRUtUbyc4o",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn.",
+  "trendScore": 77,
+  "rating": 4.2,
+  "reviews": 45
+ },
+ {
+  "id": "com.solwatch.app",
+  "name": "SolWatch",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/vdWwE_zHddpomoFbVCBIuNS3Txrb8-9sEah-JnpFiTw.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Check in every day to earn unique NFT badges featuring historical figures.",
+  "trendScore": 77,
+  "rating": 4.5,
+  "reviews": 4
+ },
+ {
+  "id": "com.yieldtrail.app",
+  "name": "Yield Trail",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/e8f8e634b2ce451c30a7430444edd3848022b8a3a7f4c51fd56a01ee4fcad35c.png",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "It ranks live Solana pools from public market data, highlights stablecoin and conservative options, explains reward-heavy APY and TVL tradeoffs, and links ba…",
+  "trendScore": 77,
+  "rating": 4.5,
+  "reviews": 2
+ },
+ {
+  "id": "com.monkebounce.app",
+  "name": "Bounce",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/cg1YhgKbQUhFuPjXapzL9vT6vZYPE6EbNXIHXAgBj9k",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn.",
+  "trendScore": 77,
+  "rating": 3.9,
+  "reviews": 1279
+ },
+ {
+  "id": "com.poof.app69eb6fa34afd8e2c4ca15cdb",
+  "name": "Fantasy League",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/6fae8c391543b07a90f4a29eaf082e278e37c27fe9120b2c4728eb1ed3366e47.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Build your Team, Win, Earn on Solana.",
+  "trendScore": 77,
+  "rating": 0,
+  "reviews": 0
+ },
+ {
+  "id": "com.ludoengine.ludocities",
+  "name": "Ludo Cities",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/5a9c02e756f0ee4066e17059c4c91e0e4286792716203c0dcbd3ac73bbc8cce3.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Play quick multiplayer matches and tournaments, connect your wallet, earn in-game rewards, and grow your city-based NFT economy through fun, competitive game…",
+  "trendScore": 77,
+  "rating": 5,
+  "reviews": 1
+ },
+ {
+  "id": "com.memeevoio",
+  "name": "Memevo.io",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/d4577318eed6ff53f4502d9f12f4a920a84dbf6c2d735261a3dc734ae583ed00.png",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "Start small, defeat enemies, earn XP, and evolve through powerful tiers — each evolution bringing new looks, stats, and abilities.",
+  "trendScore": 77,
+  "rating": 3.8,
+  "reviews": 149
+ },
+ {
+  "id": "fun.petoria",
+  "name": "Petoria",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/53820284e174432a1ae33d9f5330fc413afc73298c4291d620d9d6586a69ee58.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn gear and rewards, climb the leaderboard, and care for your companions Tamagotchi style.",
+  "trendScore": 77,
+  "rating": 3,
+  "reviews": 1
+ },
+ {
+  "id": "com.moonraise.picpuzz",
+  "name": "PicPuzz",
+  "category": "Games",
+  "iconUrl": "https://solana-mobile-seeker.s3.us-east-1.amazonaws.com/1768363145795-jbb93hfd24.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Solve 1000+ levels, fight in PvP Arena, and earn Solana rewards.",
+  "trendScore": 77,
+  "rating": 4.1,
+  "reviews": 97
+ },
+ {
+  "id": "com.poof.app69be896b5a4550276dda44bb",
+  "name": "Seeker Legends",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/8Usbb101vbdIpAHze8DdvnZCo5_7v34Nkud4WOgig2o.png",
+  "kinds": [
+   "play-to-earn",
+   "earn"
+  ],
+  "snippet": "Seeker Legends is a play-to-earn creature battler on Solana.",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 73
+ },
+ {
+  "id": "app.taptap.com",
+  "name": "TapTap",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/dead0fb9ad0b1e6b74ff8b854f83824de76c35c2c7a9ee22ceef4d2c1ab60e8f.jpg",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "TapTap is a Flutter-based tap-to-earn mobile game with Solana blockchain integration and Mobile Wallet Adapter (MWA) support.",
+  "trendScore": 77,
+  "rating": 3.8,
+  "reviews": 912
+ },
+ {
+  "id": "io.wordseeker.app",
+  "name": "WordSeeker",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/b3cabf853666b5ed3e148ac06a87b8db0d55cb1b331bd0ea180eb5cfbd53f7f3.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn Solana.",
+  "trendScore": 77,
+  "rating": 3.4,
+  "reviews": 14
+ },
+ {
+  "id": "com.sanitasseeker.app",
+  "name": "SanitasSeeker",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/e17a21d0c4ef5cfbc5bae3fa050175f72fc29a909664203063b72fac34cb27e0.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "SanitasSeeker is a health & longevity dApp where Legend holders (limited to 1,000 slots) earn daily SKR rewards by completing real-world exercises.",
+  "trendScore": 77,
+  "rating": 3.5,
+  "reviews": 2
+ },
+ {
+  "id": "xyz.mew.app",
+  "name": "MEW Mobile",
+  "category": "Social & Identity",
+  "iconUrl": "https://solanamobiledappstore.com/thydsLe6e8cp7nNX-USzYqcGE-K5vncaHt8szJFubNg",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Complete tasks to earn rewards and plug into a growing community following MEW in his quest to conquer Dog City.",
+  "trendScore": 77,
+  "rating": 4.2,
+  "reviews": 915
+ },
+ {
+  "id": "ventures.orangefin.stake",
+  "name": "Orangefin by SOL Strategies",
+  "category": "Wallets",
+  "iconUrl": "https://solanamobiledappstore.com/oqCpeArTH-9o2xmDK9bWOYgos3_3UefUiHMM1wo71pc",
+  "kinds": [
+   "staking",
+   "earn"
+  ],
+  "snippet": "Orangefin is a non-custodial mobile wallet designed specifically for Solana staking.",
+  "trendScore": 77,
+  "rating": 4.3,
+  "reviews": 1044
+ },
+ {
+  "id": "com.turningpointKS.sempaihq",
+  "name": "Sempai HQ",
+  "category": "Content & Streaming",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/9853049b5ad3bc0d52ff9e2f63632f5d6e6fac52f989ca37394311690d783a26.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "First Read To Earn and Proof of Reading Protocol.",
+  "trendScore": 76,
+  "rating": 3.6,
+  "reviews": 752
+ },
+ {
+  "id": "com.aurex.cash",
+  "name": "AurexCash",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/ZZSWdDOyEUMEjJ9_fpF-GKcsFMxf5l21HQpgd7EECOM",
+  "kinds": [
+   "earn",
+   "cashback"
+  ],
+  "snippet": "Create reloadable virtual crypto cards, fund them instantly, and earn cashback on every transaction.",
+  "trendScore": 76,
+  "rating": 3.8,
+  "reviews": 132
+ },
+ {
+  "id": "com.refinore.autominer",
+  "name": "RefinORE AutoMiner",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/j0u1AMF3-BUg6y2Y_UTL25yvo_f6GMRKTjgRoHJZPcE",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Set it once, earn 24/7, even with the app closed.",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 91
+ },
+ {
+  "id": "com.seekerchess.app",
+  "name": "Chess",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/d219c82068ec68ee54e8cb206ca2ae34371206584ca17f3461204bc17073f5c9.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Sharpen your strategy, enjoy competitive matches, and earn real money while playing.",
+  "trendScore": 76,
+  "rating": 3.2,
+  "reviews": 11
+ },
+ {
+  "id": "com.poof.app6984b3ebe56829ca520e7dc2",
+  "name": "Flag Quest",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/9874c002cc0b70d7df82519e947a7eaca5bb48f218ee90367b983ed000c34a5b.jpg",
+  "kinds": [
+   "play-to-earn",
+   "earn"
+  ],
+  "snippet": "Flag Quest is a play-to-learn, play-to-earn dApp intended to be fun and educational for learning the flags of all countries of the world, key territories and…",
+  "trendScore": 76,
+  "rating": 3.2,
+  "reviews": 18
+ },
+ {
+  "id": "com.littlebees.app",
+  "name": "Little Bees - Solana Bee Game",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/XJkmmCw-Tc8i5LO-IcHglB_TTfmd0SgnCDapRzJWvIM",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "send them on missions to earn $SOL-HONEY, raid other players'…",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 26
+ },
+ {
+  "id": "com.rstslv.seekerminesweeper",
+  "name": "Minesweeper SE",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/b92adcbe19d6148a05220fb98368910f97309a1d7ad0c5750a692b1404da6324.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Players choose from multiple difficulty modes, track per-mode win streaks, and earn hints through daily on-chain check-ins and milestone wins.",
+  "trendScore": 76,
+  "rating": 3.4,
+  "reviews": 11
+ },
+ {
+  "id": "fun.nika.game",
+  "name": "NI-KA Arcade",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/RXyu2opAhObVMAXmUvri-h5JKsCyU3fKxPeVqPwwtfs.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Race through cosmic tracks, earn real on-chain rewards, and compete globally, all from your Android device.",
+  "trendScore": 76,
+  "rating": 0,
+  "reviews": 0
+ },
+ {
+  "id": "com.quizseeker.app",
+  "name": "QuizSeeker",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/k3_TUBubOpCvm7QNXzv3QS_XuEpQ5sKtrMn84ncO7uQ",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "QuizSeeker is a visual crypto quiz competition where players race the clock to answer image-based questions, earn score and XP, and climb the leaderboards.",
+  "trendScore": 76,
+  "rating": 4.2,
+  "reviews": 14
+ },
+ {
+  "id": "com.skr.match",
+  "name": "SKR Match",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/76a2bf88305c1124f7a83d07162021a292823aa0b052bc3dc00597fb515e554e.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Connect your wallet to play, earn SKR tokens by clearing challenging levels, and use them to purchase powerful tools.",
+  "trendScore": 76,
+  "rating": 2.4,
+  "reviews": 5
+ },
+ {
+  "id": "com.poof.app69b581bb5054951fb8bade8c",
+  "name": "Tap Miner - Earn $Dust",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/pFIXjW3-5fulTc0ajUmn8T1jx-a6VHDwqCXorEXd4do",
+  "kinds": [
+   "earn",
+   "mining"
+  ],
+  "snippet": "Earn Dust even while you're away, compete on the leaderboard, and invite other Seeker users to boost your progress.",
+  "trendScore": 76,
+  "rating": 3.5,
+  "reviews": 19
+ },
+ {
+  "id": "ai.dotmoovs.web3battles.twa",
+  "name": "Web3 Battles",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/DyEnK_US8OifgBhB9DqEIxY3Pu8IYJbSlK3Ah0m8dgQ",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Web3 Battles brings peer-to-peer competition to the next level, allowing users to compete and earn rewards in their favorite sports.",
+  "trendScore": 76,
+  "rating": 4,
+  "reviews": 1071
+ },
+ {
+  "id": "com.canary.messenger",
+  "name": "Canary",
+  "category": "Privacy & Security",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/ey0o8ygoyaUm1y4FA9_HCFT8yGSEoWt3jgLxBral_4Q.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Run a Canary Node directly from your phone to secure the network and earn rewards effortlessly.",
+  "trendScore": 76,
+  "rating": 3.7,
+  "reviews": 212
+ },
+ {
+  "id": "com.seekerverify.app",
+  "name": "Seeker Verify",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/928c861311a9882099e09012f70c81f774f8c2ec3dccb969324ef166a2db0105.png",
+  "kinds": [
+   "airdrop",
+   "staking"
+  ],
+  "snippet": "Verify your Seeker Genesis Token, track your SOL and SKR portfolio, and predict your Season 2 airdrop tier.",
+  "trendScore": 76,
+  "rating": 3.7,
+  "reviews": 174
+ },
+ {
+  "id": "com.clawdquant.app",
+  "name": "ClawdQuant",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/SmfT_tUxwoLtgrDr-jJy0sXuHpj5kIaKmzrFA6DsyGQ",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "Earn XP and climb the leaderboards!",
+  "trendScore": 75,
+  "rating": 3.8,
+  "reviews": 333
+ },
+ {
+  "id": "com.edgevana.staking",
+  "name": "Edgevana",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/ARheUe_xRoGWUgpMS4oKYjRI9Q_cuAVNPC2xZbHGA7E",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "Optimize your staking.",
+  "trendScore": 75,
+  "rating": 4.2,
+  "reviews": 622
+ },
+ {
+  "id": "app.minemore.twa",
+  "name": "Minemore",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/JZZLmwv3v3FFtGw3HL8hPx1syHGWuyxC1VErA6i9CT8",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "manage your earnings - All with our Retro UI to boot.",
+  "trendScore": 75,
+  "rating": 3.9,
+  "reviews": 1214
+ },
+ {
+  "id": "com.nocturnal.app",
+  "name": "Nocturnal",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/PQ13bH80RJB-ceSTx5clVdfmZiPpVFGJMUDIl8KctHE",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Nocturnal is the only trading platform that rewards you for trenching.",
+  "trendScore": 75,
+  "rating": 3.9,
+  "reviews": 152
+ },
+ {
+  "id": "tax.solstake.app",
+  "name": "SOL Stake Rewards & Tax",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/xDIOI2-NThmhdT5BxD1qbITMy7TkKH_jwJ_icz01_zg",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "Calculate your Solana native staking rewards with historical USD prices at the time of each distribution.",
+  "trendScore": 75,
+  "rating": 3.7,
+  "reviews": 50
+ },
+ {
+  "id": "com.backgammon.solana",
+  "name": "Backgammon Play24",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/EqxBIbqJb-SWGRg6i2FSZGmO3Vr1NOvi8V4M6UtgeLw",
+  "kinds": [
+   "earn",
+   "points"
+  ],
+  "snippet": "Connect seamlessly with your favorite Solana wallets (like Solflare) to track your career, earn XP, and climb the global, minimalist leaderboard.",
+  "trendScore": 75,
+  "rating": 3.7,
+  "reviews": 120
+ },
+ {
+  "id": "fun.battlefrens.twa",
+  "name": "BattleFrens",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/g8rcXp9Y7hMapBFV0RZshW52EADOc8xTbJTS5xKVo_4",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Climb the leaderboards and earn rewards.",
+  "trendScore": 75,
+  "rating": 3.6,
+  "reviews": 70
+ },
+ {
+  "id": "com.vweeter.bitcoinmerge",
+  "name": "Bitcoin Mega Merge",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/wm4ATqUc1iU2XS38KfPNNrLAIYT5JaaPqGt5LN8_j2Y",
+  "kinds": [
+   "airdrop",
+   "earn"
+  ],
+  "snippet": "Top 100 players will get a small airdrop EVERY WEEK too.",
+  "trendScore": 75,
+  "rating": 3.2,
+  "reviews": 12
+ },
+ {
+  "id": "com.solana.seeker.diskmerge",
+  "name": "Disk merge",
+  "category": "Games",
+  "iconUrl": "https://solana-mobile-seeker.s3.us-east-1.amazonaws.com/1769055130272-ma3wlpd0owk.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Merge disks, score big, and earn rewards on Solana…",
+  "trendScore": 75,
+  "rating": 3.9,
+  "reviews": 52
+ },
+ {
+  "id": "com.fun.pawker",
+  "name": "Pawker",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/TOZU_5yWvLDxM0cqURl09g4M0IxSGLLqsC7UJrgcyvI",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Creators and communities can host their own tables or tournaments, set fees, and earn a share of rakes, turning poker into a real creator economy.",
+  "trendScore": 75,
+  "rating": 3.9,
+  "reviews": 518
+ },
+ {
+  "id": "com.rustquiz.app",
+  "name": "Rust Quiz",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/WDXwa-1DFUfEBcjnA64htAYcWp-2_ik5uBdUyoUo0zQ",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Rust Quiz: Solana Edition is an interactive Web3 learning app that helps you master the Rust programming language while earning exclusive NFT rewards on Solana.",
+  "trendScore": 75,
+  "rating": 3.8,
+  "reviews": 47
+ },
+ {
+  "id": "com.solpin.arcade",
+  "name": "Sol-Pin Arcade",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/bb2fa8ca1f094bcb3a7bd507863484afb45addb9452c833a293db22ddbc832df.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "A PinBall dApp where players connect their Phantom wallet, top up an in-game balance and play skill-based arcade matches with SOL-backed stakes, and earn rew…",
+  "trendScore": 75,
+  "rating": 2.3,
+  "reviews": 8
+ },
+ {
+  "id": "com.lagunanetwork.app",
+  "name": "Laguna Network",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/llFkrDFnhhpY5YlMq7TA1cVukmRCuIMe0EuMN_S14GM",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Shop now and watch your earnings grow!",
+  "trendScore": 74,
+  "rating": 3.6,
+  "reviews": 90
+ },
+ {
+  "id": "com.app.brickbreakermaster",
+  "name": "Brick BreakerDAO",
+  "category": "Games",
+  "iconUrl": "https://solana-mobile-seeker.s3.us-east-1.amazonaws.com/1770313254619-7jwjecsp2b.png",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Break bricks, compete in PvP and earn SOL rewards!",
+  "trendScore": 74,
+  "rating": 3.7,
+  "reviews": 381
+ },
+ {
+  "id": "app.solraid",
+  "name": "SolRaid",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/qP541tVuk76tLnufSKXta8Kc1M9XSsfW6vreIF8jyro",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "Players join raids, stake SOL,SKR,USDC, and compete in fast-paced battles where outcomes are determined by strategy and risk.",
+  "trendScore": 74,
+  "rating": 3.6,
+  "reviews": 270
+ },
+ {
+  "id": "fitness.healthai.app",
+  "name": "Health Ai",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/E0aWKHAehkndcoywWM-OKTHaJEYo4ebqUyAquAJMAcg",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Revolutionizing fitness through Move-to-Earn.",
+  "trendScore": 74,
+  "rating": 3.1,
+  "reviews": 37
+ },
+ {
+  "id": "ninja.whistle.twa",
+  "name": "Whistle",
+  "category": "Privacy & Security",
+  "iconUrl": "https://solanamobiledappstore.com/b3vQbeyrHL7qeS2uK5NV5Xrxc1868RaCsQl8ZDzz8_Q",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Run privacy nodes and earn rewards…",
+  "trendScore": 74,
+  "rating": 3.9,
+  "reviews": 718
+ },
+ {
+  "id": "com.hio.music",
+  "name": "HIO",
+  "category": "Content & Streaming",
+  "iconUrl": "https://solanamobiledappstore.com/D02P12ZxonNt73dKlp_hV7KJoWgE9gfhoaCUBiSuo5Y",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "A social music streaming platform where creators get paid fairly, and everyone's a creator.",
+  "trendScore": 73,
+  "rating": 4,
+  "reviews": 1448
+ },
+ {
+  "id": "com.shagalabs.shaga",
+  "name": "Shaga: Cloud Gaming",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/u7wrYJNVXYGrO2vz-JnKNNLURiZUD_MBSeg4PSjXGZ0",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Experience ultra-low latency cloud gaming, connect with friends, and earn rewards just by playing.",
+  "trendScore": 73,
+  "rating": 3.7,
+  "reviews": 308
+ },
+ {
+  "id": "com.twentyones.app",
+  "name": "21-S",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/E5RICSKKB4PzmL2W0Gk-zEsLCms2ySv53f_jc1MQh8k",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Progressive difficulty builds real-world confidence while earning crypto rewards.",
+  "trendScore": 72,
+  "rating": 3.2,
+  "reviews": 79
+ },
+ {
+  "id": "com.silnt.wagus",
+  "name": "WAGUS",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/Ufz6C5Q8SoDXFBVmsoo3_yRuc2bGg7ImhMBJChb80ds",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Connect your wallet, earn tokens, and unlock new experiences every day.",
+  "trendScore": 69,
+  "rating": 3.6,
+  "reviews": 320
+ },
+ {
+  "id": "com.raiinmaker.app",
+  "name": "Raiinmaker",
+  "category": "AI & Agents",
+  "iconUrl": "https://solanamobiledappstore.com/vHAOWrqbtFhruXCWqeytMm9QPNqrt79xaTx4f8fyaq4",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Become a network validator as well as contribute to training new AI models while you earn rewards.",
+  "trendScore": 68,
+  "rating": 3.6,
+  "reviews": 747
+ },
+ {
+  "id": "com.joincolonylabs",
+  "name": "The Life Bomb",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/LOVQoNZWu1i2SjV7gSBIQy_4toS-M-hMoPu3UP08NqI",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Earn tokens, gain incredible rewards—all while staying active and healthy!",
+  "trendScore": 68,
+  "rating": 3.5,
+  "reviews": 745
+ },
+ {
+  "id": "com.bcl.fish",
+  "name": "BCL",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/1NTptpVwQ_QPxDXJnv7vhuJdS0HVJVxrKUvKrz_OIxA",
+  "kinds": [
+   "staking",
+   "rewards"
+  ],
+  "snippet": "Back your favorite anglers with on-chain staking, follow live event activity, and receive transparent, programmatic rewards when events distribute prizes.",
+  "trendScore": 65,
+  "rating": 3.3,
+  "reviews": 621
+ },
+ {
+  "id": "com.axford00.atlasfresh",
+  "name": "Atlas Coliseum",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/bfjh9NK39lb4g-b9EovfrsnjsbrmeDundkL_ZVvX98I",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Get personalized training from your AI coach, receive smart nutrition guidance, connect with a fitness community, and earn crypto rewards through challenging…",
+  "trendScore": 65,
+  "rating": 3.3,
+  "reviews": 666
+ },
+ {
+  "id": "com.clash.club",
+  "name": "Clash Skill Games",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/PJlx2gR83zoGOqOnAP8Rtpk11uLw7NbhnnTtNkA00Jw",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "With 12 games, no bots policy & balanced matchmaking, this is an excellent platform for players to earn rewards & also, to have fun at the same time.",
+  "trendScore": 62,
+  "rating": 3.1,
+  "reviews": 613
+ },
+ {
+  "id": "hk.limited.bitenet.dapp",
+  "name": "Bitenet",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/1JTD4w2iAktmDToKrGlZPYL_4PGTAmPSVsmMqNtQJ_g",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Rewards Discover a brand new dining experience We have over 500 lifestyle and dining partners, allowing you to earn rewards while enjoying life and food.",
+  "trendScore": 59,
+  "rating": 2.9,
+  "reviews": 726
+ },
+ {
+  "id": "com.paily.paily",
+  "name": "Paily",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/T9UMDq-Dxa1ih4u75kSfmCNumWGiTXt9TVBUH8iI4II",
+  "kinds": [
+   "earn",
+   "rewards"
+  ],
+  "snippet": "Date spots made for your vibe—hangout and earn!.",
+  "trendScore": 54,
+  "rating": 2.5,
+  "reviews": 758
+ },
+ {
+  "id": "com.seekergram.app",
+  "name": "SeekerGram",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/2f4b378debc65566171d3e1652d03d985c0a8405d8a24a2d13106c31582443fd.png",
+  "kinds": [
+   "points"
+  ],
+  "snippet": "Achievement System (XP): Be an active participant in the ecosystem, complete interactive tasks and boost your status on the global leaderboard.",
+  "trendScore": 92,
+  "rating": 4.8,
+  "reviews": 884
+ },
+ {
+  "id": "om.airdrop.hunter",
+  "name": "Web3Hunter",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/BGUColBd8G9RvKlh6VuZarWUf4bZBTk8YpQUlN1E-zI.png",
+  "kinds": [
+   "airdrop"
+  ],
+  "snippet": "EN: Global airdrop tracker focusing on Solana, covering multi-chain guides in EN/CN/JP/KR.",
+  "trendScore": 88,
+  "rating": 4.8,
+  "reviews": 521
+ },
+ {
+  "id": "com.loopscale.app",
+  "name": "Loopscale: Earn USDC, SOL",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://d2izxeuv6sti7y.cloudfront.net/1768459449404-zatjdabd13g.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn higher yields, borrow with better terms, and lever up with Loops.",
+  "trendScore": 86,
+  "rating": 4.5,
+  "reviews": 2645
+ },
+ {
+  "id": "so.sanctum.app",
+  "name": "Sanctum",
+  "category": "Top Picks",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/aKdLPOPTctxjVxTVPV-RdNBzaElu2bPFUYyXrd7A9OI.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn SOL every day.",
+  "trendScore": 85,
+  "rating": 4.2,
+  "reviews": 1481
+ },
+ {
+  "id": "com.seekerboost.app",
+  "name": "SkrBoost",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/Q1WGv9_bR_HgMA9cgmF9EWB9Rrt-pCLvrKtn3Pt8aus",
+  "kinds": [
+   "airdrop"
+  ],
+  "snippet": "A handy seeker airdrop suggestion app…",
+  "trendScore": 84,
+  "rating": 4.6,
+  "reviews": 346
+ },
+ {
+  "id": "com.anonymous.slimecoinmobile",
+  "name": "Slimecoin: Play for Cash",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/f63bc23b5e3621ec1a7a5a7dcb4c82eebf2835d38087e6041b25ede10b0f077b.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Stack Slimecoin, climb the leaderboard, and earn your share of the weekly prize pool!",
+  "trendScore": 84,
+  "rating": 4.2,
+  "reviews": 636
+ },
+ {
+  "id": "com.tracktivity.app",
+  "name": "Tracktivity",
+  "category": "Productivity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/326ac410061a43593ea4d2120fadafab16342ecd54af9698b3f693cc18ce418a.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Turn your seeker activities into rewards…",
+  "trendScore": 84,
+  "rating": 4.5,
+  "reviews": 245
+ },
+ {
+  "id": "com.solunarium.land",
+  "name": "Solunarium.Land",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/e58c1525f8b348e3c4affa21b8b0939c30bafbf32b6f34389a7fabf26eb2c3d7.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Grow crops, earn crypto, expand your space base…",
+  "trendScore": 83,
+  "rating": 4.6,
+  "reviews": 106
+ },
+ {
+  "id": "com.poof.app69af1d503a3896d8adae1cb1",
+  "name": "Seeker Envelope",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/IrI7s8H66oaNbNZT51Dr-QJ9MNmq3nEyoooTbpVmcPU.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Join community chat rooms, drop envelopes, open rewards, and claim $SKR while engaging with active members.",
+  "trendScore": 83,
+  "rating": 4.4,
+  "reviews": 264
+ },
+ {
+  "id": "com.arkaseeker.game.seeker",
+  "name": "Arka Seeker",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/ff16a5eb4eb57427f66ceb9df0984578579fa8a7aeb03443dfa1a9ddd8e0e1ad.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "Stake SOL.",
+  "trendScore": 82,
+  "rating": 4.1,
+  "reviews": 368
+ },
+ {
+  "id": "com.edulearnv2.app",
+  "name": "EduLearn.fun",
+  "category": "Productivity",
+  "iconUrl": "https://solanamobiledappstore.com/KyEm3IXnlwEnl45k0ZunE5I1fYWsQEX1-H701I9ILTk",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "EduLearn is an incentivized web3 AI study companion built to help web3 learners, from newbies to actual builders, to build a firm grasp on technologies and c…",
+  "trendScore": 82,
+  "rating": 4.5,
+  "reviews": 234
+ },
+ {
+  "id": "finance.save.twa",
+  "name": "Save",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/9DiM7GG3aKVa_wjvmbNFedmc9YkMwfMK62giIKMe0TM",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn interest and borrow countless assets across multiple pools on the fastest, lowest fee, and most scalable DeFi lending protocol.",
+  "trendScore": 81,
+  "rating": 4.4,
+  "reviews": 4325
+ },
+ {
+  "id": "com.soldrops.app",
+  "name": "Soldrops",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/0M5yT-u3CyMtxjfa46Vqbj6O3GWurl1BSjd0T3PD8Ao",
+  "kinds": [
+   "airdrop"
+  ],
+  "snippet": "Get Solana airdrop alpha for free - without wallet connection or user tracking.",
+  "trendScore": 81,
+  "rating": 4.4,
+  "reviews": 294
+ },
+ {
+  "id": "com.techavtranew.planes",
+  "name": "Planes! ($planes soon..)",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/759cbabb46ea9145808f54afcfcefb52fcb73c1b8f36d5d6c1816e6459be70fc.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Weekly Rewards coming in...",
+  "trendScore": 81,
+  "rating": 4.1,
+  "reviews": 293
+ },
+ {
+  "id": "world.pumpville.play",
+  "name": "Pumpville",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/b9b7d0956601a9f5663ba2b6db652dd3d3c08604c4acdc17db2cc0320e390442.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "A social MMO where you explore a pixel world, gather resources, craft items, complete quests, trade with other players on the marketplace, and compete in PvP…",
+  "trendScore": 81,
+  "rating": 4.3,
+  "reviews": 56
+ },
+ {
+  "id": "app.seek.mobile",
+  "name": "Seek",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/0cb7a921054a11f1da0269d9edfb5982eacfdb61d2fb6b4264ff445f9fcf8db7.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Choose a $SKR entry tier, hunt for a real-world target, capture photo proof, and settle rewards on-chain through the Seek protocol.",
+  "trendScore": 81,
+  "rating": 4.1,
+  "reviews": 280
+ },
+ {
+  "id": "com.conan.seekerfly",
+  "name": "Seeker Flying",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/95b30fd1ffb7a9a76702f48d5597c3571ec0b172f8ff11b1f13ae7a508c12cc4.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Navigate through a vibrant world filled with crypto-themed obstacles, collect rewards, and compete for the top spot on the global leaderboard.",
+  "trendScore": 81,
+  "rating": 4.1,
+  "reviews": 196
+ },
+ {
+  "id": "gena.wibu.ai",
+  "name": "Wibu: AI Anime Companion",
+  "category": "AI & Agents",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/cefa152e0d5407244a4553e1239c52356f94f2b173cc6564ca787e00ae63e500.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Set them free to grow your fanbase or paid to earn directly from players.",
+  "trendScore": 80,
+  "rating": 4.2,
+  "reviews": 97
+ },
+ {
+  "id": "finance.backyard.app",
+  "name": "Backyard Finance",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/07785a385eeeb676d7599c2cb7da1afb9de614d4995eb810d9d239eb8f566835.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn yield across stablecoins, RWAs, and stocks vaults while staying liquid with BYD borrowing.",
+  "trendScore": 80,
+  "rating": 4.1,
+  "reviews": 196
+ },
+ {
+  "id": "fun.cashflow",
+  "name": "Cashflow",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/PSBWcwunVXQyygo-C-nqjIv40rfWgK80cQ7exYHR_90.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Cashflow is a personal finance app, where you can earn yield on your stablecoins, invest into tokenized gold and stocks, and more.",
+  "trendScore": 80,
+  "rating": 4,
+  "reviews": 136
+ },
+ {
+  "id": "com.skrhub.app",
+  "name": "SKR Hub",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/c907617fc9960b02ec5910faa039d2044c038961d671832d8c6022454a3a2c57.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "SKR Hub is a Solana-focused mobile dApp for portfolio tracking, SKR activity insights, swaps, and staking.",
+  "trendScore": 80,
+  "rating": 4.1,
+  "reviews": 34
+ },
+ {
+  "id": "xyz.sanafi.app",
+  "name": "Sana Onchain Money App",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/102fb9f7df0bbf69e5fdefba567293a790dad45ee7a53bde641981481b4da808.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Get Rewards for Spending Crypto or Stablecoin with Visa Card.",
+  "trendScore": 80,
+  "rating": 4,
+  "reviews": 347
+ },
+ {
+  "id": "meme.gib.app",
+  "name": "Gib Meme",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/e0a39a856c06f588d7df784ca9b0ff452bac03e95b65e876b7a6aa2b587d5936.jpg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Rewards increase with every round you win.",
+  "trendScore": 80,
+  "rating": 3.9,
+  "reviews": 2281
+ },
+ {
+  "id": "com.umbrella.monstermerge",
+  "name": "Monster Merge",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/dxYzYFVXgolZeGeoCRMOGFGJ6epvevgUL5NdPtSm7jE",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Play minigames to earn more coins, and expand your world.",
+  "trendScore": 80,
+  "rating": 4.4,
+  "reviews": 3372
+ },
+ {
+  "id": "com.seeker.tappybird",
+  "name": "TappyBird",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/c01e5c6ebda29c9441d4f8acdbb91aa89164fbe4d30f246d90390f64461ba4a4.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Place on Ranked and Gauntlet leaderboards to earn TappyCoin (TAPPY).",
+  "trendScore": 80,
+  "rating": 4.3,
+  "reviews": 95
+ },
+ {
+  "id": "com.gibwork.app",
+  "name": "Gibwork",
+  "category": "Productivity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/4770a0cca51dfa4e21b2be389e4414cc939e4f043ad143c2f5905dc682e2a3ea.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Get paid in internet currency.",
+  "trendScore": 80,
+  "rating": 4.1,
+  "reviews": 115
+ },
+ {
+  "id": "com.identityprism2.app",
+  "name": "Identity Prism 2.0",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/5777e36a81e0553c70400ebb2ad68fe23cccaaf5ccb5ba0ad74fe0089608aea7.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Check any wallet's sybil-risk for free with a transparent breakdown, earn 10 planetary tiers and 20 on-chain badges, climb the ranks, and prove you're a real…",
+  "trendScore": 80,
+  "rating": 4.6,
+  "reviews": 15
+ },
+ {
+  "id": "com.zemoo.snakr",
+  "name": "Snakr",
+  "category": "AI & Agents",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/6abee926fbb756dd9cf42110dcc174450282b7a8dc0f370170cd5e5d77ed15b9.jpeg",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "When a product isn't found, photograph the label and Snakr's AI extracts the nutrition facts automatically and every verified contribution earn…",
+  "trendScore": 79,
+  "rating": 5,
+  "reviews": 5
+ },
+ {
+  "id": "com.valalabsltd.vala",
+  "name": "VALA",
+  "category": "Content & Streaming",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/b05fd516910af0e044794e846738d826de223e22115425a478aa789c4329e32c.jpg",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Creators who get paid in seconds, anywhere in the world.",
+  "trendScore": 79,
+  "rating": 3.9,
+  "reviews": 1021
+ },
+ {
+  "id": "alpha.app",
+  "name": "Alpha",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/19fca000cec77cb779baa48a7dd987ba11564d171a2657054e54b825487d0fb3.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Bid and earn epoch and ALPHA tokens.",
+  "trendScore": 79,
+  "rating": 3.8,
+  "reviews": 97
+ },
+ {
+  "id": "com.famousfoxes.twa",
+  "name": "Famous Foxes",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/gKgzOtj478FniTVVRrkeHzq-7vH1IRmws6hPTWOwcH4",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "The Famous Foxes app has access to over 18 NFT utilities as well as gamified staking and customizing your foxy friends!",
+  "trendScore": 79,
+  "rating": 4.3,
+  "reviews": 1363
+ },
+ {
+  "id": "net.tibane.tibaneapp",
+  "name": "Tibane App",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/fbccad9a74c750b34a71f2b704fab442fd5cc37e572cad3b0d5dae65f3dc220f.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "Tibane is back with a staking pool and more services for the trenches!",
+  "trendScore": 79,
+  "rating": 4,
+  "reviews": 24
+ },
+ {
+  "id": "com.echo.protocol",
+  "name": "Echo Protocol",
+  "category": "DePIN",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/ec4b086b4c22f8053453927bb7a0a1535b30bd3d8b03fcb4436d04384b37bfd9.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Location-locked rewards on Solana Seeker.",
+  "trendScore": 79,
+  "rating": 3.9,
+  "reviews": 36
+ },
+ {
+  "id": "com.poof.app6a2bc73f94dafa160d33b908",
+  "name": "Seeker Flap",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/aec29f518e1ec34935b9f7d1d08cc25262422f343c6c7aaf12d026179e425ac3.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Play casually in Free Play mode or raise the stakes in Real Play mode for a chance to compete for rewards.",
+  "trendScore": 79,
+  "rating": 4.4,
+  "reviews": 15
+ },
+ {
+  "id": "com.duckerforge.seekercraft",
+  "name": "SeekerCraft",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/e81e61ebaae6de2191fd901f3a77e4ece9a33c3cf3637ea913ccf1d8980bdd0e.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn SKR tokens when players tip your maps.",
+  "trendScore": 79,
+  "rating": 3.8,
+  "reviews": 91
+ },
+ {
+  "id": "top.biofluxcloud.bottle",
+  "name": "Bottle",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/6aa57503b8f3f82698ef7b9f294f88c735fa69c4a89434b357e397dd7202ebd6.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Bottle is a Solana task-reward dApp where creators publish SKR reward tasks as drifting bottles.",
+  "trendScore": 79,
+  "rating": 4.3,
+  "reviews": 24
+ },
+ {
+  "id": "market.predit.twa",
+  "name": "Predit",
+  "category": "AI & Agents",
+  "iconUrl": "https://solana-mobile-seeker.s3.us-east-1.amazonaws.com/1772188996349-mocbkj51is.png",
+  "kinds": [
+   "points"
+  ],
+  "snippet": "Predit is a Web3 x AI prediction dApp where users chat with specialized AI oracles, join market-style prediction flows, and climb leaderboards through XP, qu…",
+  "trendScore": 78,
+  "rating": 4.3,
+  "reviews": 76
+ },
+ {
+  "id": "fun.roaster.app",
+  "name": "Roaster",
+  "category": "AI & Agents",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/4d2f60187eae43349720065279fd6ee098ac6442a5dcbf03d25da1fed01d5262.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Creators and backers earn through IP Revenue.",
+  "trendScore": 78,
+  "rating": 3.7,
+  "reviews": 31
+ },
+ {
+  "id": "xyz.app_1upnetwork.music.twa",
+  "name": "1UP Music",
+  "category": "Content & Streaming",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/35613ff98813ad8a30c8993d8ed9ad850ce0115ab8cb934ceadf4f953b6f659e.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Stream music, collect tracks as cNFTs, and earn $OUM tokens.",
+  "trendScore": 78,
+  "rating": 3.7,
+  "reviews": 6
+ },
+ {
+  "id": "com.curafeed.app",
+  "name": "CuraFeed",
+  "category": "Content & Streaming",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/b881eb0b8928ea25f2c249f8d373f12ff00346c8eef45911269f5c4c93ea0482.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "CuraFeed is a curator-first RSS reader built on Solana that turns great taste into real earnings.",
+  "trendScore": 78,
+  "rating": 4.1,
+  "reviews": 62
+ },
+ {
+  "id": "com.solanafeed.app",
+  "name": "SolanaFeed",
+  "category": "Content & Streaming",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/1ee299f8c505f461f67ccb394f0fbda9021cbfe1ce14317260274feac064833f.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "Browse top Solana projects with detailed info and token swaps, read daily news from top crypto sources, compare liquid staking tokens and stablecoins, and sw…",
+  "trendScore": 78,
+  "rating": 4.1,
+  "reviews": 28
+ },
+ {
+  "id": "com.stakecraft.betterstakesol",
+  "name": "BetterStakeSol v0.3.2",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/9b1a7bfc1e8b964939d7ce4af5c26737ba4ddb2dfc4fa8658090a3ecde9fe93b.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "Staking SOL on Solana, made simple.",
+  "trendScore": 78,
+  "rating": 3.9,
+  "reviews": 49
+ },
+ {
+  "id": "com.boktoshi.seeker",
+  "name": "Boktoshi Seeker",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/qHy_A9k8wr-58xK3KUmN5tzy5yk4TyTRrYdZeTPcEpI",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn BOKS tokens for top performance…",
+  "trendScore": 78,
+  "rating": 4.2,
+  "reviews": 159
+ },
+ {
+  "id": "com.olympus.hermes",
+  "name": "Hermes by Omega",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/5e35b74a7eeb5bd9da4f1ad952601855f063a1c61c239506ddc493be7cb592ba.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Chat to swap tokens, claim rewards, mint collectibles, bridge, and run agentic trading — all from one conversation.",
+  "trendScore": 78,
+  "rating": 4.5,
+  "reviews": 2
+ },
+ {
+  "id": "com.thelynkapp.mobile",
+  "name": "LYNK",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/0774aaa410ded875e2edd026d81a97dbe77b4dbc6bb8b908a9e50be84fc935ab.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Trade, create, and earn from a single app.",
+  "trendScore": 78,
+  "rating": 4.6,
+  "reviews": 5
+ },
+ {
+  "id": "com.raiziq.app",
+  "name": "RaizIQ",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/cca22799371bd272ac65e04cbddb8ff8b2d8fd1a887b6d33b30b5d27c8050263.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Market creators and NFT collections earn from every vote.",
+  "trendScore": 78,
+  "rating": 4.3,
+  "reviews": 8
+ },
+ {
+  "id": "com.relicdrops.app",
+  "name": "Relic",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/aa3116fc27792ab7ca30d4134cc7fb21b7ef8e98ec425a4b2c9431dd98158a48.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Every drop publishes its odds, prizes are real and on-chain, and anyone can launch their own drop and earn on every pull.",
+  "trendScore": 78,
+  "rating": 3.7,
+  "reviews": 6
+ },
+ {
+  "id": "com.riskguard.app",
+  "name": "RiskGuard",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/90cc4334db019a6cb49e6a1f08dc29b31fa60b46bd968625d9d7628fa57c4e49.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Plan any trade before you take it: enter your account size, risk %, entry and stop, and RiskGuard tells you exactly how large a position to open so a stop-ou…",
+  "trendScore": 78,
+  "rating": 4.5,
+  "reviews": 4
+ },
+ {
+  "id": "top.cogni.skrwatch",
+  "name": "SKR Watch",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/b0021c95f03c95c2f3f37777eea1f39ebf528cd697a6a87d63308cf090b4e80c.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "SKR Watch is a mobile-first dashboard for Seeker users to monitor SKR staking activity in real time.",
+  "trendScore": 78,
+  "rating": 4.2,
+  "reviews": 17
+ },
+ {
+  "id": "com.stakecompass.app",
+  "name": "Stake Compass",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/de8a760fd7a5e958a9e217f273221235f69c34dc5854a104d2dedf17b033ba95.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "Find your staking direction before you delegate.",
+  "trendScore": 78,
+  "rating": 4.5,
+  "reviews": 2
+ },
+ {
+  "id": "so.unitas.sol.twa",
+  "name": "Unitas",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/rgAC7HZleN_mopuH1CFsG1RXQxV-gVQRYY_pqP0DQZE",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "It brings institutional-grade yield strategies into a simple mobile earn experience, removing the need for manual farming or strategy management.",
+  "trendScore": 78,
+  "rating": 4.3,
+  "reviews": 103
+ },
+ {
+  "id": "com.capturlabs.capturgo",
+  "name": "CapturGO",
+  "category": "DePIN",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/94e56e7b283f5f326d71ffbf8e71b3008cff41cef16d35f6bb44f7bb9d61e153.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Navigate, contribute, and earn…",
+  "trendScore": 78,
+  "rating": 3.8,
+  "reviews": 294
+ },
+ {
+  "id": "xyz.goatnode",
+  "name": "GoatNode",
+  "category": "DePIN",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/b4f8d3595a2237604a56235264a9d809e7b4295ba7de0c01ca5f12a094e4c868.png",
+  "kinds": [
+   "points"
+  ],
+  "snippet": "Turn Guardian stake into daily fuel & XP.",
+  "trendScore": 78,
+  "rating": 3.9,
+  "reviews": 71
+ },
+ {
+  "id": "com.poof.app6a0c65b62a336f1644283822",
+  "name": "Bible Quest",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/c702daf7a8c8219eb8a32a64003573d873f3296cb0c983c75f4766f340a6db80.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "A Solana mobile dApp game that tests users on their knowledge of the Holy Bible in a fun trivia game format that rewards achievements with in-game token ($HA…",
+  "trendScore": 78,
+  "rating": 4.8,
+  "reviews": 4
+ },
+ {
+  "id": "com.skr.solitaire",
+  "name": "SOLitaire",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/iCNLrtyUCCEeRlp57S4-_ayiECZbxYxPz_WTphQPLkI.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Play solo instantly without connecting a wallet, then connect when you want profiles, match history, daily Suits rewards, achievements, tournaments, and head…",
+  "trendScore": 78,
+  "rating": 3.7,
+  "reviews": 7
+ },
+ {
+  "id": "com.justinliehu.seekermines",
+  "name": "Seeker Mines",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/0e6e6d095de893bfc4095bf6715bb8d63e3c21918070dbd6889424e70700846d.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Reveal gems to grow your reward and cash out before you hit a mine — every round is committed on-chain before you play and is fully verifiable, so it can nev…",
+  "trendScore": 78,
+  "rating": 3.4,
+  "reviews": 9
+ },
+ {
+  "id": "com.seekerquest.league",
+  "name": "Seeker Quest League",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/695438f5fd2c264a91d0809477e8ee09bb099a721700e0240005fedeb8b4d396.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Tap-to-earn arcade.",
+  "trendScore": 78,
+  "rating": 3.7,
+  "reviews": 6
+ },
+ {
+  "id": "com.veltrix.solitaire.tripeaks",
+  "name": "Solitaire Tripeak Cards",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/8782fce358a512764769c18041be4bb100f4420293c35df304c7410723793ee2.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Solve exciting TriPeaks card puzzles, unlock mysterious islands, collect rewards, and challenge your mind with hundreds of handcrafted levels.",
+  "trendScore": 78,
+  "rating": 4,
+  "reviews": 10
+ },
+ {
+  "id": "com.alexticea.tancuri",
+  "name": "Tanks 2026",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/4c3089b5fe098bc05fcb0f71bd1752672a331999aa8842071ab3e297f9058e22.jpg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Protect your Solana base, destroy enemy squads, and climb the global leaderboard to claim your share of the $SKR reward pool.",
+  "trendScore": 78,
+  "rating": 3.9,
+  "reviews": 170
+ },
+ {
+  "id": "com.seeker.tappyjump",
+  "name": "TappyJump",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/3e9912c728e9b40f94c6e3381c39ad911d17a407ac6bb989cc429e05684318ce.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Practice offline, master tilt controls, then take your best daily run to the leaderboard to compete for NFT cosmetics and arcade rewards.",
+  "trendScore": 78,
+  "rating": 3.9,
+  "reviews": 19
+ },
+ {
+  "id": "com.poof.app69cff5ff833782ad626922d4",
+  "name": "Word Quest",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/6194191ced5dbcf8d23bd379e9dade2e55958f01e756f0128f123118b6b24f9a.jpg",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn $WORD token as you play and use for in-game purchases.",
+  "trendScore": 78,
+  "rating": 4.2,
+  "reviews": 5
+ },
+ {
+  "id": "com.wos.worldofsol",
+  "name": "WorldOfSol",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/33cbca2091c1ac71b211dbd9650eee1536daa9ca35fff633fa9d17ce7d43e53f.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Fight enemy tanks, collect rewards, and survive increasingly difficult battles in a fast-paced arcade experience.",
+  "trendScore": 78,
+  "rating": 4,
+  "reviews": 8
+ },
+ {
+  "id": "com.nesseeker.app",
+  "name": "nesSKR",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/5Ws76Qzd4Gs5jhw1P5QDG6oK9zBdsomWZ0-IpzLSWa0",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "nesSKR brings classic NES gaming to Solana Mobile with real stakes and real rewards.",
+  "trendScore": 78,
+  "rating": 4.2,
+  "reviews": 35
+ },
+ {
+  "id": "xyz.framedrop.twa",
+  "name": "Framedrops",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/47e06145ed84952472faf44386b25e608756d318874ae105aba68a22dc19b8c7.png",
+  "kinds": [
+   "airdrop"
+  ],
+  "snippet": "Track and vote on Solana airdrops with Framedrops.",
+  "trendScore": 78,
+  "rating": 3.9,
+  "reviews": 46
+ },
+ {
+  "id": "fun.gainzgym.app",
+  "name": "Gainz Gym",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/41e0ecad064c90fddaa7823e557490fe1c153e0ec7b6f6c2205bda68a06bb091.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Recruit athletes, level up gyms, and earn $GAINZ tokens.",
+  "trendScore": 78,
+  "rating": 4.2,
+  "reviews": 13
+ },
+ {
+  "id": "com.heyhomie.mobile",
+  "name": "heyhomie",
+  "category": "Productivity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/c1ff7b566ce93a68dac49cf2e8e693e2bd66f910b6a3645ec026317cde8e2a41.jpeg",
+  "kinds": [
+   "points"
+  ],
+  "snippet": "Quizzes, streaks, XP, and spaced-repetition review keep lessons sticking instead of fading like a video you half-watched.",
+  "trendScore": 78,
+  "rating": 3.7,
+  "reviews": 6
+ },
+ {
+  "id": "com.poof.app69d681056ed8de4b02fabe14",
+  "name": "Confessol",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/735235929736c4b8da8d088efea53cda8432a7fc5fe57001b88e27df2cb7d08c.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn $SKR.",
+  "trendScore": 78,
+  "rating": 4.1,
+  "reviews": 46
+ },
+ {
+  "id": "com.frame.app",
+  "name": "FRAME",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/ad7ad60571aeaba53a40b7b3d330c2ef69d61c60352af08bf2cb9bd49cee02cd.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Get PAID for your content on X.",
+  "trendScore": 78,
+  "rating": 3.8,
+  "reviews": 49
+ },
+ {
+  "id": "live.solia.app",
+  "name": "Solia.Live",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/74c16225f47decd09242f58310c220c5a79546af560dd2516b98f0468a930c1e.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "By integrating AI tools with on-chain incentives, Solia provides a seamless social layer for creators and fans to interact, share, and earn.",
+  "trendScore": 78,
+  "rating": 4.4,
+  "reviews": 28
+ },
+ {
+  "id": "smsai.fun",
+  "name": "SMSai",
+  "category": "AI & Agents",
+  "iconUrl": "https://solanamobiledappstore.com/kHEmD1RIOS159Ls4ocwrH6VHH1c19NMCbQHF1QqGqwk",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "Ask questions about wallets, DeFi, staking, memecoins, and common scams, and get clear, jargon-free answers.",
+  "trendScore": 77,
+  "rating": 4.1,
+  "reviews": 187
+ },
+ {
+  "id": "fun.afk.seeker",
+  "name": "AFK.FUN",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/6f8631368f1deb6ea9e542106443ebed71ec9222157b428b58afb11023781eb3.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Automated take-profit and stop-loss, copy trading smart wallets, and custom strategies you can build and share with others to start earning SOL.",
+  "trendScore": 77,
+  "rating": 3,
+  "reviews": 1
+ },
+ {
+  "id": "bond.corre.twa",
+  "name": "Corre",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/4c8fadbccf9d1073c5c8b43391af789afee96742f3626cb79853b4f049be22f7.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn defi yields, invest in capital market, learn all about groowing wealth…",
+  "trendScore": 77,
+  "rating": 3.9,
+  "reviews": 248
+ },
+ {
+  "id": "com.gossipprotocol.cue",
+  "name": "Cue",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/QUPM7VCmgvz0-eT8jW1KxXxtVps38ewB4ywrMAjjI94.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Sign in with your Solana Mobile wallet, place bets in seconds, and earn 3x points on Seeker.",
+  "trendScore": 77,
+  "rating": 3.6,
+  "reviews": 5
+ },
+ {
+  "id": "fun.trydream.app",
+  "name": "Dream",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/22de678eb9fb16ad49ec4b61965a30f0988d199d9a27b50779e12e0c79b49d99.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Get to open trades, view available markets, execute isolated orders, copy trade and broadcast so that you can earn from others copy trading you, let AI trade…",
+  "trendScore": 77,
+  "rating": 3.7,
+  "reviews": 3
+ },
+ {
+  "id": "xyz.metengine",
+  "name": "MetEngine",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/YXUhP7pjNxFTcrinNw78sSZiDT4FR0Sn6IttYgMYBIE",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "While liquidity providers on Solana collectively earn millions in daily fees, the vertical remains underutilized due to perceived complexity and high entry b…",
+  "trendScore": 77,
+  "rating": 4.2,
+  "reviews": 434
+ },
+ {
+  "id": "app.nulltrace.www.twa",
+  "name": "NullTrace",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/Lcnmd2T-K8Wk7qZ-YOl7AWf00onKpJqv9nQ1YJkgUFQ",
+  "kinds": [
+   "airdrop"
+  ],
+  "snippet": "NullTrace is a ZK Proof powered dapp offering a privacy bridge for untraceable cross-chain transactions, SOL & SPL token mixer for on-chain mixing, privacy a…",
+  "trendScore": 77,
+  "rating": 4.2,
+  "reviews": 1260
+ },
+ {
+  "id": "gg.predikt.app",
+  "name": "Predikt",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/3150b4faac2c3f802f5f842b40b5f729c9be455b57526b3063c2992b53d46834.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Instead of sitting idle until resolution, users can borrow against their positions, add leverage to double down on their convictions, or earn yield rather th…",
+  "trendScore": 77,
+  "rating": 3.6,
+  "reviews": 5
+ },
+ {
+  "id": "xyz.terraseek",
+  "name": "TERRA",
+  "category": "DePIN",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/b33d91087d36ece5523e64df36c60911fbef7a40cd5f7f5bc9db97df3f3358ab.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Your location is your earning power.",
+  "trendScore": 77,
+  "rating": 3.7,
+  "reviews": 60
+ },
+ {
+  "id": "fun.clashofperps.app",
+  "name": "Clash of Perps",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/f29c921d6f67d71706a596e6bc640626ea421054154a66b370173a5b6cdb2384.jpg",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Trade profitably on Pacifica to earn gold, build & upgrade your trading empire, raid other players' bases, complete daily quests, and compete on the leaderbo…",
+  "trendScore": 77,
+  "rating": 3.8,
+  "reviews": 621
+ },
+ {
+  "id": "com.iseefortune.app",
+  "name": "I See Fortune",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/e68ccc5a039be128e90bf4e63cbb604660758150fd1643b9ed96c23af9f3da6a.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Solana epoch based prediction game where players choose numbers and compete for SOL rewards using fully transparent outcome generation.",
+  "trendScore": 77,
+  "rating": 3.2,
+  "reviews": 19
+ },
+ {
+  "id": "com.puppymatch.game",
+  "name": "Puppy Match",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/21e1dc84d6f3c67e74014e88837eccef03f9e19b9385388f2e1726357e081953.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Complete levels to unlock new chapters, collect points, participate in daily check-ins for rewards, invite friends for milestone bonuses, and compete on glob…",
+  "trendScore": 77,
+  "rating": 3.8,
+  "reviews": 52
+ },
+ {
+  "id": "com.seeker.trace",
+  "name": "Seeker Trace",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/45bca52fcd50169ad3ab25f5115de4cbf3376b3f75222b2c89103d19578459d3.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Test your skill, level up, and win rewards!",
+  "trendScore": 77,
+  "rating": 0,
+  "reviews": 0
+ },
+ {
+  "id": "xyz.pushystore.kyokai",
+  "name": "Shard Hunter",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/7dhNeyvbuNcaVpgvxeIUvOzhiyu_MCnv2PopDyqPCak.png",
+  "kinds": [
+   "points"
+  ],
+  "snippet": "verified on-chain for a permanent XP multiplier.",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 4
+ },
+ {
+  "id": "com.astrolab.tictactoe",
+  "name": "Tic Tac Toe",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/e6dM0EelhLMZYHgSD3u7F6JNWbTFwOT8G3k_BruZNr0",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Play the classic game with a twist — wager SOL and win real rewards!",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 362
+ },
+ {
+  "id": "gg.coil.app",
+  "name": "coil.gg",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/32cd8b6427933a77eefd773e2915a05d1244b6508fe6cc830bcd601df0285c51.jpg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Multiplayer worm game with on-chain rewards…",
+  "trendScore": 77,
+  "rating": 3.8,
+  "reviews": 6
+ },
+ {
+  "id": "healer.health.app",
+  "name": "Healer",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/EVtBfPBFhnq2eIGKRxm7LsGMJskmlKsQBOdBmSjAyuM",
+  "kinds": [
+   "points"
+  ],
+  "snippet": "XP, levels, 31 achievements, leaderboard…",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 32
+ },
+ {
+  "id": "com.mypulse.app",
+  "name": "My Pulse",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/WL0oO3lgjp8sfnNOARc5vt12Mfsb9nua0qLAltUn73s",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn SOL and Pulse.",
+  "trendScore": 77,
+  "rating": 4.1,
+  "reviews": 97
+ },
+ {
+  "id": "market.dare.app.twa",
+  "name": "Dare Market",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/5f30256449e1d03028c24ec2fc33cede471415fe3b9a29bf54629b11ce549262.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "If you're brave enough, complete dares yourself and get paid.",
+  "trendScore": 77,
+  "rating": 3.8,
+  "reviews": 2176
+ },
+ {
+  "id": "com.sociogram",
+  "name": "Sociogram",
+  "category": "Social & Identity",
+  "iconUrl": "https://solanamobiledappstore.com/KEKXGCUdehj5elv1Pc-S1EID8U1SLPE6XoKtBRhei6E",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Login using crypto wallet address to create and engage content, win giveaways, collect bonuses from Reward Posts, and get Emoji Tips.",
+  "trendScore": 77,
+  "rating": 4,
+  "reviews": 701
+ },
+ {
+  "id": "com.vibemood.app",
+  "name": "VibeMood",
+  "category": "Social & Identity",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/9604759b5d5b004237abd6ae22d5db359d1df49f48a0a89057a00a732e71a8d6.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Track your mood history, build streaks, and earn badges.",
+  "trendScore": 77,
+  "rating": 3.9,
+  "reviews": 25
+ },
+ {
+  "id": "com.mercurylabs.sollpayhq.seeker",
+  "name": "SollPay",
+  "category": "Wallets",
+  "iconUrl": "https://solanamobiledappstore.com/6tl7Q_B7T5cCwJSlJwz4Hq6Bk2cMdxSQY7IvZYM9UWM",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "With SollPay, you can buy, swap, send, and stake tokens, all from one sleek mobile app.",
+  "trendScore": 77,
+  "rating": 4.1,
+  "reviews": 643
+ },
+ {
+  "id": "com.solclaw.app",
+  "name": "SolClaw",
+  "category": "AI & Agents",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/fb4bcbbd1f977d0b0c6dc4a96aa8b3d248dbd78b3e3f0461058d15242a9fc376.jpg",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Chat, swap, trade, and earn right from your mobile device - no code required.",
+  "trendScore": 76,
+  "rating": 3.7,
+  "reviews": 822
+ },
+ {
+  "id": "com.godl.app",
+  "name": "GODL",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://godl-solana-mobile-us-east-1.s3.us-east-1.amazonaws.com/1772518324069-6hpm69g7btb.jpg",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Mine, stake, and earn with GODL.",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 74
+ },
+ {
+  "id": "com.lumenless",
+  "name": "Lumenless",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solana-mobile.s3.us-east-1.amazonaws.com/1771099960148-kb655ylxcq.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "It lets you get paid without exposing your wallet.",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 44
+ },
+ {
+  "id": "com.moltpad.app",
+  "name": "Molt Pad",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/pLFUZ_WOoV8IN9dZcPHjTpCGiw5Dj5JkrVwS-Et2ulg.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Discover tokenized moltbook posts, create moltbook post token, trade & earn.",
+  "trendScore": 76,
+  "rating": 3.6,
+  "reviews": 33
+ },
+ {
+  "id": "trade.neutral.www.twa",
+  "name": "Neutral Trade",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/705f9f1ae425dbdb9051dc76835bb8a414247ad8d8972f55f63f3fa1264006f2.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn smarter.",
+  "trendScore": 76,
+  "rating": 3.7,
+  "reviews": 564
+ },
+ {
+  "id": "com.guesscoinprice.sol",
+  "name": "SOL Rush: Prediction Game",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/reFK5oMv4WPB23yHmQ8KJIf64TLZl8Lcelw6FHXKNiU",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Win real rewards.",
+  "trendScore": 76,
+  "rating": 3.7,
+  "reviews": 61
+ },
+ {
+  "id": "live.hivy.mobile",
+  "name": "hivy",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/5ac3177661a4bb13d87ba3a4d3d7c700f3227fd7ce3af043476f816bbf541360.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Forecasters build communities around their edge and earn beyond their PnL.",
+  "trendScore": 76,
+  "rating": 3.5,
+  "reviews": 4
+ },
+ {
+  "id": "xyz.soljar.wallet",
+  "name": "soljar ",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/jPfQcz4Ul0cToqBT7hfp8F64eLg_7UghDSb-SgoOzLY",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Soljar helps freelancers, contractors, and modern teams get paid faster with invoicing, bank transfer, USDC payments, and a built-in Solana wallet in one app.",
+  "trendScore": 76,
+  "rating": 3.8,
+  "reviews": 26
+ },
+ {
+  "id": "com.dragon.fire",
+  "name": "Dragon Fire",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/8e372e0993ed8294b5b6a6ec928a70c225a540693bec29666f64ba0d62bbd1ca.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Take down 10 unique bosses, power up your skills, and earn your place on the leaderboard.",
+  "trendScore": 76,
+  "rating": 3.7,
+  "reviews": 44
+ },
+ {
+  "id": "com.seekerenergy.energy_clicker",
+  "name": "Energy Clicker",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/0f162684378c6d620e09d189718bd6ee09101ef86ca3d0dbda79b46e8ae5a4b6.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Tap the energy orb to charge up, then claim your reward on-chain.",
+  "trendScore": 76,
+  "rating": 3.1,
+  "reviews": 9
+ },
+ {
+  "id": "com.cakebreakgames.flapn",
+  "name": "FLAPN",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/IH43pG7zo0kwXe93XRBtJ_AGN4MrirsLZsB7w7ydOCE.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn.",
+  "trendScore": 76,
+  "rating": 3.7,
+  "reviews": 109
+ },
+ {
+  "id": "com.poof.app69b3afa73a3896d8adae1d39",
+  "name": "Flappy Quest Seeker",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/5b2nss34YC4gzLBb6pkJ62M8wApXPVnUVluyi1xlcm4",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Flappy Quest: Solana Edition is a fast-paced arcade game where you guide your bird through obstacles, earn Seeker Coins, and climb the leaderboards.",
+  "trendScore": 76,
+  "rating": 3.6,
+  "reviews": 20
+ },
+ {
+  "id": "com.feverpitch.goldrush",
+  "name": "GOLD RUSH",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/afabdcd00fb7b528669d8032501a4a8aa525c0e425c1c369389ae37dbd140484.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "EARN $GOLD.",
+  "trendScore": 76,
+  "rating": 3.6,
+  "reviews": 751
+ },
+ {
+  "id": "com.ceo.minesweeper",
+  "name": "InfiMines",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/c27e99034cb4dfa3e3e22254ffe6bf58805ec5a9d4055f6d0a99e468df8aa48d.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Infinite Minesweeper with Web3 Rewards on Solana.",
+  "trendScore": 76,
+  "rating": 3.5,
+  "reviews": 55
+ },
+ {
+  "id": "app.levelup.byyourself",
+  "name": "Level Up by Yourself - AI Agent RPG on Solana",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/pT-SSDXtdJIOkW0amMVjL0_2DPLs_xvpqbGW3wXuTVY",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn ability points and climb the leaderboard…",
+  "trendScore": 76,
+  "rating": 3.8,
+  "reviews": 278
+ },
+ {
+  "id": "com.quantummarble.game",
+  "name": "Quantum Marble",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/mt_UBCux-c8Rg6iT1hOHZSn8ubfZwVnWUJQ1BSYM8Pw",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Shoot marbles, clear blocks, daily rewards.",
+  "trendScore": 76,
+  "rating": 3.8,
+  "reviews": 30
+ },
+ {
+  "id": "fun.scraphouse.play",
+  "name": "ScrapHouse.fun",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/mJXI_iAA6RpqdovMjBHjHs811mg7TVHHDE96F06u_7U",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Team up or go solo, but when time’s up, the players who secured the most weight earn the highest share of the pot.",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 112
+ },
+ {
+  "id": "com.poof.app69c70fc2833782ad626920d6",
+  "name": "Seeker Animal Race",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/J3W-QIZuKTVcUlliigXMcN2qDaQ7OJbmRUsWfR6XQCA.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "The system ensures fairness while maintaining a dynamic reward pool through the House Pot.",
+  "trendScore": 76,
+  "rating": 3.5,
+  "reviews": 17
+ },
+ {
+  "id": "com.poof.app69cc23f256840f6b02248f05",
+  "name": "Seeker Cave Hunt",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/AIK9xVDXAmNh9mvEdxY1fy157Qy2DoIL4xRnEhKtxSE.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Discover Hidden Rewards.",
+  "trendScore": 76,
+  "rating": 3.6,
+  "reviews": 22
+ },
+ {
+  "id": "com.knockoutgames.venator",
+  "name": "Venator",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/mNdKb1Djheub7ULhCjyi5F_PYnN33yIUIGR1yZa0NJc",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Real players, Real stakes, Real rewards.",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 87
+ },
+ {
+  "id": "com.wakeorburn.wake_or_burn",
+  "name": "Wake or Burn",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/Yrpg6cRHi2m1K0ZUJ5xPVsYKXBaH8NkVHTYYosEMokU.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "Stake SOL or USDC.",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 19
+ },
+ {
+  "id": "com.uselaamtag.app",
+  "name": "LaamTag Hub",
+  "category": "Social & Identity",
+  "iconUrl": "https://solanamobiledappstore.com/KugkenRJOPTH7zqh6MlHSoV8-Tm3y0qLkdcRXopZUrI",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Connect, Play, Earn, Win and Verify on Solana.",
+  "trendScore": 76,
+  "rating": 3.9,
+  "reviews": 109
+ },
+ {
+  "id": "com.dispatch.seeker",
+  "name": "Dispatch",
+  "category": "AI & Agents",
+  "iconUrl": "https://solanamobiledappstore.com/v2-O1cc5n9fEaP2ITY6XntL4PJksq0impNsHrWDaeOQ",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn BOLT on Solana Devnet via BoltDistributor…",
+  "trendScore": 75,
+  "rating": 3.7,
+  "reviews": 117
+ },
+ {
+  "id": "xyz.cybersonix",
+  "name": "Cybersonix",
+  "category": "Content & Streaming",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/N7CrHCcGZE5HYzFk_gLhGktkjafp-DOXDU1X3r5MdQg.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Artists get paid instantly, directly to their wallet.",
+  "trendScore": 75,
+  "rating": 2.8,
+  "reviews": 32
+ },
+ {
+  "id": "com.solflolab.app",
+  "name": "SolFloLab",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/Q_-ffoskPlm-ITvQNfvuYoARn7RZsI1MSNFtHFzR85w",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Create payment links and get paid in SOL or USDC.",
+  "trendScore": 75,
+  "rating": 3.4,
+  "reviews": 27
+ },
+ {
+  "id": "vote.tbd.seeker.twa",
+  "name": "TBD",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/iZyIRjAnDkQle2jFodtbgpId7JV6BJqrhUt9G9gx51U",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Predict which option will receive the most votes and earn USDC.",
+  "trendScore": 75,
+  "rating": 3.9,
+  "reviews": 406
+ },
+ {
+  "id": "com.vigil.mobile",
+  "name": "Vigil",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/fpd5iPyWd9khFKwrOpSIotkfDk75cdRTM9J1as8lme8",
+  "kinds": [
+   "airdrop"
+  ],
+  "snippet": "Track airdrops, watch whale wallets, swap tokens…",
+  "trendScore": 75,
+  "rating": 3.4,
+  "reviews": 24
+ },
+ {
+  "id": "com.boringlife.app",
+  "name": "Boring Life",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/xLRxe5BUV9zlJkrxBiyEO6Rx04qMg1hEAUxkeCSEKX8",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn badges by completing challenges…",
+  "trendScore": 75,
+  "rating": 3.4,
+  "reviews": 66
+ },
+ {
+  "id": "live.lolkek.roulette.app",
+  "name": "Charm Roulette",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/GvXzTDh2bX9zO4kg1wtScVy_Os2j0aeE3lslAtgyAOI",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Place bets, collect rewards, level up, and build your strategy with unique charms that change your odds, bonuses, and progression.",
+  "trendScore": 75,
+  "rating": 3.4,
+  "reviews": 16
+ },
+ {
+  "id": "com.degendash",
+  "name": "Degen Dash",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/H4JtW4-ph_TwHnLtrleMvfuvF0x_MpCDbBhC8GkAOdk",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "🌙 Collect moon bag coins for $DASH rewards…",
+  "trendScore": 75,
+  "rating": 3.4,
+  "reviews": 56
+ },
+ {
+  "id": "com.dinko.game",
+  "name": "Dinko ",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/8qPv0Xn5tQ0a1INdWAy5l_gAqD4TAphIcW2gAAsNYOc",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Regular balls earn 1 point and golden balls are worth 5.",
+  "trendScore": 75,
+  "rating": 3.5,
+  "reviews": 59
+ },
+ {
+  "id": "com.kleio.app",
+  "name": "Kleio",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/sQMG0L8csHL2JPWkf7BBEs0cdKlYWgEwmmr2LfwfNG8",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Play Free or Compete for Rewards.",
+  "trendScore": 75,
+  "rating": 3.5,
+  "reviews": 32
+ },
+ {
+  "id": "com.lighton.game",
+  "name": "Light On - Logic Puzzle",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/tL82DIbYNC8ubMBJJV9ezaKZoCskf_vPiCyIcQnGOXg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Play in endless mode with 5×5 to 10×10 grids, daily rewards, global leaderboard, and optional crypto wallet login for exclusive skins.",
+  "trendScore": 75,
+  "rating": 3.1,
+  "reviews": 19
+ },
+ {
+  "id": "com.pipln.neon.survivors",
+  "name": "Neon Survivors",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/LAkHokXlzcEOOUKgNZHpHJbRAGKatZPcvB-qhDHbNe4",
+  "kinds": [
+   "points"
+  ],
+  "snippet": "Destroy enemies, gather XP to upgrade your ship, and survive the bullet hell that covers your screen.",
+  "trendScore": 75,
+  "rating": 3.8,
+  "reviews": 68
+ },
+ {
+  "id": "ch.playrps.app",
+  "name": "Play RPS",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/7b7b3bf7d97381f9c586636307a6663a633cc16f7b3a5f28a79b1e3e4441eddf.png",
+  "kinds": [
+   "staking"
+  ],
+  "snippet": "Play RPS is a PvP Rock Paper Scissors game on Solana where players stake SKR tokens against real opponents.",
+  "trendScore": 75,
+  "rating": 3.4,
+  "reviews": 125
+ },
+ {
+  "id": "com.snake.app",
+  "name": "Snake",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/wHRslxyfxRlYmPxCLJ6FdWB5dHBv8BFJJ6qBgf6nMEY",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Now he’s bringing that legendary gameplay to Solana with Cyber Snake where every game earns rewards and high scores live on-chain…",
+  "trendScore": 75,
+  "rating": 3.5,
+  "reviews": 22
+ },
+ {
+  "id": "com.solpaw.merge",
+  "name": "SolPaw Merge",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/LR3O6R9Mm9Vh6JQ1KbHq3vU2GroeDzKEQv1WDSoS_VE",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Merge cute cats, battle monsters, unlock rewards.",
+  "trendScore": 75,
+  "rating": 3.6,
+  "reviews": 20
+ },
+ {
+  "id": "com.swellbible.app",
+  "name": "Swell Bible",
+  "category": "Lifestyle",
+  "iconUrl": "https://r2.solanamobiledappstore.com/i/odzkD2ee5AvFbhW2gFcY74FKfzUnW0AlSCi1sl5oHUg.jpg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Connect your Solana wallet, read Scripture, and claim SWELL token rewards for your streak.",
+  "trendScore": 75,
+  "rating": 3,
+  "reviews": 25
+ },
+ {
+  "id": "net.in.benonesamuel.taskseeker",
+  "name": "Task Seeker",
+  "category": "Productivity",
+  "iconUrl": "https://solanamobiledappstore.com/VyIKiMhiUE8BAPy-ScbT0Mx3LvaLGjBpFITQQKXtNLg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Connect your Solana wallet to seamlessly secure your privacy and qualify for exclusive upcoming on-chain rewards.",
+  "trendScore": 75,
+  "rating": 3.9,
+  "reviews": 623
+ },
+ {
+  "id": "com.seeker.group",
+  "name": "SeekerGroup",
+  "category": "Social & Identity",
+  "iconUrl": "https://solanamobiledappstore.com/G14fZp4cD0P1306p156xX-JaqYWv7hsVm3HzzQV0dY4",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Web3-native social hub with leveling rewards.",
+  "trendScore": 75,
+  "rating": 3.8,
+  "reviews": 122
+ },
+ {
+  "id": "com.ai.ainoshaapp",
+  "name": "Ainosha AI",
+  "category": "AI & Agents",
+  "iconUrl": "https://solanamobiledappstore.com/p68VdQAnRKJ7m_jnsS6h5NnRPFZDdh1ujjmaN1D6nCY",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "With support for multiple languages, seamless wallet authentication, and a suite of intelligent agents, Ainosha surfaces early opportunities, automates resea…",
+  "trendScore": 74,
+  "rating": 3.9,
+  "reviews": 1452
+ },
+ {
+  "id": "com.marsliquid.mobile",
+  "name": "Mars Liquid",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/G5KEY8RZd2PUMhkCg9GCFdQhaICL3hGJoQ4CybBSftM",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Earn, trade, and grow across every chain—just one click away.",
+  "trendScore": 74,
+  "rating": 3.4,
+  "reviews": 52
+ },
+ {
+  "id": "com.bluntbrain.onesol",
+  "name": "OneSOL",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/amPtkV_7SVcaNxihOJl6Ak82iqS1Zq8PD-LqTgch0OY",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "OneSOL rewards active traders with slot machine spins - match three to mint exclusive collectibles.",
+  "trendScore": 74,
+  "rating": 3.8,
+  "reviews": 358
+ },
+ {
+  "id": "com.solana.seeker.bridgeman",
+  "name": "Bridge Man",
+  "category": "Games",
+  "iconUrl": "https://solana-mobile-seeker.s3.us-east-1.amazonaws.com/1768699107708-cbs8z57ybzt.jpg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Build bridges, collect rewards, and unlock skins.",
+  "trendScore": 74,
+  "rating": 3.5,
+  "reviews": 82
+ },
+ {
+  "id": "com.comicbonk.app",
+  "name": "Comic Bonk",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/7s0mUCHbfOmTyTH9pLYtZXQ_6RLL68M4HRQrWIcyV_s",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Comic Bonk is a high-octane casual arcade game where speed and precision meet blockchain rewards.",
+  "trendScore": 74,
+  "rating": 3.5,
+  "reviews": 98
+ },
+ {
+  "id": "com.solanaracing.game",
+  "name": "Happy Racing",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/BV1yd4-V-LMLi7WglJIQhepDH74eDjWFne-cqW98hPI",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Dodge traffic, earn on Solana!",
+  "trendScore": 74,
+  "rating": 2.1,
+  "reviews": 15
+ },
+ {
+  "id": "com.soulgate.infinity",
+  "name": "Soulgate Infinite",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/an126ZyDan0P0lila86A0Mur48CiqfS3ZX73QSTkh9o",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Collect tokens in every run to spin for prizes and compete in ranked seasons with rewards.",
+  "trendScore": 74,
+  "rating": 3.8,
+  "reviews": 401
+ },
+ {
+  "id": "com.poof.app69b254c2cbd47f960367ce58",
+  "name": "Tamagotchi SKR",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/CQvW-BlS9XUNthqjBmF_Bm4E-Ce3evEvC3IsgK7oMpI",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Feed, play, evolve, Earn.",
+  "trendScore": 74,
+  "rating": 2.8,
+  "reviews": 21
+ },
+ {
+  "id": "fun.skrrr.app",
+  "name": "Skrrr",
+  "category": "Social & Identity",
+  "iconUrl": "https://solanamobiledappstore.com/GBbUbKbwvhUCavVk3wN6eRFhf2dijZBZhrjsoo7t1lg",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Tokenize your favorite TikTok videos on Skrrr~ Scroll, browse videos and trade, earn trading fees by tokenizing your favorite TikTok videos.",
+  "trendScore": 74,
+  "rating": 3.3,
+  "reviews": 50
+ },
+ {
+  "id": "fun.sendshot.beta",
+  "name": "SendShot Beta",
+  "category": "DeFi & Trading",
+  "iconUrl": "https://solanamobiledappstore.com/HrcNpZQh5j6gNK5QX9zUzPrlVdxRwKAB8GMMz8syxXQ",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Build & tokenize anything - from miniapps to games to memes to AI agents - on Solana and earn fees!",
+  "trendScore": 73,
+  "rating": 3.9,
+  "reviews": 316
+ },
+ {
+  "id": "live.lolkek.charms.app",
+  "name": "Charm Slots",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/XnjM0NZn2IdlrGOIq1_pvCXLbxv-_l11FBRocAMwidA",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Spin through deadlines, earn coins and tickets, and build strategies by collecting and equipping charms that change your odds and payouts.",
+  "trendScore": 73,
+  "rating": 2.8,
+  "reviews": 36
+ },
+ {
+  "id": "com.magicblock.colony",
+  "name": "Colony",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/f4633114559a99bba97e2df62d240cae2902a8793d453724cb9b4ea425561aef.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Gather resources, mine, upgrade, and trade in a shared economy to compete on the weekly leaderboard seasons for treasury rewards.",
+  "trendScore": 73,
+  "rating": 3.5,
+  "reviews": 1853
+ },
+ {
+  "id": "xyz.minigamesol.app",
+  "name": "MiniGameSol",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/ylBD3vo15JITDbFSiMyeUJ2KhUjt-dfQ2Zfc1ohUjs8",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "An entertainment app packed with fun minigames, competitive ranking, daily check-in rewards, and modes for both Free and Premium users.",
+  "trendScore": 73,
+  "rating": 3.3,
+  "reviews": 87
+ },
+ {
+  "id": "com.clipper.app",
+  "name": "Qliper",
+  "category": "Content & Streaming",
+  "iconUrl": "https://solanamobiledappstore.com/rzPWRwKIC1sSzL9SL94Dfnp4U7EM38bsB-36Rucr5h0",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Campaigns are sponsored by brands, influencers, or protocols and funded with a reward pool in SOL (Solana).",
+  "trendScore": 72,
+  "rating": 3.8,
+  "reviews": 949
+ },
+ {
+  "id": "com.solana.seeker.solman",
+  "name": "Solman",
+  "category": "Games",
+  "iconUrl": "https://solana-mobile-seeker.s3.us-east-1.amazonaws.com/1768697311611-mqimn4xx2mg.jpg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Collect points, avoid ghosts, and unlock rewards.",
+  "trendScore": 72,
+  "rating": 3,
+  "reviews": 65
+ },
+ {
+  "id": "com.sparqy.app",
+  "name": "Sparqy Forge",
+  "category": "Lifestyle",
+  "iconUrl": "https://solanamobiledappstore.com/W58Ml0mLAdZRBKRQbhKQ2k47luFxe_I15JrA49cGxZ0",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Win and earn SOL.",
+  "trendScore": 72,
+  "rating": 3.6,
+  "reviews": 394
+ },
+ {
+  "id": "com.emostically.seekerwheel",
+  "name": "Seeker Wheel",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/2MHQDZZqBJwkgxVTHJQOwBU1zh_UqFGsnF7EG2KuHEg",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Seeker Wheel is a Solana-powered Instant Spin Wheel dApp that lets you spin and win SKR rewards instantly.",
+  "trendScore": 71,
+  "rating": 3.3,
+  "reviews": 219
+ },
+ {
+  "id": "com.loyal.app",
+  "name": "Loyal",
+  "category": "Wallets",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/55eab701e1ec541f9f1c4d0de7fb8e1d33057d683c57a3711170b5eecc3e028c.png",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Your idle USDC should be earning.",
+  "trendScore": 71,
+  "rating": 3.2,
+  "reviews": 521
+ },
+ {
+  "id": "fun.spots.tokenapp",
+  "name": "Spots.fun – Own Your City",
+  "category": "Social & Identity",
+  "iconUrl": "https://solanamobiledappstore.com/4FGl18h0BrZNBfJ2NB8l_RI7ZxlrtWCxrVEAfmZk-SA",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Boost favorites, earn influence points, and compete for Mayor status.",
+  "trendScore": 70,
+  "rating": 3.6,
+  "reviews": 448
+ },
+ {
+  "id": "one.synesis.workspace",
+  "name": "Workspace by Synesis One",
+  "category": "AI & Agents",
+  "iconUrl": "https://solanamobiledappstore.com/ZcAi1KDBfD5iroirNQIICaaEWLFlm8dUZtaD52vyKQ8",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Train AI and earn crypto.",
+  "trendScore": 69,
+  "rating": 3.6,
+  "reviews": 674
+ },
+ {
+  "id": "com.publicai.app",
+  "name": "PublicAI",
+  "category": "AI & Agents",
+  "iconUrl": "https://solanamobiledappstore.com/kvvR83mOkUxPI5UsOKF32L4050fP9bEPSyj0Cx_s-h8",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "FIRST TRAIN-AI-TO-EARN DAPP.",
+  "trendScore": 68,
+  "rating": 3.6,
+  "reviews": 745
+ },
+ {
+  "id": "com.rubians.rubycorporation",
+  "name": "Ruby Corporation",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/ALq21oXLA6Y5rCc7b_KzJKEEvpUi1q7Nr-6DBjYFyI4",
+  "kinds": [
+   "airdrop"
+  ],
+  "snippet": "Airdrops will never be the same!",
+  "trendScore": 68,
+  "rating": 3.4,
+  "reviews": 515
+ },
+ {
+  "id": "com.longwoodlabs.defidungeons",
+  "name": "Defi Dungeons",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/PAQ7kGdq2cG10I5WIYfRcMa0XUM-3L1rh84y8-AH_R8",
+  "kinds": [
+   "earn"
+  ],
+  "snippet": "Purchase an adventurer (Warrior, Marksman, Mage, Priest) and venture into the darkest dungeons to find equipment and $GOLD to progress your character or purc…",
+  "trendScore": 67,
+  "rating": 3.4,
+  "reviews": 629
+ },
+ {
+  "id": "com.intotheverseinc.cryptaraconquest",
+  "name": "Cryptara Conquest",
+  "category": "Games",
+  "iconUrl": "https://r2.solanamobiledappstore.com/a/00df66b22c467f94a1ac3248b03de03aa11009ec376191a78b1524f0293da68c.png",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Bullet-hell RPG that rewards survival instincts…",
+  "trendScore": 66,
+  "rating": 2.8,
+  "reviews": 508
+ },
+ {
+  "id": "com.example.wheeler",
+  "name": "Spinora",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/lfeyDUqTnmY0lXLhAqNA1yp2tUw35Ubq3tdq5iddWSI",
+  "kinds": [
+   "rewards"
+  ],
+  "snippet": "Complete daily missions, spin the lucky wheel, and compete on the global leaderboard to win real crypto rewards.",
+  "trendScore": 65,
+  "rating": 2.5,
+  "reviews": 175
+ },
+ {
+  "id": "com.williamwall.muddogtnt",
+  "name": "MudDog TNT",
+  "category": "Games",
+  "iconUrl": "https://solanamobiledappstore.com/fQAHFBgAoMMIycrw_Lh6MiMS3l91AWyd85EVUaFkbA0",
+  "kinds": [
+   "airdrop"
+  ],
+  "snippet": "MudDog TNT is an explosive adventure built in Godot 4.4, featuring an embedded Solana wallet that airdrops tokens to players.",
+  "trendScore": 64,
+  "rating": 3.3,
+  "reviews": 520
+ }
+]

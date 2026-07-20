@@ -233,13 +233,21 @@ export default {
       return handleChat(request, env, url, (body) => verifyMembership(body, env));
     }
     // Anonymous app-open ping (fire-and-forget from the app on launch).
+    // Cheap spam gate: only count pings carrying the app's static header
+    // (x-ss = versionCode). Not bulletproof — a determined forger can send
+    // it — but it stops drive-by curl loops and browser-embedded fetch()
+    // from polluting the ad metric. Respond 204 either way (don't leak the
+    // gate), just skip the write. D1 write quota is shared with claims/chat,
+    // so uncounted spam also can't exhaust it.
     if (request.method === 'POST' && url.pathname === '/ping') {
-      try {
-        await env.DB.prepare(
-          'INSERT INTO opens (day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count = count + 1',
-        ).bind(new Date().toISOString().slice(0, 10)).run();
-      } catch {
-        /* best-effort; never fail an open */
+      if (request.headers.get('x-ss')) {
+        try {
+          await env.DB.prepare(
+            'INSERT INTO opens (day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count = count + 1',
+          ).bind(new Date().toISOString().slice(0, 10)).run();
+        } catch {
+          /* best-effort; never fail an open */
+        }
       }
       return new Response(null, { status: 204, headers: CORS });
     }
@@ -252,7 +260,13 @@ export default {
         const claims = await env.DB.prepare('SELECT COUNT(*) AS n FROM claims').first();
         const msgs = await env.DB.prepare('SELECT COUNT(*) AS n FROM messages').first();
         const days = rows.results ?? [];
-        const opens7d = days.slice(0, 7).reduce((s, r) => s + r.count, 0);
+        // Date-bound, NOT row-bound: zero-open days have no row, so the
+        // 7 newest ROWS can silently span months and overstate the metric.
+        const cutoff = new Date(Date.now() - 6 * 86_400_000)
+          .toISOString().slice(0, 10);
+        const opens7d = days
+          .filter((r) => r.day >= cutoff)
+          .reduce((s, r) => s + r.count, 0);
         return json({
           opens7d,
           opensToday: days[0]?.day === new Date().toISOString().slice(0, 10) ? days[0].count : 0,

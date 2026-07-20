@@ -33,7 +33,12 @@ const base58Encode = (bytes: Uint8Array): string => {
  * opens/impressions number (ad-sales metric). Never throws, never blocks.
  */
 export function pingOpen(): void {
-  fetch(`${LOUNGE_URL}/ping`, { method: 'POST' }).catch(() => {});
+  // x-ss (= versionCode) is the worker's spam gate: pings without it are
+  // accepted but not counted, so curl loops can't inflate the ad metric.
+  fetch(`${LOUNGE_URL}/ping`, {
+    method: 'POST',
+    headers: { 'x-ss': '6' },
+  }).catch(() => {});
 }
 
 export async function getLoungeStats(): Promise<LoungeStats | null> {

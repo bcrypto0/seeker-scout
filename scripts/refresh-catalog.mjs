@@ -9,7 +9,7 @@
  * the live catalog. Wrangler auth: OAuth session in ~/.wrangler (no API token).
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -82,6 +82,23 @@ try {
     } catch (e) {
       log(`WARN: rewards pipeline skipped (${e.message})`);
     }
+  }
+
+  // 3d. App-perks detection (v0.4, pulamea.skr's review ask): regenerate
+  // perks.json from the fresh catalog and stage it. Non-fatal — a detector
+  // bug must never block the catalog deploy; the app falls back to [] .
+  try {
+    execFileSync(NODE, [
+      join(ROOT, 'indexer', 'detect-perks.mjs'),
+      join(stage, 'catalog.json'),
+      join(stage, 'perks.json'),
+    ], { cwd: ROOT, stdio: 'inherit', timeout: 30_000 });
+    log('staged perks.json');
+  } catch (e) {
+    log(`WARN: perks detection skipped (${e.message})`);
+    // Don't silently redeploy a stale staged perks.json — the app's
+    // []-fallback (section hidden) is better than frozen "updated daily".
+    try { rmSync(join(stage, 'perks.json'), { force: true }); } catch {}
   }
 
   // 2b. On-chain enrichment (Track A) — stamps verified release data onto

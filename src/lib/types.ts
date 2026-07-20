@@ -71,6 +71,38 @@ export interface PromoBanner {
   url?: string;
 }
 
+/** Reward-signal kinds emitted by indexer/detect-perks.mjs (display order). */
+export type PerkKind =
+  | 'airdrop'
+  | 'play-to-earn'
+  | 'staking'
+  | 'earn'
+  | 'cashback'
+  | 'rewards'
+  | 'points'
+  | 'mining';
+
+/**
+ * Auto-detected app perk (hosted perks.json, regenerated on every catalog
+ * refresh) — v0.4's "all the rewards from all the apps" (pulamea.skr's
+ * review ask). Detection heuristics live in the indexer, so tuning ships
+ * without an app release.
+ */
+export interface AppPerk {
+  /** Android package id — joins back to the catalog entry */
+  id: string;
+  name: string;
+  category: Category | string;
+  iconUrl?: string;
+  /** Detected signal kinds, strongest first */
+  kinds: PerkKind[] | string[];
+  /** First sentence of store copy that matched (display blurb) */
+  snippet: string;
+  trendScore: number;
+  rating: number;
+  reviews: number;
+}
+
 /**
  * Structured reward entry (hosted rewards.json, remote-config like banners) —
  * the anti-SolanaFloor design: status is DATA (endsAt/verified), not prose,
