@@ -15,7 +15,9 @@ import { DiscoverHeader } from '../components/DiscoverHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { Ticker } from '../components/Ticker';
 import { fetchCatalog, isCatalogCached } from '../lib/catalog';
-import { checkWatchlist, requestNotifPermission } from '../lib/notify';
+import { bayesRating, isHighlyRated, RATING_HIGH } from '../lib/collections';
+import { checkWatchlist } from '../lib/notify';
+import { maybeAskAfterSessions } from '../lib/reviewPrompt';
 import { getWatchlist, onWatchlistChange } from '../lib/watchlist';
 import { Category, DappEntry } from '../lib/types';
 import { colors, heading } from '../theme';
@@ -28,11 +30,12 @@ const CATEGORIES: (Category | 'All' | typeof WATCHING)[] = [
   'Social & Identity', 'AI & Agents', 'Lifestyle',
 ];
 
-type SortMode = 'trending' | 'newest';
+type SortMode = 'trending' | 'newest' | 'rated';
 
 const SORTS: { key: SortMode; label: string }[] = [
   { key: 'trending', label: '🔥 Trending' },
   { key: 'newest', label: '🆕 Newest' },
+  { key: 'rated', label: '⭐ Top rated' },
 ];
 
 const newestKey = (a: DappEntry) =>
@@ -45,6 +48,9 @@ export function DiscoverScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [cat, setCat] = useState<Category | 'All' | typeof WATCHING>('All');
   const [sort, setSort] = useState<SortMode>('trending');
+  // bacon.skr's ask, literal half: hide anything that isn't genuinely
+  // well-rated (review-count gated so it can't fill up with 5.0-from-3 apps).
+  const [topRatedOnly, setTopRatedOnly] = useState(false);
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const listRef = useRef<FlatList<DappEntry>>(null);
   const checkedRef = useRef(false);
@@ -54,20 +60,32 @@ export function DiscoverScreen() {
       setApps(a);
       setLoading(false);
       // One-time watchlist change check + local notifications per session.
+      // NOTE: permission is NOT requested here — it's asked on the first ☆
+      // tap, where the user has just expressed intent to track something.
       if (!checkedRef.current) {
         checkedRef.current = true;
-        requestNotifPermission();
         const ranked = [...a].sort((x, y) => y.trendScore - x.trendScore);
         checkWatchlist(ranked);
       }
     });
     getWatchlist().then((ids) => setWatched(new Set(ids)));
-    return onWatchlistChange(() => getWatchlist().then((ids) => setWatched(new Set(ids))));
+    // Let the feed settle before asking anything — a dialog on top of a
+    // still-loading screen reads as an ad, not a request.
+    const askTimer = setTimeout(() => {
+      maybeAskAfterSessions();
+    }, 2500);
+    const off = onWatchlistChange(() =>
+      getWatchlist().then((ids) => setWatched(new Set(ids))),
+    );
+    return () => {
+      clearTimeout(askTimer);
+      off();
+    };
   }, []);
 
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [sort, cat]);
+  }, [sort, cat, topRatedOnly]);
 
   const setSortHaptic = (s: SortMode) => {
     Haptics.selectionAsync().catch(() => {});
@@ -92,13 +110,16 @@ export function DiscoverScreen() {
               ? watched.has(a.id)
               : a.category === cat,
         )
+        .filter((a) => !topRatedOnly || isHighlyRated(a))
         .sort((a, b) =>
           sort === 'newest'
             ? newestKey(b).localeCompare(newestKey(a)) ||
               b.trendScore - a.trendScore
-            : b.trendScore - a.trendScore,
+            : sort === 'rated'
+              ? bayesRating(b) - bayesRating(a) || b.trendScore - a.trendScore
+              : b.trendScore - a.trendScore,
         ),
-    [apps, cat, sort, watched],
+    [apps, cat, sort, watched, topRatedOnly],
   );
 
   const tickerItems = useMemo(() => {
@@ -121,8 +142,13 @@ export function DiscoverScreen() {
     return items;
   }, [apps]);
 
-  const showHeader = cat === 'All' && sort === 'trending';
-  const emptyWatching = cat === WATCHING && filtered.length === 0;
+  const showHeader = cat === 'All' && sort === 'trending' && !topRatedOnly;
+  // The quality filter can legitimately empty a thin category — say so
+  // instead of showing a blank feed. It takes PRECEDENCE over the watchlist
+  // empty state: otherwise a user with starred apps who flips the filter on
+  // is told "tap the star on any app to watch it" and thinks we lost them.
+  const emptyRated = topRatedOnly && filtered.length === 0;
+  const emptyWatching = !emptyRated && cat === WATCHING && filtered.length === 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -132,7 +158,7 @@ export function DiscoverScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.chips}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+        contentContainerStyle={styles.chipsContent}
       >
         {CATEGORIES.map((c) => (
           <Pressable
@@ -147,7 +173,12 @@ export function DiscoverScreen() {
           </Pressable>
         ))}
       </ScrollView>
-      <View style={styles.sortRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chips}
+        contentContainerStyle={styles.chipsContent}
+      >
         {SORTS.map((s) => (
           <Pressable
             key={s.key}
@@ -160,9 +191,29 @@ export function DiscoverScreen() {
             </Text>
           </Pressable>
         ))}
-      </View>
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => {});
+            setTopRatedOnly((v) => !v);
+          }}
+          hitSlop={{ top: 8, bottom: 8 }}
+          style={[styles.chip, topRatedOnly && styles.chipActive]}
+        >
+          <Text style={[styles.chipText, topRatedOnly && styles.chipTextActive]}>
+            {`★ ${RATING_HIGH}+ only`}
+          </Text>
+        </Pressable>
+      </ScrollView>
       {loading ? (
         <SkeletonList />
+      ) : emptyRated ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyStar}>★</Text>
+          <Text style={styles.emptyText}>
+            No app here holds {RATING_HIGH}+ with enough reviews to trust it
+            yet. Try another category, or turn the filter off.
+          </Text>
+        </View>
       ) : emptyWatching ? (
         <View style={styles.empty}>
           <Text style={styles.emptyStar}>☆</Text>
@@ -196,9 +247,19 @@ export function DiscoverScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
   h1: { ...heading, paddingHorizontal: 16, marginBottom: 8 },
-  chips: { flexGrow: 0, marginBottom: 8 },
-  sortRow: {
-    flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 12,
+  // flexShrink:0 is the actual fix — a ScrollView defaults to flexShrink:1, so
+  // in this column it was shrinking BELOW its content height and slicing the
+  // pills' rounded bottoms flat. flexGrow:0 alone doesn't prevent that.
+  chips: { flexGrow: 0, flexShrink: 0, marginBottom: 8 },
+  // A horizontal ScrollView sizes to its content and was slicing the pills'
+  // rounded bottoms flat (the sort row below is a plain View, so it renders
+  // fine — that mismatch is the tell). Vertical padding + centering gives the
+  // chips room to render their full height.
+  chipsContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+    paddingVertical: 6,
+    alignItems: 'center',
   },
   chip: {
     height: 34,

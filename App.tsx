@@ -32,6 +32,7 @@ import { AppDetailScreen } from './src/screens/AppDetailScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { colors } from './src/theme';
 import { pingOpen } from './src/lib/lounge';
+import { bumpSession } from './src/lib/reviewPrompt';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -90,8 +91,10 @@ export default function App() {
 
   // Anonymous open ping — once per cold start, fire-and-forget (ad metric).
   // Dev-client sessions are excluded so testing never inflates the number.
+  // bumpSession also gates the one-time review prompt (3rd cold start).
   useEffect(() => {
     if (!__DEV__) pingOpen();
+    bumpSession();
   }, []);
 
   return (

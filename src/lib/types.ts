@@ -69,6 +69,12 @@ export interface PromoBanner {
   storePackage?: string;
   /** External URL fallback when no storePackage */
   url?: string;
+  /**
+   * Optional artwork shown at the left of the card. When absent and
+   * storePackage is set, the app's own catalog icon is used automatically —
+   * so promoting a dApp Store app needs no artwork at all.
+   */
+  imageUrl?: string;
 }
 
 /** Reward-signal kinds emitted by indexer/detect-perks.mjs (display order). */

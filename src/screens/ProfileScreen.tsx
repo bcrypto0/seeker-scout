@@ -75,7 +75,7 @@ export function ProfileScreen() {
         <>
           <Text style={styles.sub}>
             Connect your Seeker wallet to verify Genesis Token ownership and
-            unlock verified-owner reviews.
+            claim your founding number in the Owners' Lounge.
           </Text>
           <Pressable
             style={[styles.btn, busy && styles.btnDim]}
@@ -126,8 +126,8 @@ export function ProfileScreen() {
       <Pressable style={styles.loungeLink} onPress={() => nav.navigate('Lounge')}>
         <Text style={styles.loungeTitle}>THE OWNERS' LOUNGE 🔒</Text>
         <Text style={styles.loungeSub}>
-          Founding numbers, member badges, and the coming members' chat live
-          in the Lounge tab →
+          Founding numbers, member badges, and the members' chat live in the
+          Lounge tab →
         </Text>
       </Pressable>
     </SafeAreaView>

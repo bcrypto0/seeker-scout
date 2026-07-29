@@ -5,6 +5,40 @@ import { DappEntry } from './types';
  * cost (battle plan §7/§8). All pure functions over the catalog.
  */
 
+// Same prior the indexer uses, so in-app rating rank agrees with the catalog.
+const BAYES_PRIOR_COUNT = 200;
+const BAYES_PRIOR_MEAN = 4.1;
+
+/** Minimum reviews before a rating is trustworthy enough to filter on. */
+export const RATING_MIN_REVIEWS = 20;
+/** Threshold for the "great rating" quality filter. */
+export const RATING_HIGH = 4.5;
+
+/**
+ * Bayesian-shrunk rating — the honest answer to "sort by review score".
+ * Raw rating is a trap: 13 apps sit at a perfect 5.0 and 12 of them have
+ * under 10 reviews, so a naive sort returns a wall of one-review shovelware.
+ * Pulling sparse ratings toward the global mean puts ★4.8-from-7,000 above
+ * ★5.0-from-3, which is what a user actually means by "best rated".
+ */
+export function bayesRating(a: DappEntry): number {
+  const n = a.reviews ?? 0;
+  // No reviews = unrankable, not average. Shrinkage would score these at
+  // exactly the prior (4.1), floating 32 apps that render "★ 0.0 (0)" above
+  // hundreds of apps with thousands of real ratings — in a list the user
+  // opened by tapping "Top rated".
+  if (n <= 0) return -1;
+  return (
+    (n / (n + BAYES_PRIOR_COUNT)) * (a.rating ?? 0) +
+    (BAYES_PRIOR_COUNT / (n + BAYES_PRIOR_COUNT)) * BAYES_PRIOR_MEAN
+  );
+}
+
+/** True when an app's rating is both high AND backed by enough reviews. */
+export function isHighlyRated(a: DappEntry): boolean {
+  return (a.rating ?? 0) >= RATING_HIGH && (a.reviews ?? 0) >= RATING_MIN_REVIEWS;
+}
+
 /** Biggest daily rank climbers (needs rankDelta from the indexer). */
 export function topClimbers(apps: DappEntry[], n = 10): DappEntry[] {
   return apps

@@ -12,6 +12,15 @@ import { getWatchlist } from './watchlist';
  */
 const SNAP_KEY = 'seekerscout.watch.snapshot.v1';
 const RANK_JUMP = 5; // notify on a climb of >= this many ranks
+/**
+ * Rank movement is only meaningful once an app has enough reviews to hold a
+ * stable position — thin-tail apps shuffle on tiny score changes, so alerting
+ * on them trains users to mute us. (Before the indexer's rounding fix this
+ * was far worse: tied scores reshuffled daily and "climbs" were pure noise.)
+ * Kept at 20 to match RATING_MIN_REVIEWS — high enough to kill the churn,
+ * low enough that starring a small app still earns real alerts.
+ */
+const RANK_ALERT_MIN_REVIEWS = 20;
 
 type Snap = Record<string, { rank?: number; version?: string; fresh?: string }>;
 
@@ -71,7 +80,12 @@ export async function checkWatchlist(
     next[app.id] = { rank, version: app.version, fresh };
     if (firstRun || !prev) continue; // seed silently
 
-    if (prev.rank && rank && prev.rank - rank >= RANK_JUMP) {
+    if (
+      prev.rank &&
+      rank &&
+      prev.rank - rank >= RANK_JUMP &&
+      (app.reviews ?? 0) >= RANK_ALERT_MIN_REVIEWS
+    ) {
       const msg = `${app.name} climbed ${prev.rank - rank} to #${rank}`;
       summary.push(msg);
       fire('📈 Climbing', msg);

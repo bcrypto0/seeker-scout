@@ -7,6 +7,14 @@
     "storePackage": "com.bilal.seekerscout"
   },
   {
+    "id": "cook-app",
+    "title": "COOK 🍳 — launch a meme coin in 30s",
+    "tagline": "AI names it, draws the logo, and launches it on Solana. Pick your rail, earn 50% of every trade. Live on the dApp Store.",
+    "label": "Also by us",
+    "color": "#FF6A3D",
+    "storePackage": "fun.cook.app"
+  },
+  {
     "id": "seeker-summer-cards20",
     "title": "Seeker Summer ☀️ 20% off a Seeker",
     "tagline": "Code CARDS20 at store.solanamobile.com with Solana Pay — first 5,000 orders get a free $50 Collector Crypt pack. Ends Aug 30.",
@@ -15,11 +23,13 @@
     "url": "https://store.solanamobile.com"
   },
   {
-    "id": "lounge-teaser",
-    "title": "The Owners' Lounge 🔒 coming soon",
-    "tagline": "Verified Seeker owners only — no bots, ever. Founding badges for the first 100. Verify in Profile to be ready.",
-    "label": "Coming soon",
-    "color": "#9945FF"
+    "id": "lounge-live",
+    "title": "The Owners' Lounge 🔒 is live",
+    "tagline": "Verified Seeker owners only — no bots, ever. Claim your founding number (first 100) in Profile → the Lounge.",
+    "label": "New",
+    "color": "#9945FF",
+    "url": "https://seekerscout.com",
+    "imageUrl": "https://r2.solanamobiledappstore.com/a/de3f0b18d5f032cadff1de0a1764dcfb007ad6277631ed08f6ed5233fd2a0363.png"
   },
   {
     "id": "ad-slot",

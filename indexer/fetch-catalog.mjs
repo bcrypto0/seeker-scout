@@ -33,6 +33,14 @@ const ENDPOINT = process.env.DAPPSTORE_URL ?? 'https://seekertracker.com/api/dap
 
 const BAYES_PRIOR_COUNT = 200; // pseudo-reviews at the global mean
 const BAYES_PRIOR_MEAN = 4.1;
+/**
+ * Bump whenever the score formula or the sort key changes. Ranks computed
+ * under different schemes are NOT comparable, so history rows carry this and
+ * deltas/sparklines skip any snapshot that disagrees.
+ * 1 = rounded score used as the sort key (through 2026-07-28)
+ * 2 = precise float sort key, rounded only for display (2026-07-29 on)
+ */
+const SCORING_SCHEME = 2;
 
 export function transform(payload) {
   const units = payload?.data?.explore?.units?.edges ?? [];
@@ -77,10 +85,19 @@ export function transform(payload) {
       });
     }
   }
-  return [...byId.values()].sort((a, b) => b.trendScore - a.trendScore);
+  // Sort on the PRECISE score, then round only for display. Rounding before
+  // sorting collapsed 1,200 apps into ~35 buckets (262 apps tied at 77), and
+  // ties fall back to feed order — which reshuffles daily. That made
+  // rankDelta, rankHistory, Top Climbers and Scout Pick measure noise for the
+  // long tail (four different apps all showing "▲99"). Every consumer —
+  // rank deltas below, and the app's own stable sorts — reads this array's
+  // order, so ordering here is what actually has to be right.
+  const out = [...byId.values()].sort((a, b) => b.trendScore - a.trendScore);
+  for (const e of out) e.trendScore = Math.round(e.trendScore);
+  return out;
 }
 
-/** Bayesian-weighted rating + freshness boost, scaled ~0-100. */
+/** Bayesian-weighted rating + freshness boost, scaled ~0-100 (unrounded). */
 function score(rating, reviews, updatedOn) {
   const bayes =
     (reviews / (reviews + BAYES_PRIOR_COUNT)) * rating +
@@ -90,7 +107,7 @@ function score(rating, reviews, updatedOn) {
     : 9999;
   const freshBoost = Math.max(0, 1 - days / 365) * 0.5;
   const volume = Math.min(1, Math.log10(1 + reviews) / 4) * 0.5;
-  return Math.round(((bayes + freshBoost + volume) * 100) / 6);
+  return ((bayes + freshBoost + volume) * 100) / 6;
 }
 
 async function main() {
@@ -230,6 +247,17 @@ async function main() {
         const prevRows = JSON.parse(
           readFileSync(new URL(`./history/${prevFile}`, import.meta.url), 'utf8'),
         );
+        // Ranks from a DIFFERENT scoring scheme aren't comparable. When the
+        // rounded score was replaced by a precise sort key, 1,010 apps whose
+        // score never changed still "moved" — median jump 28, max 371 — and
+        // that noise reached users as ticker headlines and push alerts.
+        // Refuse to diff across schemes; one clean run restores deltas.
+        const prevScheme = prevRows[0]?.scheme ?? 0;
+        if (prevScheme !== SCORING_SCHEME) {
+          throw new Error(
+            `scoring scheme changed (${prevScheme} -> ${SCORING_SCHEME}) — skipping deltas for one run`,
+          );
+        }
         const prevRank = new Map(prevRows.map((r) => [r.id, r.rank]));
         let moved = 0;
         entries.forEach((e, i) => {
@@ -240,8 +268,8 @@ async function main() {
           }
         });
         console.log(`rank deltas vs ${prevFile.slice(0, 10)}: ${moved} apps moved`);
-      } catch {
-        console.warn('previous history snapshot unreadable — no deltas this run');
+      } catch (e) {
+        console.warn(`no rank deltas this run: ${e.message}`);
       }
     }
 
@@ -258,6 +286,9 @@ async function main() {
             const rows = JSON.parse(
               readFileSync(new URL(`./history/${f}`, import.meta.url), 'utf8'),
             );
+            // Same rule as deltas: a sparkline that splices two scoring
+            // schemes draws a cliff that never happened.
+            if ((rows[0]?.scheme ?? 0) !== SCORING_SCHEME) return null;
             return new Map(rows.map((r) => [r.id, r.rank]));
           } catch {
             return null;
@@ -274,6 +305,7 @@ async function main() {
       const rows = entries.map((e, i) => ({
         id: e.id, rank: i + 1, trendScore: e.trendScore, rating: e.rating,
         reviews: e.reviews, lastUpdated: e.lastUpdated,
+        scheme: SCORING_SCHEME,
       }));
       const tmp = new URL(`./history/${day}.json.tmp`, import.meta.url);
       writeFileSync(tmp, JSON.stringify(rows));

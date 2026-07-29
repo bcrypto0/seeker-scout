@@ -8,7 +8,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { fetchBanners } from '../lib/catalog';
+import { AppIcon } from './AppIcon';
+import { fetchBanners, fetchCatalog } from '../lib/catalog';
 import { PromoBanner } from '../lib/types';
 import { colors } from '../theme';
 
@@ -22,12 +23,26 @@ const ROTATE_MS = 4500;
 export function AdBanner() {
   const [banners, setBanners] = useState<PromoBanner[]>([]);
   const [index, setIndex] = useState(0);
+  // package id -> icon, so a banner promoting a dApp Store app shows that
+  // app's real icon without anyone supplying artwork.
+  const [icons, setIcons] = useState<Map<string, string>>(new Map());
   const listRef = useRef<FlatList<PromoBanner>>(null);
   const { width } = useWindowDimensions();
 
   useEffect(() => {
     fetchBanners().then(setBanners);
+    // Session-cached; Discover has usually already paid for this fetch.
+    fetchCatalog().then((list) =>
+      setIcons(
+        new Map(
+          list.filter((a) => a.iconUrl).map((a) => [a.id, a.iconUrl!] as const),
+        ),
+      ),
+    );
   }, []);
+
+  const imageFor = (b: PromoBanner): string | undefined =>
+    b.imageUrl ?? (b.storePackage ? icons.get(b.storePackage) : undefined);
 
   useEffect(() => {
     if (banners.length < 2) return;
@@ -71,17 +86,30 @@ export function AdBanner() {
             <View
               style={[styles.card, item.color ? { borderColor: item.color } : null]}
             >
-              <View style={styles.topRow}>
-                <Text style={styles.title} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                {!!item.label && <Text style={styles.label}>{item.label}</Text>}
+              <View style={styles.cardRow}>
+                {(() => {
+                  // 40dp, not 52: the icon competes with the copy for a
+                  // fixed-width card, and the tagline is what carries the
+                  // message. Smaller icon + tighter gap gives ~26dp back.
+                  const img = imageFor(item);
+                  return img ? <AppIcon uri={img} size={40} /> : null;
+                })()}
+                <View style={styles.cardBody}>
+                  <View style={styles.topRow}>
+                    <Text style={styles.title} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    {!!item.label && (
+                      <Text style={styles.label}>{item.label}</Text>
+                    )}
+                  </View>
+                  {!!item.tagline && (
+                    <Text style={styles.tagline} numberOfLines={2}>
+                      {item.tagline}
+                    </Text>
+                  )}
+                </View>
               </View>
-              {!!item.tagline && (
-                <Text style={styles.tagline} numberOfLines={2}>
-                  {item.tagline}
-                </Text>
-              )}
             </View>
           </Pressable>
         )}
@@ -111,6 +139,8 @@ const styles = StyleSheet.create({
     padding: 14,
     minHeight: 84,
   },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardBody: { flex: 1 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { color: colors.text, fontSize: 15, fontWeight: '800', flex: 1 },
   label: {

@@ -1,37 +1,93 @@
 [
   {
-    "id": "skr-season-2",
+    "id": "seeker-summer-2026",
+    "app": "Solana dApp Store",
+    "title": "Seeker Summer: quests and badges through Aug 30",
+    "detail": "Part of Seeker Season 2. Runs July 7 - Aug 30, 2026: four two-week rounds, four featured apps each, two quests per app. Each quest earns a badge kept in the dApp Store and Seed Vault Wallet's Activity Tracking tab. Open the Seeker Summer hub, install a featured app, complete both quests. Apps rotate each round.",
     "kind": "season",
-    "app": "Seeker",
-    "title": "SKR Season 2 is live",
-    "detail": "Your Activity Tracker score (onchain activity, daily use, dApps explored) sets your tier for future SKR seasons. Exploring apps counts.",
-    "url": "https://solanamobile.com/skr",
-    "verified": "2026-07-17"
+    "url": "https://solanamobile.com/blog/seeker-summer-is-here-complete-quests-earn-badges-and-explore-apps-all-summer-long",
+    "endsAt": "2026-08-30",
+    "verified": "2026-07-29"
+  },
+  {
+    "id": "seeker-activity-tracking",
+    "app": "Seed Vault Wallet",
+    "title": "Activity Tracking: the three categories Seeker measures",
+    "detail": "Onchain Activity uses a rolling 30-day view (refreshes daily); dApp Exploration and Daily Use are shown by week, Mon-Sun (update every 20-30 min). Needs Usage & Diagnostics on in Settings > Solana Mobile plus your Genesis Token connected, or the Activity tab won't appear. No SKR payout formula is published.",
+    "kind": "season",
+    "url": "https://solanamobile.com/blog/introducing-seeker-activity-tracking",
+    "verified": "2026-07-29"
   },
   {
     "id": "skr-staking",
+    "app": "SKR Staking",
+    "title": "Stake SKR for variable staking rewards",
+    "detail": "Rewards come from SKR inflation and compound automatically. The rate is variable - official pages showed conflicting figures, so read the live rate on the site. Stake from your Seeker in Seed Vault Wallet; delegation is automatic. Unstaking takes a 48h cooldown that earns nothing, then a manual withdrawal.",
     "kind": "season",
-    "app": "Seeker",
-    "title": "Stake SKR natively",
-    "detail": "Native SKR staking directly from the Seeker — currently around 16% APY.",
-    "url": "https://stake.solanamobile.com",
-    "verified": "2026-07-17"
+    "url": "https://stake.solanamobile.com/",
+    "verified": "2026-07-29"
   },
   {
-    "id": "xplace-membership",
-    "app": "XPlace Credit Card",
-    "packageId": "x.place",
-    "iconUrl": "https://r2.solanamobiledappstore.com/i/dVJk-MChLpjLhv4L46n2D",
-    "title": "20% off memberships + 2.5% XP airdrop",
-    "detail": "Seeker owners unlock 20% off all memberships, a 2.5% XP airdrop allocation, bonus XP on upgrades, and custom Seeker cards.",
-    "verified": "2026-07-17"
+    "id": "seeker-genesis-token",
+    "app": "Seed Vault Wallet",
+    "title": "Genesis Token: your Seeker's onchain proof of ownership",
+    "detail": "Soulbound NFT minted once per Seeker into your Seed Vault Wallet primary account; proves device ownership and gates Activity Tracking. Not automatic: during Seed Vault setup you pick a Seeker ID (.skr, permanent) and link the token via on-screen prompts. Solana Mobile doesn't publish a list of what it unlocks.",
+    "kind": "season",
+    "url": "https://solanamobile.com/seeker",
+    "verified": "2026-07-29"
   },
   {
-    "id": "zabana-skr-delivery",
-    "app": "Zabana",
-    "packageId": "com.example.zabana",
-    "title": "Free delivery paying with SKR",
-    "detail": "Free delivery on all products when paying with SKR, plus a 2× rewards points boost. Update to the latest version to claim.",
-    "verified": "2026-07-17"
+    "id": "collector-crypt-cards20",
+    "app": "Solana Mobile Store",
+    "title": "20% off a new Seeker plus a $50 Collector Crypt rip",
+    "detail": "New buyers only; existing owners can't claim. Solana Mobile: 20% off a Seeker plus a free $50 gacha spin for the first 5,000 buyers with code CARDS20. Enter it at checkout on store.solanamobile.com and pay by Solana Pay in USDC, USDT, PYUSD or SKR; the rip goes to that wallet. Ends Aug 30 or at 5,000 buyers.",
+    "url": "https://solanamobile.com/blog/solana-mobile-heads-into-summer-with-new-apps-quests-and-builders",
+    "endsAt": "2026-08-30",
+    "verified": "2026-07-29"
+  },
+  {
+    "id": "moonwalk-fitness-xp-boost",
+    "app": "Moonwalk Fitness",
+    "title": "20% fitness XP boost for Seeker owners",
+    "detail": "A 20% boost on fitness XP - the points earned for real, verifiable activity in Moonwalk games - through January 1, 2027. Game-creation and referral XP are excluded; 20% is the stated maximum. New users sign up in the app with the Seeker Genesis Token; existing users link their Seeker wallet via Matrica.",
+    "packageId": "fit.moonwalk.mobile.app",
+    "url": "https://medium.com/moonwalkfitness/seeker-season-why-moonwalk-is-a-solana-mobile-launch-partner-and-how-you-can-get-more-from-every-ff22c474109f",
+    "endsAt": "2027-01-01",
+    "verified": "2026-07-29"
+  },
+  {
+    "id": "cryptara-conquest-skr-perks",
+    "app": "Cryptara Conquest",
+    "title": ".skr domain gives 7% boosts; 10k SKR staked unlocks a Guardian",
+    "detail": "Hold a .skr domain and Cryptara Conquest grants 7% off in-game purchases, 7% increased movement speed and 7% increased maximum health. Connect the wallet holding the domain to activate the boosts. Separately, players staking 10,000+ SKR can claim the Seeker Toly Guardian companion free. No end date announced.",
+    "packageId": "com.intotheverseinc.cryptaraconquest",
+    "url": "https://x.com/CryptaraConq/status/2069096438303486082",
+    "verified": "2026-07-29"
+  },
+  {
+    "id": "snake-os-skr-perks",
+    "app": "Snake OS",
+    "title": "Seeker theme and badge for SKR holders, 10% off paying in SKR",
+    "detail": "Holding SKR unlocks a free SEEKER phone-shell theme (marked holders only) and a Holds $SKR badge in Snake OS. Market checkout separately offers 10% off when you pay in SKR instead of SOL - the discount is for paying in SKR, not just holding it. No qualifying SKR threshold is published.",
+    "packageId": "com.snakeos.app",
+    "url": "https://solanamobile.com/blog/solana-mobile-heads-into-summer-with-new-apps-quests-and-builders",
+    "verified": "2026-07-29"
+  },
+  {
+    "id": "nomadz-skr-hotel-payments",
+    "app": "Nomadz",
+    "title": "Pay for hotel bookings with SKR",
+    "detail": "Solana Mobile says Nomadz \"switched on SKR payments for hotel bookings, so you can pay for a stay straight with SKR from your wallet.\" Install Nomadz from the Solana dApp Store, search for a stay and choose SKR at checkout. It is a payment option, not a discount. No end date stated.",
+    "packageId": "xyz.nomadz.app",
+    "url": "https://solanamobile.com/blog/solana-mobile-heads-into-summer-with-new-apps-quests-and-builders",
+    "verified": "2026-07-29"
+  },
+  {
+    "id": "solana-mobile-builder-grants",
+    "app": "Solana Mobile Builder Grants",
+    "title": "Builder Grants: apply any time, no deadline (developers)",
+    "detail": "For developers, not a consumer perk. Solana Mobile funds mobile-first Solana dApps and applications are always open - \"you can apply with any grant idea at any time.\" Selected teams typically receive a milestones-based grant; no amount is published. Apply via the form at solanamobile.com/grants.",
+    "url": "https://solanamobile.com/grants",
+    "verified": "2026-07-29"
   }
 ]
