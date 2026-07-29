@@ -13,6 +13,8 @@ const BAYES_PRIOR_MEAN = 4.1;
 export const RATING_MIN_REVIEWS = 20;
 /** Threshold for the "great rating" quality filter. */
 export const RATING_HIGH = 4.5;
+/** Credibility floor for anything we feature as an editorial pick. */
+const PICK_MIN_REVIEWS = 50;
 
 /**
  * Bayesian-shrunk rating — the honest answer to "sort by review score".
@@ -87,9 +89,25 @@ export function freshlyListed(apps: DappEntry[], n = 10): DappEntry[] {
  * to the freshest high-trend app so it's never empty.
  */
 export function scoutPick(apps: DappEntry[]): DappEntry | undefined {
-  const climber = topClimbers(apps, 1)[0];
-  if (climber && (climber.rankDelta ?? 0) >= 3) return climber;
-  const fresh = freshlyListed(apps, 1)[0];
+  // Every candidate must clear a credibility floor. The hero is the most
+  // prominent editorial claim in the app, and "★5.0 from 10 reviews" reads
+  // as noise — a perfect score on a handful of reviews means nothing, and
+  // small apps also produce the biggest (least meaningful) rank swings.
+  const credible = (a?: DappEntry) => !!a && (a.reviews ?? 0) >= PICK_MIN_REVIEWS;
+
+  const climber = topClimbers(apps, 5).find(
+    (a) => (a.rankDelta ?? 0) >= 3 && credible(a),
+  );
+  if (climber) return climber;
+
+  const fresh = freshlyListed(apps, 5).find(credible);
   if (fresh) return fresh;
+
+  // Quality-over-popularity before falling back to the biggest app — a
+  // genuinely good under-discovered app is a better pick than the #1 everyone
+  // already has.
+  const gem = hiddenGems(apps, 1)[0];
+  if (gem) return gem;
+
   return [...apps].sort((a, b) => b.trendScore - a.trendScore)[0];
 }
