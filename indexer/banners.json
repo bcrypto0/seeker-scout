@@ -7,6 +7,14 @@
     "storePackage": "com.bilal.seekerscout"
   },
   {
+    "id": "alpha-live",
+    "title": "Alpha 🛰️ — our trading intel, in the app",
+    "tagline": "Smart-money wallet clusters, exchange listing radar and catalysts, straight from our own stack. Founders #1–100 read the live feed free; everyone gets a daily preview.",
+    "label": "New",
+    "color": "#9945FF",
+    "storePackage": "com.bilal.seekerscout"
+  },
+  {
     "id": "cook-app",
     "title": "COOK 🍳 — launch a meme coin in 30s",
     "tagline": "AI names it, draws the logo, and launches it on Solana. Pick your rail, earn 50% of every trade. Live on the dApp Store.",
@@ -34,7 +42,7 @@
   {
     "id": "ad-slot",
     "title": "Your dApp here 📡",
-    "tagline": "Promote your app to Seeker owners right inside the radar — seekerscout.com to book a slot.",
+    "tagline": "Reach Seeker owners inside the daily radar — 1,208 apps tracked, on-chain verified, no bots and no bought traffic. seekerscout.com to book a slot.",
     "label": "Ad slot",
     "url": "https://seekerscout.com"
   }

@@ -14,54 +14,13 @@
  * Moderation: max length, link-stripping (drainer defense), per-wallet rate
  * limit, report-based auto-hide, and a per-wallet block flag.
  */
+import { issueToken, verifyToken } from './token.js';
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_LEN = 400;
 const RATE_MS = 4000; // one message per wallet per 4s
 const HIDE_AT_REPORTS = 3; // auto-hide after N distinct reporters
 const PAGE = 50;
-
-const enc = new TextEncoder();
-
-const b64url = (bytes) =>
-  btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const b64urlToBytes = (s) => {
-  const pad = s.replace(/-/g, '+').replace(/_/g, '/');
-  const bin = atob(pad + '==='.slice((pad.length + 3) % 4));
-  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
-};
-
-async function hmacKey(secret) {
-  return crypto.subtle.importKey(
-    'raw', enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify'],
-  );
-}
-
-/** token = base64url(payloadJson).base64url(hmac) */
-async function issueToken(secret, payload) {
-  const body = b64url(enc.encode(JSON.stringify(payload)));
-  const key = await hmacKey(secret);
-  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(body)));
-  return `${body}.${b64url(sig)}`;
-}
-
-async function verifyToken(secret, token) {
-  // Fully defensive: any malformed token → null (never throws → never a 1101).
-  try {
-    if (typeof token !== 'string' || !token.includes('.')) return null;
-    const [body, sig] = token.split('.');
-    if (!body || !sig) return null;
-    const key = await hmacKey(secret);
-    const ok = await crypto.subtle.verify('HMAC', key, b64urlToBytes(sig), enc.encode(body));
-    if (!ok) return null;
-    const payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(body)));
-    if (!payload?.exp || Date.now() > payload.exp) return null;
-    return payload; // {number, wallet, tier, exp}
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Strip anything link-shaped — the core drainer-link defense. Blocklist by

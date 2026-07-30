@@ -9,10 +9,14 @@ import { colors } from '../theme';
 export function DeltaChip({ delta }: { delta?: number }) {
   if (!delta) return null;
   const up = delta > 0;
+  const size = Math.abs(delta);
+  // Two digits keep the chip from stretching the card, but a bare "99" reads
+  // as a VALUE — which is how four unrelated apps once all displayed "▲99"
+  // and hid a real ranking bug for days (2026-07-29). Mark the clamp.
   return (
     <Text style={[styles.chip, { color: up ? colors.green : colors.red }]}>
       {up ? '▲' : '▼'}
-      {Math.min(Math.abs(delta), 99)}
+      {size > 99 ? '99+' : size}
     </Text>
   );
 }

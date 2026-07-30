@@ -35,9 +35,10 @@ const base58Encode = (bytes: Uint8Array): string => {
 export function pingOpen(): void {
   // x-ss (= versionCode) is the worker's spam gate: pings without it are
   // accepted but not counted, so curl loops can't inflate the ad metric.
+  // Bump this with every android.versionCode in app.json.
   fetch(`${LOUNGE_URL}/ping`, {
     method: 'POST',
-    headers: { 'x-ss': '6' },
+    headers: { 'x-ss': '8' },
   }).catch(() => {});
 }
 

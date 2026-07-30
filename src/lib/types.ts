@@ -109,6 +109,206 @@ export interface AppPerk {
   reviews: number;
 }
 
+/* ------------------------------------------------------------------ *
+ * Alpha (v0.6) — the War Room intel digest. Shapes are frozen by
+ * docs/SCOUT_ALPHA_SPEC.md §1; the exporter, the worker and this app all
+ * implement to them. Every field the worker can redact for the free teaser
+ * is nullable/optional HERE too, so the teaser and the live feed share one
+ * renderer.
+ * ------------------------------------------------------------------ */
+
+/** live = newest signal <2h, stale = <48h, degraded = older/unknown. */
+export type AlphaStatusLevel = 'live' | 'stale' | 'degraded';
+
+/**
+ * Honest freshness stamp from the exporter. The app SHOWS this — it never
+ * infers "live" on its own, and an unparseable/absent block degrades to
+ * 'degraded' rather than being filled in.
+ */
+export interface AlphaFreshness {
+  /** Heuristic: newest signal_log ts is under 2h old. */
+  bot_running: boolean;
+  /** Unix seconds of the newest signal_log row; null when unknown. */
+  newest_signal_ts: number | null;
+  /** Age of the STALEST contributing source, in seconds; null when unknown. */
+  oldest_source_stale_seconds: number | null;
+  status: AlphaStatusLevel;
+}
+
+/** A VIP wallet inside a cluster buy. `addr` is nulled in the free teaser. */
+export interface AlphaTopWallet {
+  addr: string | null;
+  /**
+   * Grade from wallet_tiers.json. null for a wallet we have never graded —
+   * the exporter deliberately sends null rather than a fake zero-grade, and
+   * an ungraded wallet still has an address a subscriber is paying for.
+   */
+  tier: string | null;
+  win_rate: number | null;
+  pnl_usd: number | null;
+}
+
+/** Recent smart-money cluster buy (yellowstone_vip / YELLOWSTONE_VIP_CLUSTER). */
+export interface AlphaSmartMoney {
+  /** Token mint — nulled in the free teaser (symbol still shown). */
+  mint: string | null;
+  symbol: string;
+  chain: string;
+  wallet_count: number;
+  buy_count: number;
+  /** Cluster detection window, in seconds. */
+  window_sec: number;
+  grade: string;
+  score: number;
+  top_wallets: AlphaTopWallet[];
+  /** Unix seconds. */
+  ts: number;
+}
+
+/** Wallet-quality leaderboard row. `addr` is dropped in the free teaser. */
+export interface AlphaWalletRow {
+  addr?: string;
+  /** null for a graded-but-untiered wallet (the exporter allows both). */
+  tier: string | null;
+  wins: number;
+  losses: number;
+  win_rate: number;
+  pnl_usd: number;
+  avg_pnl: number;
+  is_founding_vip: boolean;
+  /** ISO timestamp, or null when the wallet has no closed trade yet. */
+  last_trade_at: string | null;
+}
+
+/** CEX listing radar row — `is_pre_listing` is the edge, flag it loudly. */
+export interface AlphaListing {
+  coin: string;
+  exchange: string;
+  kind: string;
+  is_pre_listing: boolean;
+  title: string;
+  /** Unix seconds. */
+  ts: number;
+  source: string;
+}
+
+export interface AlphaCatalyst {
+  type: string;
+  symbol: string;
+  title: string;
+  score: number;
+  /** Unix seconds. */
+  ts: number;
+}
+
+export interface AlphaUnlock {
+  coin: string;
+  /** ISO date (YYYY-MM-DD). */
+  unlock_date: string;
+  pct_supply: number;
+  days_until: number;
+}
+
+/**
+ * Full-array row counts. The teaser keeps only the first 2 rows of each
+ * array but reports the real totals — that gap IS the sales pitch, so the
+ * screen renders "+N more" from here rather than from the trimmed arrays.
+ */
+export interface AlphaCounts {
+  smart_money?: number;
+  wallet_leaderboard?: number;
+  listing_radar?: number;
+  catalysts?: number;
+  unlock_watch?: number;
+}
+
+/** The digest itself — same shape for the free teaser and the paid feed. */
+export interface AlphaDigest {
+  version: number;
+  /** ISO timestamp the digest was built. */
+  generated_at: string;
+  /** Unix seconds the digest was built. */
+  generated_ts: number;
+  freshness: AlphaFreshness;
+  smart_money: AlphaSmartMoney[];
+  wallet_leaderboard: AlphaWalletRow[];
+  listing_radar: AlphaListing[];
+  catalysts: AlphaCatalyst[];
+  unlock_watch: AlphaUnlock[];
+  /** True when this is the delayed + redacted free snapshot. */
+  teaser: boolean;
+  /**
+   * False ONLY when the worker has never ingested a digest at all — "nothing
+   * has ever been published" is a different answer from "nothing fired in
+   * this window", and the screen must not conflate them. The live feed omits
+   * the flag, so an absent value means available.
+   */
+  available: boolean;
+  /**
+   * True when the teaser is the ≥24h-old snapshot; false when the worker fell
+   * back to redacting `latest` (nothing is 24h old yet), which is NOT
+   * "yesterday's digest".
+   */
+  delayed: boolean;
+  /**
+   * Status of the CURRENT live feed at response time, carried on the teaser
+   * envelope only. Lets the free preview report the feed's real state instead
+   * of the delayed snapshot's own (possibly much rosier) stamp.
+   */
+  feed_status?: AlphaStatusLevel | 'unknown';
+  /**
+   * Whether the worker is currently selling access, carried on the teaser
+   * envelope only. Public and refetched on every pull-to-refresh, so it is
+   * the freshest sales signal available without a wallet.
+   */
+  sales_open?: boolean;
+  /** Real totals behind a trimmed teaser; empty object when unreported. */
+  counts: AlphaCounts;
+}
+
+/**
+ * The worker's authoritative payment terms, returned on /alpha/auth and
+ * /alpha/status. The app must never spend USDC on its compiled-in constants
+ * alone: the worker verifies against ITS treasury and ITS price, and refuses
+ * new subs entirely while the feed isn't live.
+ */
+export interface AlphaTerms {
+  /** Worker's configured treasury, or null while sales are unconfigured. */
+  treasury: string | null;
+  /** Worker's configured price in USDC, or null when unreported. */
+  price_usdc: number | null;
+  /** Tri-state: true/false from the worker, null = it didn't tell us. */
+  sales_open: boolean | null;
+  /** Freshness of the live feed, or null when unreported. */
+  feed_status: AlphaStatusLevel | 'unknown' | null;
+}
+
+/** Membership tier from the Owners' Lounge claim (mirrors LoungeTier). */
+export type AlphaTier = 'founding' | 'early' | 'member';
+
+/** Result of POST /alpha/auth — bearer token plus the entitlement it carries. */
+export interface AlphaSession extends AlphaTerms {
+  token: string;
+  /** Lounge founding number, or null if this wallet never claimed one. */
+  number: number | null;
+  wallet: string;
+  tier: AlphaTier | null;
+  /** True when founding (#≤100) OR an active paid sub. */
+  alpha: boolean;
+  /** Entitlement expiry, epoch ms; null when not entitled. */
+  alphaExp: number | null;
+  /** Token expiry, epoch ms. */
+  exp: number | null;
+}
+
+/** Result of GET /alpha/status?wallet= — no signature needed. */
+export interface AlphaEntitlement extends AlphaTerms {
+  founding: boolean;
+  /** ISO timestamp the paid sub runs to, or null if never paid. */
+  paid_until: string | null;
+  active: boolean;
+}
+
 /**
  * Structured reward entry (hosted rewards.json, remote-config like banners) —
  * the anti-SolanaFloor design: status is DATA (endsAt/verified), not prose,

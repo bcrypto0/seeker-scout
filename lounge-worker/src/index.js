@@ -16,6 +16,8 @@ import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha512';
 import { base58 } from '@scure/base';
 import { handleChat } from './chat.js';
+import { handleAlpha } from './alpha.js';
+import { rpc } from './rpc.js';
 
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
 
@@ -24,12 +26,14 @@ const SGT_METADATA_ADDRESS = 'GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te';
 const SGT_GROUP_MINT_ADDRESS = 'GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te';
 const MAX_MESSAGE_AGE_MS = 10 * 60 * 1000; // past-dated tolerance
 const MAX_CLOCK_SKEW_MS = 2 * 60 * 1000; // future-dated tolerance
-const DEFAULT_RPC = 'https://api.mainnet-beta.solana.com';
+// Alpha buys a paid entitlement, so a captured body is worth more there than
+// on /claim: keep the replay window to a signature's realistic round-trip.
+const ALPHA_MESSAGE_AGE_MS = 2 * 60 * 1000;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Headers': 'content-type, authorization, x-alpha-key',
 };
 
 const json = (obj, status = 200) =>
@@ -45,38 +49,18 @@ const tierOf = (n) => (n <= 100 ? 'founding' : n <= 500 ? 'early' : 'member');
 const claimMessage = (wallet, mint, ts) =>
   `Seeker Scout — Owners' Lounge claim\nwallet: ${wallet}\nmint: ${mint}\nts: ${ts}`;
 
-/** JSON-RPC with timeout + 2 retries (backoff w/ jitter) on 429/5xx/network. */
-async function rpc(env, method, params) {
-  const url = env.RPC_URL || DEFAULT_RPC;
-  let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) {
-      await new Promise((r) =>
-        setTimeout(r, 400 * attempt + Math.random() * 300),
-      );
-    }
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (res.status === 429 || res.status >= 500) {
-        lastErr = new Error(`rpc ${res.status}`);
-        continue;
-      }
-      if (!res.ok) throw new Error(`rpc ${res.status}`);
-      const body = await res.json();
-      if (body.error) throw new Error(`rpc: ${body.error.message}`);
-      return body.result;
-    } catch (e) {
-      lastErr = e;
-      if (e?.message?.startsWith('rpc:')) throw e; // RPC-level error: no retry
-    }
-  }
-  throw lastErr ?? new Error('rpc unavailable');
-}
+/**
+ * Alpha's own signed message. Domain separation: without it, the exact
+ * {wallet,mint,ts,signature} tuple a device sends to /claim or /chat/auth is
+ * also a valid credential for the PAID endpoints, so a captured free-tier
+ * login mints a live-feed bearer. Deviates from spec §2's "reuse
+ * verifyGenesisSig" — deliberately, see the build report.
+ *
+ * ADDITIVE ONLY: shipped devices sign claimMessage for the Lounge claim and
+ * chat, so that string must stay byte-identical.
+ */
+const alphaMessage = (wallet, mint, ts) =>
+  `Seeker Scout — Alpha access\npurpose: alpha-v1\nwallet: ${wallet}\nmint: ${mint}\nts: ${ts}`;
 
 /** jsonParsed Token-2022 mint → SGT fingerprint check (no SDK needed). */
 function isGenuineSgt(mintInfo) {
@@ -100,8 +84,16 @@ function isGenuineSgt(mintInfo) {
  * Verify a fresh, wallet-signed message proving control of a genuine Seeker
  * Genesis Token that the wallet holds. Steps 1-3 of the claim flow, shared
  * with chat auth. Returns null on success, or an {error,status} to return.
+ *
+ * `message` + `maxAgeMs` default to the Lounge claim's string and window —
+ * changing either default would invalidate every signature already shipped
+ * devices produce. /alpha/* overrides them for domain separation.
  */
-async function verifyGenesisSig(body, env) {
+async function verifyGenesisSig(
+  body,
+  env,
+  { message = claimMessage, maxAgeMs = MAX_MESSAGE_AGE_MS } = {},
+) {
   const { wallet, mint, ts, signature } = body ?? {};
   if (
     typeof wallet !== 'string' || typeof mint !== 'string' ||
@@ -111,7 +103,7 @@ async function verifyGenesisSig(body, env) {
   }
   // 1. Freshness: 10 min past (retries) / 2 min future (skew).
   const dt = Date.now() - Date.parse(ts);
-  if (!Number.isFinite(dt) || dt > MAX_MESSAGE_AGE_MS || dt < -MAX_CLOCK_SKEW_MS) {
+  if (!Number.isFinite(dt) || dt > maxAgeMs || dt < -MAX_CLOCK_SKEW_MS) {
     return { error: 'stale message', status: 400 };
   }
   // 2. Signature by the wallet over the canonical message.
@@ -126,7 +118,7 @@ async function verifyGenesisSig(body, env) {
   if (walletBytes.length !== 32 || sigBytes.length !== 64) {
     return { error: 'bad key or signature length', status: 400 };
   }
-  const msgBytes = new TextEncoder().encode(claimMessage(wallet, mint, ts));
+  const msgBytes = new TextEncoder().encode(message(wallet, mint, ts));
   let sigOk = false;
   try {
     sigOk = ed.verify(sigBytes, msgBytes, walletBytes, { zip215: false });
@@ -146,7 +138,15 @@ async function verifyGenesisSig(body, env) {
     );
     if (!holds) return { error: 'wallet does not hold this token', status: 403 };
   } catch (e) {
-    return { error: `chain check unavailable: ${e.message}`, status: 502 };
+    // Never echo a raw fetch error: on Workers it can carry the target URL,
+    // and RPC_URL is a SECRET (Triton embeds the API key in the path). Only
+    // rpc.js's own messages ('rpc 503' / 'rpc: <provider msg>') are safe.
+    const detail =
+      typeof e?.message === 'string' && /^rpc[ :]/.test(e.message) ? e.message : '';
+    return {
+      error: detail ? `chain check unavailable: ${detail}` : 'chain check unavailable',
+      status: 502,
+    };
   }
   return null; // verified
 }
@@ -166,6 +166,31 @@ async function verifyMembership(body, env) {
   } catch {
     return { error: 'storage error', status: 500 };
   }
+}
+
+/**
+ * Alpha auth (spec §2): Genesis ownership is the gate. A founding number is a
+ * BONUS — it decides the free founder tier — so we resolve it best-effort by
+ * mint and leave it null for a Seeker owner who never entered the Lounge race.
+ * Gating alpha on verifyMembership instead would 403 every owner who has not
+ * claimed, blocking them from the free founder check AND from paying.
+ */
+async function verifyAlphaOwner(body, env) {
+  const bad = await verifyGenesisSig(body, env, {
+    message: alphaMessage,
+    maxAgeMs: ALPHA_MESSAGE_AGE_MS,
+  });
+  if (bad) return bad;
+  let number = null;
+  try {
+    const row = await env.DB.prepare('SELECT id FROM claims WHERE genesis_mint = ?')
+      .bind(body.mint).first();
+    if (Number.isInteger(row?.id)) number = row.id;
+  } catch {
+    // A claims-lookup failure must not lock a payer out: unclaimed reads as
+    // non-founding, which is the safe (still payable) side.
+  }
+  return { number, tier: number === null ? null : tierOf(number) };
 }
 
 async function handleClaim(request, env) {
@@ -231,6 +256,9 @@ export default {
     }
     if (url.pathname.startsWith('/chat/')) {
       return handleChat(request, env, url, (body) => verifyMembership(body, env));
+    }
+    if (url.pathname.startsWith('/alpha/')) {
+      return handleAlpha(request, env, url, (body) => verifyAlphaOwner(body, env));
     }
     // Anonymous app-open ping (fire-and-forget from the app on launch).
     // Cheap spam gate: only count pings carrying the app's static header

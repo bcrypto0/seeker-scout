@@ -1,9 +1,16 @@
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
-import { Connection, PublicKey } from '@solana/web3.js';
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+} from '@solana/web3.js';
 import {
   unpackMint,
   getMetadataPointerState,
   getTokenGroupMemberState,
+  createTransferCheckedInstruction,
+  getAssociatedTokenAddress,
   TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token';
 
@@ -27,6 +34,14 @@ export const RPC_URL = 'https://api.mainnet-beta.solana.com';
 const SGT_MINT_AUTHORITY = 'GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4';
 const SGT_METADATA_ADDRESS = 'GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te';
 const SGT_GROUP_MINT_ADDRESS = 'GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te';
+
+/** Circle USDC on Solana mainnet — the only mint we ever charge in. */
+export const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+const USDC_DECIMALS = 6;
+
+/** SPL Memo v2 — tags the payment so a transfer can be traced to a purchase. */
+const MEMO_PROGRAM_ID = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+const ALPHA_MEMO = 'seekerscout:alpha:v1';
 
 export type WalletConnection = { address: string; authToken: string };
 
@@ -144,4 +159,124 @@ export async function signMessageBytes(
     });
     return signed[0];
   });
+}
+
+/**
+ * Pay for Alpha: a plain USDC transfer from the connected wallet to the
+ * treasury, plus a memo for traceability. Returns the transaction signature,
+ * which the worker re-verifies on chain before granting entitlement.
+ *
+ * We are moving the USER's own funds at the USER's request to OUR treasury —
+ * no custody, no routing, no third party. Everything that can be checked
+ * BEFORE the wallet prompt is checked first (treasury validity, the payer's
+ * USDC account, the balance, the destination account) so a doomed transfer is
+ * never signed and no network fee is burned on a guaranteed failure.
+ */
+export async function payAlpha(
+  address: string,
+  authToken: string,
+  treasury: string,
+  amountUi: number,
+): Promise<string> {
+  if (!(amountUi > 0)) throw new Error('Invalid payment amount.');
+
+  let treasuryPk: PublicKey;
+  try {
+    treasuryPk = new PublicKey(treasury);
+  } catch {
+    throw new Error(
+      'Alpha payments are not switched on yet — no treasury address is configured.',
+    );
+  }
+
+  const connection = new Connection(RPC_URL, 'confirmed');
+  const payer = new PublicKey(address);
+  const mint = new PublicKey(USDC_MINT);
+  // Treasury may legitimately be a PDA/multisig — allow an off-curve owner.
+  const fromAta = await getAssociatedTokenAddress(mint, payer);
+  const toAta = await getAssociatedTokenAddress(mint, treasuryPk, true);
+
+  const amount = BigInt(Math.round(amountUi * 10 ** USDC_DECIMALS));
+
+  const [fromInfo, toInfo] = await connection.getMultipleAccountsInfo([
+    fromAta,
+    toAta,
+  ]);
+  if (!fromInfo) {
+    throw new Error(
+      `No USDC in this wallet — add at least ${amountUi} USDC on Solana and try again.`,
+    );
+  }
+  if (!toInfo) {
+    // The treasury has never held USDC, so its token account doesn't exist.
+    // Creating it for them would silently charge the user rent, and sending
+    // anyway is a guaranteed on-chain failure — stop cleanly instead.
+    throw new Error(
+      "The Alpha treasury isn't ready to receive USDC yet — nothing was charged. Try again later.",
+    );
+  }
+
+  // Balance check is best-effort: a flaky RPC read must not block a payment
+  // the wallet would happily complete, so the shortfall is recorded and
+  // thrown OUTSIDE the try rather than being swallowed by its own catch.
+  let shortfall: string | null = null;
+  try {
+    const balance = await connection.getTokenAccountBalance(fromAta);
+    if (BigInt(balance.value.amount) < amount) {
+      shortfall = balance.value.uiAmountString ?? '0';
+    }
+  } catch (e) {
+    console.warn('usdc balance check failed', e);
+  }
+  if (shortfall !== null) {
+    throw new Error(
+      `Not enough USDC — this wallet holds ${shortfall}, and Alpha costs ${amountUi}.`,
+    );
+  }
+
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash('confirmed');
+
+  const tx = new Transaction({
+    feePayer: payer,
+    blockhash,
+    lastValidBlockHeight,
+  }).add(
+    createTransferCheckedInstruction(
+      fromAta,
+      mint,
+      toAta,
+      payer,
+      amount,
+      USDC_DECIMALS,
+    ),
+    new TransactionInstruction({
+      programId: new PublicKey(MEMO_PROGRAM_ID),
+      keys: [],
+      data: Buffer.from(ALPHA_MEMO, 'utf8'),
+    }),
+  );
+
+  const signature = await transact(async (wallet) => {
+    try {
+      await wallet.reauthorize({
+        auth_token: authToken,
+        identity: APP_IDENTITY,
+      });
+    } catch {
+      // Stale auth token (wallet restarted, session expired) — fall back to
+      // a fresh authorize; the user sees one extra approval, not a failure.
+      await wallet.authorize({
+        chain: 'solana:mainnet',
+        identity: APP_IDENTITY,
+      });
+    }
+    const signatures = await wallet.signAndSendTransactions({
+      transactions: [tx],
+    });
+    return signatures[0];
+  });
+
+  if (!signature) throw new Error('The wallet returned no transaction signature.');
+  return signature;
 }

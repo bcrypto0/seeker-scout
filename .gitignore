@@ -13,6 +13,9 @@ dist/
 config.yaml
 indexer/catalog.json
 .env
+# wrangler's local secret file — the worker now fails closed without
+# CHAT_SECRET, so `wrangler dev` needs one, and it must never be committed.
+.dev.vars
 release/
 
 # release APKs are build artifacts (EAS holds the canonical copies)

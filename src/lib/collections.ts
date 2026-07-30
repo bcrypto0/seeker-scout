@@ -15,6 +15,8 @@ export const RATING_MIN_REVIEWS = 20;
 export const RATING_HIGH = 4.5;
 /** Credibility floor for anything we feature as an editorial pick. */
 const PICK_MIN_REVIEWS = 50;
+/** How many vetted gems the daily hero rotates across (see scoutPick). */
+const PICK_POOL = 10;
 
 /**
  * Bayesian-shrunk rating — the honest answer to "sort by review score".
@@ -87,8 +89,20 @@ export function freshlyListed(apps: DappEntry[], n = 10): DappEntry[] {
 /**
  * Scout Pick — one daily hero. Prefer the biggest genuine climber; fall back
  * to the freshest high-trend app so it's never empty.
+ *
+ * WHY THE GEM TIER ROTATES (2026-07-31): the first two tiers almost never fire
+ * in practice, because PICK_MIN_REVIEWS=50 and the apps that swing hardest are
+ * the smallest — measured against the live catalog, the top 6 climbers had
+ * 43/2/1/2/4/2 reviews and the 6 newest listings had 1/0/10/8/2/1, so nothing
+ * cleared the floor. That is the floor working as intended (it exists because
+ * "★5.0 from 10 reviews" once shipped as the hero), but it means the pick lands
+ * on hiddenGems() every day — and that is a pure function of the catalog, so it
+ * returned the SAME app for days (Tribalchat, gem 4.5550 vs 4.3853 for #2).
+ * A "daily hero" that never changes is not a daily hero. Rotating over the
+ * vetted pool by UTC day keeps it deterministic (every device shows the same
+ * pick on the same day) while actually varying.
  */
-export function scoutPick(apps: DappEntry[]): DappEntry | undefined {
+export function scoutPick(apps: DappEntry[], now: Date = new Date()): DappEntry | undefined {
   // Every candidate must clear a credibility floor. The hero is the most
   // prominent editorial claim in the app, and "★5.0 from 10 reviews" reads
   // as noise — a perfect score on a handful of reviews means nothing, and
@@ -105,9 +119,14 @@ export function scoutPick(apps: DappEntry[]): DappEntry | undefined {
 
   // Quality-over-popularity before falling back to the biggest app — a
   // genuinely good under-discovered app is a better pick than the #1 everyone
-  // already has.
-  const gem = hiddenGems(apps, 1)[0];
-  if (gem) return gem;
+  // already has. Rotate across the vetted pool so the hero changes daily.
+  const pool = hiddenGems(apps, PICK_POOL);
+  if (pool.length) {
+    const dayIndex = Math.floor(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 86_400_000,
+    );
+    return pool[((dayIndex % pool.length) + pool.length) % pool.length];
+  }
 
   return [...apps].sort((a, b) => b.trendScore - a.trendScore)[0];
 }

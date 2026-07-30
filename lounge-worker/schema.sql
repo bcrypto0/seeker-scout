@@ -47,3 +47,38 @@ CREATE TABLE IF NOT EXISTS opens (
   day TEXT PRIMARY KEY,
   count INTEGER NOT NULL DEFAULT 0
 );
+
+-- ---------------------------------------------------------------------------
+-- Scout Alpha (docs/SCOUT_ALPHA_SPEC.md §2).
+-- APPLY BY HAND — there is no migration runner in this worker:
+--   wrangler d1 execute seeker-lounge --remote --file=./schema.sql
+-- Every statement here is CREATE ... IF NOT EXISTS, so re-running is safe.
+-- ---------------------------------------------------------------------------
+
+-- Ingested digests. id = 'latest' (the live feed) or 'YYYY-MM-DD' (the dated
+-- snapshot the free teaser is served from, >=24h delayed). status mirrors
+-- payload.freshness.status so the sales gate is one indexed read.
+CREATE TABLE IF NOT EXISTS alpha_digests (
+  id TEXT PRIMARY KEY,
+  generated_ts INTEGER NOT NULL,   -- unix SECONDS
+  status TEXT,                     -- 'live' | 'stale' | 'degraded'
+  payload TEXT NOT NULL            -- the normalized digest JSON
+);
+CREATE INDEX IF NOT EXISTS idx_alpha_digests_ts ON alpha_digests(generated_ts);
+
+-- Paid subscriptions. One row per wallet; paid_until is an ISO-8601 UTC
+-- string (JS toISOString format — do NOT write SQLite datetime() output here,
+-- the two formats do not compare lexicographically).
+CREATE TABLE IF NOT EXISTS alpha_subs (
+  wallet TEXT PRIMARY KEY,
+  paid_until TEXT NOT NULL,
+  last_tx TEXT,
+  updated_at TEXT NOT NULL
+);
+
+-- Replay guard: a payment signature can be redeemed exactly once, forever.
+CREATE TABLE IF NOT EXISTS alpha_tx_used (
+  signature TEXT PRIMARY KEY,
+  wallet TEXT NOT NULL,
+  used_at TEXT NOT NULL
+);

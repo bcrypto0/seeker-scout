@@ -12,3 +12,16 @@ database_id = "7a8a7f11-17cd-40f1-afba-9af1b14af5c8"
 # RPC endpoint: set via `wrangler secret put RPC_URL` (Triton recommended).
 # Deliberately NOT in [vars] — a var here would clobber the secret on every
 # deploy. The worker falls back to the public mainnet RPC when unset.
+
+# Scout Alpha (docs/SCOUT_ALPHA_SPEC.md §2). Secrets — same reasoning as
+# RPC_URL, keep them OUT of [vars]:
+#   wrangler secret put ALPHA_INGEST_SECRET   # exporter's x-alpha-key
+#   wrangler secret put CHAT_SECRET           # already set; also signs alpha tokens
+[vars]
+# Dedicated USDC-receiving treasury for Alpha revenue (created 2026-07-30).
+# Receive-only: its key is cold and nothing here ever signs with it. Must stay
+# identical to ALPHA_TREASURY in src/lib/alpha.ts — the app refuses to pay when
+# the two disagree. If this is ever a non-base58-32-byte string the worker
+# reports sales_open=false and refuses /alpha/subscribe.
+ALPHA_TREASURY = "CosHYybYt2VP6ScfJYqP2KoMFpKL8uckm3fT1JcM71h9"
+ALPHA_PRICE_USDC = "9.99"

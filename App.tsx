@@ -26,6 +26,7 @@ Notifications.setNotificationHandler({
 import { DiscoverScreen } from './src/screens/DiscoverScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { RewardsScreen } from './src/screens/RewardsScreen';
+import { AlphaScreen } from './src/screens/AlphaScreen';
 import { LoungeScreen } from './src/screens/LoungeScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AppDetailScreen } from './src/screens/AppDetailScreen';
@@ -41,6 +42,7 @@ const ICONS: Record<string, string> = {
   Discover: '✦',
   Search: '⌕',
   Rewards: '◈',
+  Alpha: '◆',
   Lounge: '◇',
   Profile: '●',
 };
@@ -73,6 +75,9 @@ function Tabs() {
       <Tab.Screen name="Discover" component={DiscoverScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Rewards" component={RewardsScreen} />
+      {/* 6 tabs as of v0.6 — the bar is at its practical limit on a Seeker;
+          verify label truncation on hardware before shipping another one. */}
+      <Tab.Screen name="Alpha" component={AlphaScreen} />
       <Tab.Screen name="Lounge" component={LoungeScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
