@@ -18,13 +18,21 @@
  *   1. Freshness is reported honestly — an absent or unrecognised status is
  *      'degraded'/'unknown', never optimistically 'live'.
  *   2. We do not sell a stale feed: /alpha/subscribe refuses new paid subs
- *      while the stored digest's freshness.status != 'live'.
+ *      while the digest isn't 'live' — which means BOTH the producer's
+ *      reported status AND the digest's actual age (see MAX_LIVE_AGE_SECONDS).
+ *      The stored status alone never decays, so age is the real gate.
  */
 import { base58 } from '@scure/base';
 import { issueToken, verifyToken } from './token.js';
 import { rpc } from './rpc.js';
 
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+/**
+ * A digest older than this is NOT 'live', whatever the producer said when it
+ * was ingested. The exporter pushes hourly, so 6h tolerates several missed
+ * runs while still refusing to sell yesterday's intel as current.
+ */
+const MAX_LIVE_AGE_SECONDS = 6 * 60 * 60;
 const SUB_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 const FOUNDING_MAX = 100; // claims #1-100: alpha is a gift, no payment needed
 const TEASER_ROWS = 2; // spec §1: "keep counts + first 2 rows of each array"
@@ -281,10 +289,24 @@ async function feedMeta(env) {
   const row = await env.DB.prepare(
     "SELECT generated_ts, status FROM alpha_digests WHERE id = 'latest'",
   ).first();
-  const status = FRESHNESS_STATUSES.includes(row?.status) ? row.status : 'unknown';
+  const stored = FRESHNESS_STATUSES.includes(row?.status) ? row.status : 'unknown';
+  const generatedTs = finiteNum(row?.generated_ts);
+
+  // `stored` is the producer's self-report, frozen at INGEST time — it says
+  // how fresh the signals were when the digest was built, not how old the
+  // digest is NOW. On its own it never decays: when the exporter stopped
+  // pushing, a 46-hour-old digest was still being served as 'live' with
+  // sales_open=true, i.e. we would have taken 9.99 USDC for two-day-old
+  // intel. Age is the authority; the producer can only make it worse.
+  const ageSeconds =
+    generatedTs === null ? null : Math.floor(Date.now() / 1000) - generatedTs;
+  const tooOld = ageSeconds === null || ageSeconds > MAX_LIVE_AGE_SECONDS;
+  const status = tooOld && stored === 'live' ? 'stale' : stored;
+
   return {
     status,
     generated_ts: row?.generated_ts ?? null,
+    age_seconds: ageSeconds,
     // We refuse to take money for a feed that isn't live, and we refuse to
     // point a payment at an unconfigured treasury.
     salesOpen: status === 'live' && treasuryOf(env) !== null,
