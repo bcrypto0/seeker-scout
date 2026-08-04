@@ -34,7 +34,23 @@ const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
  */
 const MAX_LIVE_AGE_SECONDS = 6 * 60 * 60;
 const SUB_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
-const FOUNDING_MAX = 100; // claims #1-100: alpha is a gift, no payment needed
+/**
+ * Free-Alpha founder window.
+ *
+ * This started at 100 with no expiry, which made the paid tier unreachable:
+ * only a Genesis holder can pay at all, and every one of them could instead
+ * take a free-forever slot via the "Claim your Lounge number" button on the
+ * paywall screen itself. 88 slots were still open. Nobody ever had a reason
+ * to pay.
+ *
+ * Narrowed to 25 AND time-boxed. Claims #1-GRANDFATHERED_THROUGH keep the
+ * original free-forever promise — that shipped inside a store build and in a
+ * live in-app banner, and clawing it back would be a rug for the sake of a
+ * few dollars. Everyone after them gets a generous trial instead.
+ */
+const FOUNDING_MAX = 25;
+const GRANDFATHERED_THROUGH = 12; // claims that predate the change (2026-08-04)
+const FOUNDER_TRIAL_DAYS = 90;
 const TEASER_ROWS = 2; // spec §1: "keep counts + first 2 rows of each array"
 const TEASER_DELAY_MS = 24 * 60 * 60 * 1000;
 const MAX_INGEST_BYTES = 512 * 1024;
@@ -315,11 +331,46 @@ async function feedMeta(env) {
 
 /**
  * Entitlement for a wallet. `number` is its founding number (or null).
- * Founders (#1-100) are entitled with no payment; everyone else needs a sub
- * whose paid_until is in the future.
+ *
+ * Free access rules:
+ *   #1-GRANDFATHERED_THROUGH  free forever (the promise they were shipped)
+ *   next, up to FOUNDING_MAX  free for FOUNDER_TRIAL_DAYS from their claim
+ *   everyone else             needs a sub whose paid_until is in the future
+ *
+ * A trial that has run out is NOT founding — it falls through to the paid
+ * path, which is the entire point of time-boxing it.
  */
 async function entitlement(env, wallet, number) {
-  const founding = Number.isInteger(number) && number > 0 && number <= FOUNDING_MAX;
+  const numbered = Number.isInteger(number) && number > 0;
+  const inWindow = numbered && number <= FOUNDING_MAX;
+  let founding = numbered && number <= GRANDFATHERED_THROUGH;
+  let foundingUntil = null;
+
+  if (!founding && inWindow) {
+    // Time-boxed trial, measured from when they claimed their number.
+    let claimedAt = null;
+    try {
+      const c = await env.DB.prepare('SELECT claimed_at FROM claims WHERE id = ?')
+        .bind(number).first();
+      claimedAt = c?.claimed_at ?? null;
+    } catch {
+      // A claims-lookup failure must not silently revoke someone's trial.
+      // Fail OPEN for the free tier: worst case we gift a few extra days,
+      // which is strictly better than telling a member their access vanished.
+      founding = true;
+    }
+    if (!founding) {
+      const startMs = claimedAt === null ? NaN : Date.parse(claimedAt);
+      if (Number.isFinite(startMs)) {
+        const endMs = startMs + FOUNDER_TRIAL_DAYS * 86_400_000;
+        foundingUntil = new Date(endMs).toISOString();
+        founding = endMs > Date.now();
+      } else {
+        founding = true; // unparseable claim date → same fail-open reasoning
+      }
+    }
+  }
+
   let paidUntil = null;
   let paidUntilMs = 0;
   const row = await env.DB.prepare('SELECT paid_until FROM alpha_subs WHERE wallet = ?')
@@ -333,6 +384,7 @@ async function entitlement(env, wallet, number) {
   }
   return {
     founding,
+    founding_until: foundingUntil, // null = forever (grandfathered) or n/a
     paid_until: paidUntil,
     paidUntilMs,
     active: founding || paidUntilMs > Date.now(),
@@ -746,7 +798,12 @@ async function route(request, env, url, verifyFn) {
         error: 'storage error — subscription not written and your transaction was not consumed, please retry',
       }, 500);
     }
-    const founding = Number.isInteger(res.number) && res.number > 0 && res.number <= FOUNDING_MAX;
+    // Only the grandfathered numbers are "founding" in the sense this field
+    // means — free access by virtue of the number alone. A #13-25 trial
+    // member who chose to pay has access because they paid, and saying
+    // otherwise here would contradict entitlement() once their trial lapses.
+    const founding =
+      Number.isInteger(res.number) && res.number > 0 && res.number <= GRANDFATHERED_THROUGH;
     return json({
       ok: true,
       wallet,
