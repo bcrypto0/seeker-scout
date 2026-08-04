@@ -57,9 +57,13 @@ const MAX_INGEST_BYTES = 512 * 1024;
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_ROWS = 500; // per digest array — bounds a hostile/runaway ingest
 const DIGEST_RETENTION_DAYS = 14;
-// Dated rows the retention sweep keeps no matter how old they are, so a
-// resumed exporter can never wipe the corpus the free teaser is served from.
-const TEASER_KEEP_ROWS = 2;
+// Retained rows the sweep keeps no matter how old they are, so a resumed
+// exporter can never wipe the corpus the free teaser is served from. Rows are
+// keyed hourly, so this floor is measured in HOURS: 48 keeps two days' worth,
+// which guarantees at least one row on the far side of the 24h teaser delay
+// even if the exporter has been down. (It was 2 when rows were keyed daily —
+// left at 2 it would have meant a two-HOUR floor and an empty teaser.)
+const TEASER_KEEP_ROWS = 48;
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const DEFAULT_PRICE_USDC = '9.99';
 const AMOUNT_EPSILON = 1e-9; // float slack on the price compare
@@ -593,7 +597,13 @@ async function route(request, env, url, verifyFn) {
     if (!digest) return json({ error: 'invalid digest' }, 400);
 
     const payload = JSON.stringify(digest);
-    const day = new Date(digest.generated_ts * 1000).toISOString().slice(0, 10);
+    // Key the retained row by HOUR, not calendar day. Keyed by day, a row held
+    // that day's LAST push (~23:0x UTC), so the >=24h-old teaser query kept
+    // skipping it and falling back another whole day — the effective delay
+    // oscillated between 24h and ~48h, and the free preview (which is the
+    // sales pitch) was observed serving a 45.9-hour-old digest. Hourly keying
+    // means there is always a row just over the 24h line.
+    const bucket = new Date(digest.generated_ts * 1000).toISOString().slice(0, 13);
     const upsert =
       'INSERT INTO alpha_digests (id, generated_ts, status, payload) VALUES (?, ?, ?, ?) ' +
       'ON CONFLICT(id) DO UPDATE SET generated_ts = excluded.generated_ts, ' +
@@ -603,7 +613,7 @@ async function route(request, env, url, verifyFn) {
     try {
       await env.DB.batch([
         env.DB.prepare(upsert).bind('latest', digest.generated_ts, digest.freshness.status, payload),
-        env.DB.prepare(upsert).bind(day, digest.generated_ts, digest.freshness.status, payload),
+        env.DB.prepare(upsert).bind(bucket, digest.generated_ts, digest.freshness.status, payload),
       ]);
     } catch {
       return json({ error: 'storage error' }, 500);
@@ -628,7 +638,7 @@ async function route(request, env, url, verifyFn) {
     for (const key of DIGEST_ARRAYS) counts[key] = digest[key].length;
     return json({
       ok: true,
-      day,
+      bucket,
       generated_ts: digest.generated_ts,
       status: digest.freshness.status,
       counts,
