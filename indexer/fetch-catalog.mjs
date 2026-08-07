@@ -42,6 +42,16 @@ const BAYES_PRIOR_MEAN = 4.1;
  */
 const SCORING_SCHEME = 2;
 
+/** Trim to max chars on a word boundary, appending an ellipsis if cut. */
+function clip(text, max) {
+  const t = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
+  if (!t) return '';
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 1);
+  const atWord = cut.slice(0, Math.max(cut.lastIndexOf(' '), max - 40));
+  return `${atWord.trimEnd()}…`;
+}
+
 export function transform(payload) {
   const units = payload?.data?.explore?.units?.edges ?? [];
   const byId = new Map();
@@ -67,6 +77,12 @@ export function transform(payload) {
         continue;
       }
 
+      // The feed's changelog is human-written on ~1,200 apps and we were
+      // discarding it. Truncate on a word boundary: it renders as a card
+      // blurb, and half the store descriptions already taught us that
+      // mid-word cuts ("…Use da") read as broken.
+      const whatsNew = clip(rel.newInVersion, 240);
+
       byId.set(n.androidPackage, {
         id: n.androidPackage,
         name: rel.displayName ?? n.androidPackage,
@@ -77,6 +93,10 @@ export function transform(payload) {
         lastUpdated: (rel.updatedOn ?? '').slice(0, 10),
         rating,
         reviews,
+        // Full 1..5-star counts — lets the app show whether a 3.5 is
+        // "mediocre" or "polarizing", which no rank number can.
+        ...(reviews > 0 && hist.length === 5 ? { ratingHistogram: hist } : {}),
+        ...(whatsNew ? { whatsNew } : {}),
         iconUrl: rel.icon?.uri,
         publisher: rel.publisherDetails?.name,
         website: rel.publisherDetails?.website,

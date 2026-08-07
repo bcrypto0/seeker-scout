@@ -49,6 +49,13 @@ export interface DappEntry {
   onchainVerified?: boolean;
   /** Count of immutable on-chain Release NFTs for this app */
   onchainReleaseCount?: number;
+  /**
+   * 1★..5★ review counts, oldest-to-newest star order. Present on ~98% of
+   * apps — shows whether a middling average is mediocre or polarizing.
+   */
+  ratingHistogram?: number[];
+  /** Publisher's changelog for the current release (word-clipped ~240 chars) */
+  whatsNew?: string;
 }
 
 /**

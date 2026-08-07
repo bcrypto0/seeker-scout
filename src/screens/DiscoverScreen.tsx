@@ -18,15 +18,17 @@ import { fetchCatalog, isCatalogCached } from '../lib/catalog';
 import { bayesRating, isHighlyRated, RATING_HIGH } from '../lib/collections';
 import { checkWatchlist } from '../lib/notify';
 import { maybeAskAfterSessions } from '../lib/reviewPrompt';
+import { getTryList, onTryListChange } from '../lib/trylist';
 import { getWatchlist, onWatchlistChange } from '../lib/watchlist';
 import { Category, DappEntry } from '../lib/types';
 import { colors, heading } from '../theme';
 
 const WATCHING = '★ Watching';
+const TO_TRY = '📌 To try';
 
-const CATEGORIES: (Category | 'All' | typeof WATCHING)[] = [
-  'All', WATCHING, 'DeFi & Trading', 'Games', 'Wallets', 'DePIN', 'NFTs',
-  'Privacy & Security', 'Content & Streaming', 'Productivity',
+const CATEGORIES: (Category | 'All' | typeof WATCHING | typeof TO_TRY)[] = [
+  'All', WATCHING, TO_TRY, 'DeFi & Trading', 'Games', 'Wallets', 'DePIN',
+  'NFTs', 'Privacy & Security', 'Content & Streaming', 'Productivity',
   'Social & Identity', 'AI & Agents', 'Lifestyle',
 ];
 
@@ -46,12 +48,13 @@ export function DiscoverScreen() {
   const [apps, setApps] = useState<DappEntry[]>([]);
   const [loading, setLoading] = useState(() => !isCatalogCached());
   const [refreshing, setRefreshing] = useState(false);
-  const [cat, setCat] = useState<Category | 'All' | typeof WATCHING>('All');
+  const [cat, setCat] = useState<Category | 'All' | typeof WATCHING | typeof TO_TRY>('All');
   const [sort, setSort] = useState<SortMode>('trending');
   // bacon.skr's ask, literal half: hide anything that isn't genuinely
   // well-rated (review-count gated so it can't fill up with 5.0-from-3 apps).
   const [topRatedOnly, setTopRatedOnly] = useState(false);
   const [watched, setWatched] = useState<Set<string>>(new Set());
+  const [toTry, setToTry] = useState<Set<string>>(new Set());
   const listRef = useRef<FlatList<DappEntry>>(null);
   const checkedRef = useRef(false);
 
@@ -74,12 +77,17 @@ export function DiscoverScreen() {
     const askTimer = setTimeout(() => {
       maybeAskAfterSessions();
     }, 2500);
+    getTryList().then((ids) => setToTry(new Set(ids)));
     const off = onWatchlistChange(() =>
       getWatchlist().then((ids) => setWatched(new Set(ids))),
+    );
+    const offTry = onTryListChange(() =>
+      getTryList().then((ids) => setToTry(new Set(ids))),
     );
     return () => {
       clearTimeout(askTimer);
       off();
+      offTry();
     };
   }, []);
 
@@ -108,7 +116,9 @@ export function DiscoverScreen() {
             ? true
             : cat === WATCHING
               ? watched.has(a.id)
-              : a.category === cat,
+              : cat === TO_TRY
+                ? toTry.has(a.id)
+                : a.category === cat,
         )
         .filter((a) => !topRatedOnly || isHighlyRated(a))
         .sort((a, b) =>
@@ -119,7 +129,7 @@ export function DiscoverScreen() {
               ? bayesRating(b) - bayesRating(a) || b.trendScore - a.trendScore
               : b.trendScore - a.trendScore,
         ),
-    [apps, cat, sort, watched, topRatedOnly],
+    [apps, cat, sort, watched, toTry, topRatedOnly],
   );
 
   const tickerItems = useMemo(() => {
@@ -149,6 +159,7 @@ export function DiscoverScreen() {
   // is told "tap the star on any app to watch it" and thinks we lost them.
   const emptyRated = topRatedOnly && filtered.length === 0;
   const emptyWatching = !emptyRated && cat === WATCHING && filtered.length === 0;
+  const emptyToTry = !emptyRated && cat === TO_TRY && filtered.length === 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -220,6 +231,14 @@ export function DiscoverScreen() {
           <Text style={styles.emptyText}>
             Tap the star on any app to watch it. You'll get a heads-up when a
             watched app climbs the ranks or ships an update.
+          </Text>
+        </View>
+      ) : emptyToTry ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyStar}>📌</Text>
+          <Text style={styles.emptyText}>
+            Found something worth trying? Open any app's page and tap
+            “📌 Try later” — it lands here so you don't lose it.
           </Text>
         </View>
       ) : (

@@ -1,8 +1,8 @@
 [
   {
-    "id": "review-cta",
-    "title": "Enjoying Seeker Scout? ⭐",
-    "tagline": "Leave a review on the dApp Store — early reviews decide what the radar surfaces next.",
+    "id": "you-asked-we-shipped",
+    "title": "You asked → we shipped ⭐",
+    "tagline": "Newest-first, all-store rewards and the Top rated filter all came from reviews. Ask for the next one in a dApp Store review — requests have shipped within days.",
     "label": "Seeker Scout",
     "storePackage": "com.bilal.seekerscout"
   },

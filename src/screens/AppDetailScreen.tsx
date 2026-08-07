@@ -3,6 +3,7 @@ import {
   Linking,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -13,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../components/AppIcon';
 import { DeltaChip } from '../components/DeltaChip';
 import { Sparkline } from '../components/Sparkline';
+import { TryButton } from '../components/TryButton';
 import { WatchButton } from '../components/WatchButton';
 import { fetchCatalog } from '../lib/catalog';
 import { DappEntry } from '../lib/types';
@@ -54,6 +56,19 @@ export function AppDetailScreen() {
   const openStore = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     Linking.openURL(`solanadappstore://details?id=${app.id}`).catch(() => {});
+  };
+
+  const share = () => {
+    Haptics.selectionAsync().catch(() => {});
+    // Deep link works on any Seeker (the audience that can act on it);
+    // seekerscout.com covers everyone else.
+    Share.share({
+      message:
+        `${app.name} — ★ ${app.rating.toFixed(1)} (${app.reviews.toLocaleString()} reviews)` +
+        `${ranks.overall ? ` · #${ranks.overall} on the Seeker dApp Store` : ''}\n` +
+        `Install: solanadappstore://details?id=${app.id}\n` +
+        `Found via Seeker Scout 🛰️ seekerscout.com`,
+    }).catch(() => {});
   };
 
   return (
@@ -114,6 +129,19 @@ export function AppDetailScreen() {
           )}
         </View>
 
+        <View style={styles.tryRow}>
+          <TryButton id={app.id} />
+          <Pressable
+            onPress={share}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.sharePill}
+          >
+            <Text style={styles.sharePillText}>↗ Share</Text>
+          </Pressable>
+        </View>
+
+        <Histogram hist={app.ratingHistogram} reviews={app.reviews} />
+
         {!!app.rankHistory && app.rankHistory.length >= 2 && (
           <View style={styles.trendCard}>
             <View style={{ flex: 1 }}>
@@ -125,6 +153,15 @@ export function AppDetailScreen() {
               </Text>
             </View>
             <Sparkline data={app.rankHistory} width={120} height={34} />
+          </View>
+        )}
+
+        {!!app.whatsNew && (
+          <View style={styles.whatsNewCard}>
+            <Text style={styles.whatsNewLabel}>
+              WHAT'S NEW{app.version ? ` · ${app.version}` : ''}
+            </Text>
+            <Text style={styles.whatsNewText}>{app.whatsNew}</Text>
           </View>
         )}
 
@@ -141,6 +178,40 @@ export function AppDetailScreen() {
         </Pressable>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/**
+ * 1★..5★ distribution bars (v0.7). Answers the question the average hides:
+ * is a 3.5 mediocre across the board, or loved-and-hated? Hidden below 5
+ * reviews — a histogram of three ratings is noise dressed as data.
+ */
+function Histogram({ hist, reviews }: { hist?: number[]; reviews: number }) {
+  if (!hist || hist.length !== 5 || reviews < 5) return null;
+  const max = Math.max(...hist, 1);
+  // hist arrives as [1★..5★]; render 5★ first, the order stores use.
+  const rows = [4, 3, 2, 1, 0];
+  return (
+    <View style={styles.histCard}>
+      <Text style={styles.histLabel}>RATING BREAKDOWN</Text>
+      {rows.map((i) => (
+        <View key={i} style={styles.histRow}>
+          <Text style={styles.histStar}>{i + 1}★</Text>
+          <View style={styles.histTrack}>
+            <View
+              style={[
+                styles.histBar,
+                {
+                  width: `${Math.max(2, Math.round(((hist[i] || 0) / max) * 100))}%`,
+                  backgroundColor: i >= 3 ? colors.green : i === 2 ? colors.yellow : colors.red,
+                },
+              ]}
+            />
+          </View>
+          <Text style={styles.histCount}>{(hist[i] || 0).toLocaleString()}</Text>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -237,6 +308,52 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
     marginHorizontal: 16, marginTop: 18, padding: 14,
   },
+  tryRow: {
+    flexDirection: 'row', gap: 10, alignItems: 'center',
+    paddingHorizontal: 16, marginTop: 14,
+  },
+  sharePill: {
+    height: 34, justifyContent: 'center', paddingHorizontal: 14,
+    borderRadius: 17, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  sharePillText: {
+    color: colors.textDim, fontSize: 13, fontWeight: '700',
+    includeFontPadding: false,
+  },
+  histCard: {
+    backgroundColor: colors.card, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border,
+    marginHorizontal: 16, marginTop: 18, padding: 14,
+  },
+  histLabel: {
+    color: colors.textDim, fontSize: 10, fontWeight: '800',
+    letterSpacing: 0.8, marginBottom: 10,
+  },
+  histRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  histStar: {
+    color: colors.textDim, fontSize: 11, fontWeight: '700',
+    width: 24, textAlign: 'right', fontVariant: ['tabular-nums'],
+  },
+  histTrack: {
+    flex: 1, height: 8, borderRadius: 4,
+    backgroundColor: colors.overlay, overflow: 'hidden',
+  },
+  histBar: { height: 8, borderRadius: 4 },
+  histCount: {
+    color: colors.textDim, fontSize: 11, width: 48,
+    fontVariant: ['tabular-nums'],
+  },
+  whatsNewCard: {
+    backgroundColor: colors.card, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border,
+    marginHorizontal: 16, marginTop: 18, padding: 14,
+  },
+  whatsNewLabel: {
+    color: colors.green, fontSize: 10, fontWeight: '800',
+    letterSpacing: 0.8, marginBottom: 6,
+  },
+  whatsNewText: { color: colors.text, fontSize: 13, lineHeight: 19 },
   trendLabel: { color: colors.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
   trendSub: { color: colors.text, fontSize: 15, fontFamily: fonts.semi, marginTop: 3 },
   publisher: { color: colors.textDim, fontSize: 13, marginTop: 2 },
