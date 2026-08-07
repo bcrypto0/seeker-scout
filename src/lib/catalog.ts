@@ -188,7 +188,10 @@ export async function fetchCatalog(force = false): Promise<DappEntry[]> {
 async function doFetchCatalog(): Promise<DappEntry[]> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    // 15s, not 8: the catalog grew ~21% (histograms + changelogs, ~1.24MB)
+    // and a slow-but-alive connection that aborts here silently falls back
+    // to the 43-app seed — a much worse outcome than a longer spinner.
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(CATALOG_URL, { signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) throw new Error(`catalog ${res.status}`);

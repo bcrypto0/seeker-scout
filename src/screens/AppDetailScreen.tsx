@@ -25,29 +25,35 @@ const NEW_WINDOW_MS = 14 * 86_400_000;
 /** In-app info page between the feed and the store (CEO request + move #9). */
 export function AppDetailScreen() {
   const nav = useNavigation();
-  const { app } = useRoute().params as { app: DappEntry };
+  const { app: routeApp } = useRoute().params as { app: DappEntry };
   const [ranks, setRanks] = useState<{ overall?: number; cat?: number }>({});
+  // The route param can be a STALE copy (an older cached catalog without
+  // ratingHistogram/whatsNew, or from the 43-app seed). We fetch the catalog
+  // for ranks anyway — prefer the live entry when it exists.
+  const [liveApp, setLiveApp] = useState<DappEntry | null>(null);
+  const app = liveApp ?? routeApp;
 
   useEffect(() => {
     let alive = true;
     fetchCatalog().then((list) => {
       if (!alive) return;
       const sorted = [...list].sort((a, b) => b.trendScore - a.trendScore);
-      const overall = sorted.findIndex((x) => x.id === app.id) + 1;
+      const live = sorted.find((x) => x.id === routeApp.id) ?? null;
+      setLiveApp(live);
+      const overall = sorted.findIndex((x) => x.id === routeApp.id) + 1;
       // Rank within the LIVE entry's category (the route param may carry an
       // older category label than the current catalog).
-      const liveCat = sorted.find((x) => x.id === app.id)?.category;
-      const cat = liveCat
+      const cat = live
         ? sorted
-            .filter((x) => x.category === liveCat)
-            .findIndex((x) => x.id === app.id) + 1
+            .filter((x) => x.category === live.category)
+            .findIndex((x) => x.id === routeApp.id) + 1
         : 0;
       setRanks({ overall: overall || undefined, cat: cat || undefined });
     });
     return () => {
       alive = false;
     };
-  }, [app.id]);
+  }, [routeApp.id]);
 
   const fresh = freshness(app.lastUpdated);
   const isNew =
@@ -60,13 +66,19 @@ export function AppDetailScreen() {
 
   const share = () => {
     Haptics.selectionAsync().catch(() => {});
-    // Deep link works on any Seeker (the audience that can act on it);
-    // seekerscout.com covers everyone else.
+    // No raw solanadappstore:// URI — messengers render custom schemes as
+    // dead text, and a dead "link" reads as broken. "Search the store" works
+    // for every recipient; seekerscout.com covers the rest. Zero-review apps
+    // (the most likely share — new finds) say NEW instead of "★ 0.0 (0)".
+    const cred =
+      app.reviews > 0
+        ? `★ ${app.rating.toFixed(1)} (${app.reviews.toLocaleString()} reviews)`
+        : 'NEW';
     Share.share({
       message:
-        `${app.name} — ★ ${app.rating.toFixed(1)} (${app.reviews.toLocaleString()} reviews)` +
+        `${app.name} — ${cred}` +
         `${ranks.overall ? ` · #${ranks.overall} on the Seeker dApp Store` : ''}\n` +
-        `Install: solanadappstore://details?id=${app.id}\n` +
+        `On the Solana dApp Store — search "${app.name}"\n` +
         `Found via Seeker Scout 🛰️ seekerscout.com`,
     }).catch(() => {});
   };
@@ -198,15 +210,19 @@ function Histogram({ hist, reviews }: { hist?: number[]; reviews: number }) {
         <View key={i} style={styles.histRow}>
           <Text style={styles.histStar}>{i + 1}★</Text>
           <View style={styles.histTrack}>
-            <View
-              style={[
-                styles.histBar,
-                {
-                  width: `${Math.max(2, Math.round(((hist[i] || 0) / max) * 100))}%`,
-                  backgroundColor: i >= 3 ? colors.green : i === 2 ? colors.yellow : colors.red,
-                },
-              ]}
-            />
+            {/* Zero-count rows get NO bar — the 2% floor exists so tiny
+                nonzero counts stay visible, not to invent data. */}
+            {(hist[i] || 0) > 0 && (
+              <View
+                style={[
+                  styles.histBar,
+                  {
+                    width: `${Math.max(2, Math.round(((hist[i] || 0) / max) * 100))}%`,
+                    backgroundColor: i >= 3 ? colors.green : i === 2 ? colors.yellow : colors.red,
+                  },
+                ]}
+              />
+            )}
           </View>
           <Text style={styles.histCount}>{(hist[i] || 0).toLocaleString()}</Text>
         </View>

@@ -42,13 +42,26 @@ const BAYES_PRIOR_MEAN = 4.1;
  */
 const SCORING_SCHEME = 2;
 
-/** Trim to max chars on a word boundary, appending an ellipsis if cut. */
+/**
+ * Trim to max chars on a word boundary, appending an ellipsis if cut.
+ * Newlines survive — changelogs are usually bullet lists, and collapsing
+ * them to one line turns "- Fixed X\n- Added Y" into run-on prose.
+ */
 function clip(text, max) {
-  const t = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
+  const t =
+    typeof text === 'string'
+      ? text
+          .split(/\n+/)
+          .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+          .filter(Boolean)
+          .join('\n')
+      : '';
   if (!t) return '';
   if (t.length <= max) return t;
   const cut = t.slice(0, max - 1);
-  const atWord = cut.slice(0, Math.max(cut.lastIndexOf(' '), max - 40));
+  let atWord = cut.slice(0, Math.max(cut.lastIndexOf(' '), max - 40));
+  // Never split a surrogate pair — a lone high surrogate renders as '�'.
+  if (/[\uD800-\uDBFF]$/.test(atWord)) atWord = atWord.slice(0, -1);
   return `${atWord.trimEnd()}…`;
 }
 
