@@ -500,8 +500,8 @@ export function AlphaScreen() {
       >
         <Text style={styles.h1}>Alpha</Text>
         <Text style={styles.sub}>
-          Smart-money clusters, wallet quality, and listing radar — straight
-          from our own trading intel.
+          Exchange listing radar, smart-money clusters and wallet grades —
+          straight from the intel feed we trade on ourselves.
         </Text>
 
         {digest && <FreshnessBanner digest={digest} entitled={entitled} />}
@@ -550,9 +550,16 @@ export function AlphaScreen() {
           </View>
         ) : (
           <>
+            <AtAGlance digest={digest} />
+            {/* Listing Radar leads (2026-08-09). It is the one signal here
+                that no free tool reproduces — a 5-minute poll of exchange
+                coin-config state, with 99 days of public history behind it.
+                Smart-money clusters on fresh pump.fun mints are commodity by
+                comparison, and burying the differentiated feed under them was
+                why the tab read as noise. */}
+            <ListingSection digest={digest} locked={!entitled} />
             <SmartMoneySection digest={digest} locked={!entitled} />
             <LeaderboardSection digest={digest} locked={!entitled} />
-            <ListingSection digest={digest} locked={!entitled} />
             <CatalystSection digest={digest} locked={!entitled} />
             <UnlockSection digest={digest} locked={!entitled} />
           </>
@@ -867,26 +874,90 @@ function FreshnessBanner({
 
 /* ------------------------------ sections -------------------------------- */
 
+/**
+ * Section chrome. `blurb` is not decoration — it is the fix for the tab's
+ * biggest problem (2026-08-09): every section was a wall of jargon
+ * ("PRE_LISTING · listing_events", "UNGRADED · hidden · — · —") that assumed
+ * the reader already knew what the War Room measures. The founder, who built
+ * it, could not read his own feed. One plain line per section explaining what
+ * the rows ARE and what they are not is the difference between intel and noise.
+ */
 function SectionHeader({
   title,
+  blurb,
   shown,
   total,
   locked,
 }: {
   title: string;
+  blurb?: string;
   shown: number;
   total: number;
   locked: boolean;
 }) {
   const hidden = Math.max(0, total - shown);
   return (
-    <View style={styles.sectionRow}>
-      <Text style={styles.section}>
-        {title} ({total})
+    <>
+      <View style={styles.sectionRow}>
+        <Text style={styles.section}>
+          {title} ({total})
+        </Text>
+        {locked && hidden > 0 && (
+          <Text style={styles.lockChip}>🔒 {hidden} more</Text>
+        )}
+      </View>
+      {!!blurb && <Text style={styles.sectionBlurb}>{blurb}</Text>}
+    </>
+  );
+}
+
+/**
+ * One line answering "is there anything here for me?" before any scrolling.
+ * Counts come from `counts` (the pre-redaction totals) so the free preview
+ * reports what actually fired, not what survived the trim.
+ */
+function AtAGlance({ digest }: { digest: AlphaDigest }) {
+  const parts: string[] = [];
+  const listings = digest.counts.listing_radar ?? digest.listing_radar.length;
+  if (listings > 0) {
+    // `counts` are PRE-redaction totals; the arrays are post-trim (the teaser
+    // ships 2 rows). Breaking "N of which are pre-listing" out of a count we
+    // measured on a different population told free readers "25 events
+    // (2 pre-listing)" when all 25 were pre-listing — understating the one
+    // signal we actually sell. Only break it out when nothing was trimmed.
+    const complete = listings === digest.listing_radar.length;
+    const preListing = digest.listing_radar.filter((l) => l.is_pre_listing).length;
+    // "Event", not "flip": listing_radar merges deposit-config flips with
+    // Korean-exchange monitors and announcement pollers, which are not flips.
+    const noun = listings === 1 ? 'event' : 'events';
+    parts.push(
+      complete && preListing > 0
+        ? `${listings} exchange ${noun} (${preListing} pre-listing)`
+        : `${listings} exchange ${noun}`,
+    );
+  }
+  const clusters = digest.counts.smart_money ?? digest.smart_money.length;
+  if (clusters > 0) {
+    parts.push(`${clusters} cluster ${clusters === 1 ? 'buy' : 'buys'}`);
+  }
+  const catalysts = digest.counts.catalysts ?? digest.catalysts.length;
+  if (catalysts > 0) {
+    parts.push(`${catalysts} ${catalysts === 1 ? 'catalyst' : 'catalysts'}`);
+  }
+  const unlocks = digest.counts.unlock_watch ?? digest.unlock_watch.length;
+  if (unlocks > 0) {
+    parts.push(`${unlocks} ${unlocks === 1 ? 'unlock' : 'unlocks'} ahead`);
+  }
+  if (parts.length === 0) return null;
+
+  const last = parts.pop() as string;
+  const sentence = parts.length ? `${parts.join(', ')} and ${last}` : last;
+  return (
+    <View style={styles.glance}>
+      <Text style={styles.glanceText}>
+        <Text style={styles.glanceLead}>In this window: </Text>
+        {sentence}.
       </Text>
-      {locked && hidden > 0 && (
-        <Text style={styles.lockChip}>🔒 {hidden} more</Text>
-      )}
     </View>
   );
 }
@@ -905,6 +976,10 @@ function SmartMoneySection({
     <>
       <SectionHeader
         title="SMART-MONEY CLUSTERS"
+        blurb={
+          'Wallets we track buying the same token within minutes of each other. ' +
+          'We show each wallet’s grade where we have one so you can judge the cluster — a grade is a record of past trades, not a forecast.'
+        }
         shown={list.length}
         total={total}
         locked={locked}
@@ -917,6 +992,20 @@ function SmartMoneySection({
 }
 
 function ClusterCard({ cluster }: { cluster: AlphaSmartMoney }) {
+  // Wallets NOT SENT to us — cut by the exporter's top-N cap or the teaser's
+  // trim. This is a truncation count and nothing more: a cut wallet's tier was
+  // never transmitted, so it is not "ungraded", and roughly half of all graded
+  // wallets are CORE. An earlier draft folded these together with the untiered
+  // rows and told the reader all of them had "no closed trades on record",
+  // which asserted a fact about wallets we know nothing about.
+  const notShown = Math.max(0, cluster.wallet_count - cluster.top_wallets.length);
+  // Guard the sentence below against a malformed row: parseSmartMoney defaults
+  // wallet_count to 0 and window_sec to 0, and duration(0) returns the literal
+  // "the window" — which would read "0 wallets ... within the window of each
+  // other". Fall back to a sentence that stays true with either missing.
+  const n = cluster.wallet_count > 0 ? cluster.wallet_count : cluster.top_wallets.length;
+  const windowed = cluster.window_sec > 0;
+
   return (
     <PressableCard style={styles.card}>
       <View style={styles.cardHead}>
@@ -929,11 +1018,15 @@ function ClusterCard({ cluster }: { cluster: AlphaSmartMoney }) {
           </Text>
         )}
       </View>
-      <Text style={styles.cardMeta}>
-        <Text style={styles.numStrong}>{cluster.wallet_count}</Text> wallets ·{' '}
-        <Text style={styles.numStrong}>{cluster.buy_count}</Text> buys in{' '}
-        {duration(cluster.window_sec)} · {since(cluster.ts)}
+      {/* Plain sentence first, machine detail second. "2 wallets · 2 buys in
+          30m" is a stat line; a paying reader needs to know what HAPPENED. */}
+      <Text style={styles.rowPlain}>
+        <Text style={styles.numStrong}>{n}</Text>{' '}
+        {n === 1 ? 'wallet we track' : 'wallets we track'} bought this
+        {windowed ? ` within ${duration(cluster.window_sec)} of each other` : ''}
+        {cluster.buy_count > n ? `, ${cluster.buy_count} buys in total` : ''}.
       </Text>
+      <Text style={styles.cardMeta}>{since(cluster.ts)}</Text>
       {cluster.mint ? (
         <Text style={styles.mint} numberOfLines={1}>
           {shortAddr(cluster.mint)} · {cluster.chain}
@@ -941,6 +1034,11 @@ function ClusterCard({ cluster }: { cluster: AlphaSmartMoney }) {
       ) : (
         <Text style={styles.mintHidden}>mint hidden in the free preview</Text>
       )}
+      {/* Every wallet row stays, ungraded ones included. An untiered wallet's
+          ADDRESS is the thing a subscriber is paying for — it's checkable on
+          any explorer — so hiding the row to reduce clutter would delete the
+          product. Quiet the empty cells instead: an ungraded wallet has no
+          closed trades we attributed, which is not a 0% win rate. */}
       {cluster.top_wallets.map((w, i) => (
         <View key={`${w.addr ?? 'x'}-${i}`} style={styles.walletRow}>
           <Text style={[styles.tier, { color: tierColor(w.tier) }]}>
@@ -949,18 +1047,21 @@ function ClusterCard({ cluster }: { cluster: AlphaSmartMoney }) {
           <Text style={styles.walletAddr} numberOfLines={1}>
             {w.addr ? shortAddr(w.addr) : 'hidden'}
           </Text>
-          <Text style={styles.walletStat}>{pct(w.win_rate)}</Text>
-          <Text style={[styles.walletStat, pnlStyle(w.pnl_usd)]}>
-            {usd(w.pnl_usd)}
-          </Text>
+          {w.tier && (w.win_rate !== null || w.pnl_usd !== null) ? (
+            <>
+              <Text style={styles.walletStat}>{pct(w.win_rate)}</Text>
+              <Text style={[styles.walletStat, pnlStyle(w.pnl_usd)]}>
+                {usd(w.pnl_usd)}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.walletNoRecord}>no closed trades yet</Text>
+          )}
         </View>
       ))}
-      {/* The header counts every wallet in the cluster; the teaser trims the
-          list and drops rows it redacted to nothing. Say so rather than let
-          "7 wallets" sit above two rows with no explanation. */}
-      {cluster.wallet_count > cluster.top_wallets.length && (
+      {notShown > 0 && (
         <Text style={styles.walletMore}>
-          +{cluster.wallet_count - cluster.top_wallets.length} not shown
+          +{notShown} more {notShown === 1 ? 'wallet' : 'wallets'} not shown
         </Text>
       )}
     </PressableCard>
@@ -981,6 +1082,9 @@ function LeaderboardSection({
     <>
       <SectionHeader
         title="WALLET LEADERBOARD"
+        blurb={
+          'Every wallet ranked on trades we watched open AND close. Win rate and PnL are our own measurement, not a claim from the wallet.'
+        }
         shown={list.length}
         total={total}
         locked={locked}
@@ -1041,6 +1145,10 @@ function ListingSection({
     <>
       <SectionHeader
         title="LISTING RADAR"
+        blurb={
+          'Exchanges change a coin’s deposit config before they announce a listing. We poll every 5 minutes and log each change. ' +
+          'We publish no lead-time claim: our full history is public at github.com/bcrypto0/scout-alpha-log — measure it yourself.'
+        }
         shown={list.length}
         total={total}
         locked={locked}
@@ -1067,10 +1175,27 @@ function ListingRow({ listing }: { listing: AlphaListing }) {
           </Text>
         )}
       </View>
-      {!!listing.title && (
-        <Text style={styles.rowTitle} numberOfLines={2}>
-          {listing.title}
+      {/* The raw title is exporter-speak ("gate coin-config pre-listing signal:
+          SUBG"), so say what happened instead of echoing a log line.
+          State ONLY the transition the detector actually tests:
+          depositEnable false→true (coin_config_watcher.py). An earlier draft
+          added "while withdrawals stayed closed" — the withdrawal flag is
+          recorded but never tested, and 92% of real pre-listing rows have
+          withdrawals OPEN, so that sentence was inventing an exchange state.
+          Interpretation belongs in the section blurb; the row states fact. */}
+      {listing.is_pre_listing ? (
+        <Text style={styles.rowPlain}>
+          <Text style={styles.numStrong}>
+            {listing.exchange ? listing.exchange.toUpperCase() : 'An exchange'}
+          </Text>{' '}
+          switched deposits on for {listing.coin}.
         </Text>
+      ) : (
+        !!listing.title && (
+          <Text style={styles.rowTitle} numberOfLines={2}>
+            {listing.title}
+          </Text>
+        )
       )}
       <Text style={styles.rowMeta}>
         {[listing.exchange, listing.kind, listing.source]
@@ -1096,6 +1221,7 @@ function CatalystSection({
     <>
       <SectionHeader
         title="CATALYSTS"
+        blurb={'Dated events — mainnets, migrations, votes — ranked by our own priority weighting, not by measured price impact.'}
         shown={list.length}
         total={total}
         locked={locked}
@@ -1143,6 +1269,7 @@ function UnlockSection({
     <>
       <SectionHeader
         title="UNLOCK WATCH"
+        blurb={'Scheduled token unlocks ahead. New supply hits the market on these dates — the risk you hold into, not a signal to buy.'}
         shown={list.length}
         total={total}
         locked={locked}
@@ -1320,6 +1447,18 @@ const styles = StyleSheet.create({
     color: colors.textDim, fontSize: 11, fontWeight: '800', letterSpacing: 1,
     fontVariant: ['tabular-nums'], flexShrink: 1,
   },
+  // Sits under a section title: smaller and dimmer than body copy so it reads
+  // as a caption, but with generous line-height because it is full sentences.
+  sectionBlurb: {
+    color: colors.textDim, fontSize: 12, lineHeight: 17,
+    paddingHorizontal: 16, marginTop: -4, marginBottom: 10,
+  },
+  glance: {
+    marginHorizontal: 16, marginTop: 14,
+    borderLeftWidth: 2, borderLeftColor: colors.purple, paddingLeft: 10,
+  },
+  glanceText: { color: colors.text, fontSize: 13, lineHeight: 19 },
+  glanceLead: { color: colors.textDim, fontWeight: '800' },
   lockChip: {
     color: colors.purple, fontSize: 10, fontWeight: '800',
     fontVariant: ['tabular-nums'],
@@ -1383,6 +1522,11 @@ const styles = StyleSheet.create({
     color: colors.textDim, fontSize: 12, fontWeight: '700',
     fontVariant: ['tabular-nums'], minWidth: 52, textAlign: 'right',
   },
+  /** Replaces the win/PnL cells for a wallet we have not graded. */
+  walletNoRecord: {
+    color: colors.textDim, fontSize: 10, fontStyle: 'italic',
+    flexShrink: 0, textAlign: 'right',
+  },
   walletMore: {
     color: colors.textDim, fontSize: 11, marginTop: 8,
     fontVariant: ['tabular-nums'],
@@ -1417,6 +1561,8 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   rowTitle: { color: colors.text, fontSize: 13, marginTop: 6, lineHeight: 18 },
+  /** The plain-English "what happened" line — the primary read on a card. */
+  rowPlain: { color: colors.text, fontSize: 13, marginTop: 6, lineHeight: 19 },
   rowMeta: {
     color: colors.textDim, fontSize: 11, marginTop: 5,
     fontVariant: ['tabular-nums'],
