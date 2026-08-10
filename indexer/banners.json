@@ -22,6 +22,13 @@
     "storePackage": "fun.cook.app"
   },
   {
+    "id": "rangekeeper-app",
+    "title": "RangeKeeper 📐 — is your LP earning $0?",
+    "tagline": "81% of DLMM positions earn nothing. Check yours free — live on the dApp Store.",
+    "color": "#3DD6F5",
+    "storePackage": "fun.rangekeeper.app"
+  },
+  {
     "id": "seeker-summer-cards20",
     "title": "Seeker Summer ☀️ 20% off a Seeker",
     "tagline": "Code CARDS20 at store.solanamobile.com with Solana Pay — first 5,000 orders get a free $50 Collector Crypt pack. Ends Aug 30.",

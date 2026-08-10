@@ -108,11 +108,16 @@ export function scoutPick(apps: DappEntry[], now: Date = new Date()): DappEntry 
   // as noise — a perfect score on a handful of reviews means nothing, and
   // small apps also produce the biggest (least meaningful) rank swings.
   const credible = (a?: DappEntry) => !!a && (a.reviews ?? 0) >= PICK_MIN_REVIEWS;
+  const dayIndex = Math.floor(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 86_400_000,
+  );
 
-  const climber = topClimbers(apps, 5).find(
+  // Rotate across ALL credible climbers, not first-wins: when one app tops
+  // the movers for a week, a fixed pick makes the hero slot look frozen.
+  const climbers = topClimbers(apps, 10).filter(
     (a) => (a.rankDelta ?? 0) >= 3 && credible(a),
   );
-  if (climber) return climber;
+  if (climbers.length) return climbers[dayIndex % climbers.length];
 
   const fresh = freshlyListed(apps, 5).find(credible);
   if (fresh) return fresh;
@@ -122,9 +127,6 @@ export function scoutPick(apps: DappEntry[], now: Date = new Date()): DappEntry 
   // already has. Rotate across the vetted pool so the hero changes daily.
   const pool = hiddenGems(apps, PICK_POOL);
   if (pool.length) {
-    const dayIndex = Math.floor(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 86_400_000,
-    );
     return pool[((dayIndex % pool.length) + pool.length) % pool.length];
   }
 
