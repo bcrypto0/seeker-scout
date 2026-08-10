@@ -499,9 +499,14 @@ export function AlphaScreen() {
         }
       >
         <Text style={styles.h1}>Alpha</Text>
+        {/* Describes PROVENANCE, not activity. A v0.8 draft said "the intel
+            feed we trade on ourselves" — the strongest credibility claim on
+            the screen, and false: strategy_control.json has 0 unpaused
+            strategies and 42 in paper mode, and the CEO's standing rule is 0
+            live. Where the data comes from is true and sells fine on its own. */}
         <Text style={styles.sub}>
           Exchange listing radar, smart-money clusters and wallet grades —
-          straight from the intel feed we trade on ourselves.
+          straight from our own trading intel stack.
         </Text>
 
         {digest && <FreshnessBanner digest={digest} entitled={entitled} />}
@@ -927,12 +932,18 @@ function AtAGlance({ digest }: { digest: AlphaDigest }) {
     // signal we actually sell. Only break it out when nothing was trimmed.
     const complete = listings === digest.listing_radar.length;
     const preListing = digest.listing_radar.filter((l) => l.is_pre_listing).length;
-    // "Event", not "flip": listing_radar merges deposit-config flips with
+    // "Event", not "flip": listing_radar merges deposit-config changes with
     // Korean-exchange monitors and announcement pollers, which are not flips.
     const noun = listings === 1 ? 'event' : 'events';
+    // Say what the flag MEASURES ("deposits switched on"), not what we hope it
+    // predicts ("pre-listing"). coin_config_watcher sets it purely on
+    // depositEnable false→true, so an exchange ending a maintenance window
+    // sets the identical flag — and a batch re-enable can light up 25 rows at
+    // once. Summarising those as "25 pre-listing" would headline a routine
+    // config restore as 25 imminent listings.
     parts.push(
       complete && preListing > 0
-        ? `${listings} exchange ${noun} (${preListing} pre-listing)`
+        ? `${listings} exchange ${noun} (${preListing} deposit switch-${preListing === 1 ? 'on' : 'ons'})`
         : `${listings} exchange ${noun}`,
     );
   }
@@ -1047,16 +1058,20 @@ function ClusterCard({ cluster }: { cluster: AlphaSmartMoney }) {
           <Text style={styles.walletAddr} numberOfLines={1}>
             {w.addr ? shortAddr(w.addr) : 'hidden'}
           </Text>
-          {w.tier && (w.win_rate !== null || w.pnl_usd !== null) ? (
-            <>
-              <Text style={styles.walletStat}>{pct(w.win_rate)}</Text>
-              <Text style={[styles.walletStat, pnlStyle(w.pnl_usd)]}>
-                {usd(w.pnl_usd)}
-              </Text>
-            </>
-          ) : (
-            <Text style={styles.walletNoRecord}>no closed trades yet</Text>
-          )}
+          {/* Render the cells unconditionally. pct()/usd() already print "—"
+              for null, which asserts nothing. A v0.8 draft replaced that with
+              the sentence "no closed trades yet" — but `tier` and the stats
+              come from two different files (wallet_tiers.json vs
+              signal_accuracy.wallet_performance), and a null tier means WE
+              have not graded the wallet, NOT that the wallet has never closed
+              a trade. These are VIP wallets tracked precisely because they
+              trade constantly. That sentence was a claim about someone else's
+              trading history that we never measured, on 80 of 84 rows in the
+              live paid digest. The TIER column already says UNGRADED. */}
+          <Text style={styles.walletStat}>{pct(w.win_rate)}</Text>
+          <Text style={[styles.walletStat, pnlStyle(w.pnl_usd)]}>
+            {usd(w.pnl_usd)}
+          </Text>
         </View>
       ))}
       {notShown > 0 && (
@@ -1146,8 +1161,8 @@ function ListingSection({
       <SectionHeader
         title="LISTING RADAR"
         blurb={
-          'Exchanges change a coin’s deposit config before they announce a listing. We poll every 5 minutes and log each change. ' +
-          'We publish no lead-time claim: our full history is public at github.com/bcrypto0/scout-alpha-log — measure it yourself.'
+          'We poll exchange deposit config every 5 minutes and log the moment a coin’s deposits switch on — the change a listing forces first. ' +
+          'It also fires when maintenance ends, so treat it as a lead, not a verdict. No lead-time claim: the full history is public at github.com/bcrypto0/scout-alpha-log.'
         }
         shown={list.length}
         total={total}
@@ -1521,11 +1536,6 @@ const styles = StyleSheet.create({
   walletStat: {
     color: colors.textDim, fontSize: 12, fontWeight: '700',
     fontVariant: ['tabular-nums'], minWidth: 52, textAlign: 'right',
-  },
-  /** Replaces the win/PnL cells for a wallet we have not graded. */
-  walletNoRecord: {
-    color: colors.textDim, fontSize: 10, fontStyle: 'italic',
-    flexShrink: 0, textAlign: 'right',
   },
   walletMore: {
     color: colors.textDim, fontSize: 11, marginTop: 8,
