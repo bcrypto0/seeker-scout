@@ -169,6 +169,21 @@ let catalogCache: DappEntry[] | null = null;
 let catalogInflight: Promise<DappEntry[]> | null = null;
 
 /** True when the live catalog is already in memory (skip skeletons). */
+/**
+ * True when this array IS the build-frozen offline seed rather than live data.
+ *
+ * Matters for anything time-relative: SEED_CATALOG's lastUpdated values are
+ * hardcoded in source and can never advance, so they drift further into the
+ * past every day the shipped binary lives. Age-based judgements ("stale")
+ * must not be applied to them — 23 of the 44 seed entries already read as
+ * stale, and every one of them will within six months of a release, which
+ * would let a failed network fetch present the entire store as abandoned.
+ * Identity check, not a heuristic: doFetchCatalog returns this exact array.
+ */
+export function isSeedCatalog(apps: DappEntry[]): boolean {
+  return apps === SEED_CATALOG;
+}
+
 export function isCatalogCached(): boolean {
   return catalogCache !== null;
 }

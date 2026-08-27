@@ -43,6 +43,35 @@ export function isHighlyRated(a: DappEntry): boolean {
   return (a.rating ?? 0) >= RATING_HIGH && (a.reviews ?? 0) >= RATING_MIN_REVIEWS;
 }
 
+/**
+ * Freshness thresholds, in days since the developer's last release.
+ *
+ * These are the SINGLE SOURCE OF TRUTH: theme.freshness() paints the Active /
+ * Aging / Stale badge from the same two numbers, so the badge on a card and
+ * the "hide stale" filter in Discover can never disagree. Defining staleness
+ * twice is how a user ends up hiding stale apps and still seeing red badges.
+ */
+export const FRESH_ACTIVE_DAYS = 30;
+export const FRESH_STALE_DAYS = 180;
+
+/** Days since the last release, or null when the date is missing/unparseable. */
+export function daysSinceUpdate(a: DappEntry, now: number = Date.now()): number | null {
+  const t = Date.parse(a.lastUpdated ?? '');
+  return Number.isNaN(t) ? null : (now - t) / 86_400_000;
+}
+
+/**
+ * True when a developer hasn't shipped in over FRESH_STALE_DAYS.
+ *
+ * An app with no usable release date is UNKNOWN, not stale — hiding it would
+ * drop an app for missing metadata rather than for evidence about the app.
+ * (No catalog entry lacks a date today; this is the safe direction to fail.)
+ */
+export function isStale(a: DappEntry, now: number = Date.now()): boolean {
+  const days = daysSinceUpdate(a, now);
+  return days !== null && days > FRESH_STALE_DAYS;
+}
+
 /** Biggest daily rank climbers (needs rankDelta from the indexer). */
 export function topClimbers(apps: DappEntry[], n = 10): DappEntry[] {
   return apps

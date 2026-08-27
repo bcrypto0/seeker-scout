@@ -4,6 +4,8 @@
  * bold-editorial headings. Green accent stays: it's our differentiation from
  * Solana-purple competitors.
  */
+import { FRESH_ACTIVE_DAYS, FRESH_STALE_DAYS } from './lib/collections';
+
 export const colors = {
   bg: '#0B0B0F', // surface base
   card: '#15151A', // raised (+4% white)
@@ -32,13 +34,20 @@ export const heading = {
   letterSpacing: -0.5,
 } as const;
 
-/** Freshness badge from a release date. */
+/**
+ * Freshness badge from a release date. Thresholds come from lib/collections so
+ * this badge and Discover's "hide stale" filter are driven by one definition.
+ */
 export function freshness(lastUpdated: string): {
   label: string;
   color: string;
 } {
-  const days = (Date.now() - new Date(lastUpdated).getTime()) / 86_400_000;
-  if (days <= 30) return { label: 'Active', color: colors.green };
-  if (days <= 180) return { label: 'Aging', color: colors.yellow };
+  const days = (Date.now() - Date.parse(lastUpdated ?? '')) / 86_400_000;
+  // An unparseable date used to fall through every comparison and land on
+  // "Stale" — painting a red warning about an app we simply have no date for,
+  // and disagreeing with isStale(), which treats unknown as not-stale.
+  if (Number.isNaN(days)) return { label: 'Unknown', color: colors.textDim };
+  if (days <= FRESH_ACTIVE_DAYS) return { label: 'Active', color: colors.green };
+  if (days <= FRESH_STALE_DAYS) return { label: 'Aging', color: colors.yellow };
   return { label: 'Stale', color: colors.red };
 }

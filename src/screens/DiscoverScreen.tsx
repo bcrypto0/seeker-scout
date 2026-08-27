@@ -14,8 +14,14 @@ import { AppCard } from '../components/AppCard';
 import { DiscoverHeader } from '../components/DiscoverHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { Ticker } from '../components/Ticker';
-import { fetchCatalog, isCatalogCached } from '../lib/catalog';
-import { bayesRating, isHighlyRated, RATING_HIGH } from '../lib/collections';
+import { fetchCatalog, isCatalogCached, isSeedCatalog } from '../lib/catalog';
+import {
+  bayesRating,
+  FRESH_STALE_DAYS,
+  isHighlyRated,
+  isStale,
+  RATING_HIGH,
+} from '../lib/collections';
 import { checkWatchlist } from '../lib/notify';
 import { maybeAskAfterSessions } from '../lib/reviewPrompt';
 import { getTryList, onTryListChange } from '../lib/trylist';
@@ -53,6 +59,11 @@ export function DiscoverScreen() {
   // bacon.skr's ask, literal half: hide anything that isn't genuinely
   // well-rated (review-count gated so it can't fill up with 5.0-from-3 apps).
   const [topRatedOnly, setTopRatedOnly] = useState(false);
+  // Hide apps whose developer hasn't shipped in 6+ months. Opt-IN, not the
+  // default: this removes ~30% of the store (382 of 1,295 today), and a stale
+  // badge is not a verdict — a finished game may never need another release.
+  // The user asks for it; we don't quietly shrink the catalog for everyone.
+  const [hideStale, setHideStale] = useState(false);
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [toTry, setToTry] = useState<Set<string>>(new Set());
   const listRef = useRef<FlatList<DappEntry>>(null);
@@ -93,7 +104,7 @@ export function DiscoverScreen() {
 
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [sort, cat, topRatedOnly]);
+  }, [sort, cat, topRatedOnly, hideStale]);
 
   const setSortHaptic = (s: SortMode) => {
     Haptics.selectionAsync().catch(() => {});
@@ -108,6 +119,9 @@ export function DiscoverScreen() {
     });
   };
 
+  // Live catalog vs the build-frozen fallback we serve when the fetch fails.
+  const offlineSeed = useMemo(() => isSeedCatalog(apps), [apps]);
+
   const filtered = useMemo(
     () =>
       apps
@@ -121,6 +135,11 @@ export function DiscoverScreen() {
                 : a.category === cat,
         )
         .filter((a) => !topRatedOnly || isHighlyRated(a))
+        // Never age-judge the offline seed — its dates are frozen at build
+        // time, so the filter would delete real apps (Phantom, Tensor) as
+        // abandonware purely because the binary got old. Ratings don't decay,
+        // so topRatedOnly needs no such guard.
+        .filter((a) => !hideStale || offlineSeed || !isStale(a))
         .sort((a, b) =>
           sort === 'newest'
             ? newestKey(b).localeCompare(newestKey(a)) ||
@@ -129,7 +148,7 @@ export function DiscoverScreen() {
               ? bayesRating(b) - bayesRating(a) || b.trendScore - a.trendScore
               : b.trendScore - a.trendScore,
         ),
-    [apps, cat, sort, watched, toTry, topRatedOnly],
+    [apps, cat, sort, watched, toTry, topRatedOnly, hideStale, offlineSeed],
   );
 
   const tickerItems = useMemo(() => {
@@ -152,14 +171,33 @@ export function DiscoverScreen() {
     return items;
   }, [apps]);
 
-  const showHeader = cat === 'All' && sort === 'trending' && !topRatedOnly;
-  // The quality filter can legitimately empty a thin category — say so
-  // instead of showing a blank feed. It takes PRECEDENCE over the watchlist
-  // empty state: otherwise a user with starred apps who flips the filter on
-  // is told "tap the star on any app to watch it" and thinks we lost them.
-  const emptyRated = topRatedOnly && filtered.length === 0;
-  const emptyWatching = !emptyRated && cat === WATCHING && filtered.length === 0;
-  const emptyToTry = !emptyRated && cat === TO_TRY && filtered.length === 0;
+  const showHeader =
+    cat === 'All' && sort === 'trending' && !topRatedOnly && !hideStale;
+  // A quality filter can legitimately empty a thin category — say so instead
+  // of showing a blank feed, and name the filter actually responsible so the
+  // user knows which chip to turn off. Takes PRECEDENCE over the watchlist
+  // empty state: otherwise a user with starred apps who flips a filter on is
+  // told "tap the star on any app to watch it" and thinks we lost them.
+  // Blame a filter ONLY when a filter is actually what removed things. The
+  // previous form was `(anyFilter) && filtered.length === 0`, which made the
+  // Watching/To-try empty states unreachable whenever a chip was on: a new
+  // user who had starred nothing was told "Every app here last shipped over
+  // 180 days ago" about a list holding zero apps, and never saw the copy that
+  // explains what starring does. That was survivable while the only filter was
+  // ★4.5+ (which leaves 3% of the store, so nobody browses with it on), but
+  // "hide stale" leaves 70% — a comfortable permanent browse mode.
+  const emptySavedList =
+    (cat === WATCHING && watched.size === 0) || (cat === TO_TRY && toTry.size === 0);
+  const emptyFiltered =
+    (topRatedOnly || hideStale) && filtered.length === 0 && !emptySavedList;
+  const emptyReason =
+    topRatedOnly && hideStale
+      ? `No app here holds ${RATING_HIGH}+ with enough reviews AND has shipped in the last ${FRESH_STALE_DAYS} days.`
+      : topRatedOnly
+        ? `No app here holds ${RATING_HIGH}+ with enough reviews to trust it yet.`
+        : `Every app here last shipped over ${FRESH_STALE_DAYS} days ago.`;
+  const emptyWatching = !emptyFiltered && cat === WATCHING && filtered.length === 0;
+  const emptyToTry = !emptyFiltered && cat === TO_TRY && filtered.length === 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -214,15 +252,31 @@ export function DiscoverScreen() {
             {`★ ${RATING_HIGH}+ only`}
           </Text>
         </Pressable>
+        {/* Hidden on the offline seed: its dates are frozen, so the filter
+            is deliberately inert there and a chip that does nothing is worse
+            than no chip. */}
+        {!offlineSeed && (
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => {});
+            setHideStale((v) => !v);
+          }}
+          hitSlop={{ top: 8, bottom: 8 }}
+          style={[styles.chip, hideStale && styles.chipActive]}
+        >
+          <Text style={[styles.chipText, hideStale && styles.chipTextActive]}>
+            🕒 Hide stale
+          </Text>
+        </Pressable>
+        )}
       </ScrollView>
       {loading ? (
         <SkeletonList />
-      ) : emptyRated ? (
+      ) : emptyFiltered ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyStar}>★</Text>
+          <Text style={styles.emptyStar}>{hideStale && !topRatedOnly ? '🕒' : '★'}</Text>
           <Text style={styles.emptyText}>
-            No app here holds {RATING_HIGH}+ with enough reviews to trust it
-            yet. Try another category, or turn the filter off.
+            {emptyReason} Try another category, or turn the filter off.
           </Text>
         </View>
       ) : emptyWatching ? (
