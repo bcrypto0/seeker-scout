@@ -334,6 +334,48 @@ async function main() {
       });
     }
 
+    // reviews30d — reviews gained over the trailing ~30 days. Exists so the
+    // app can tell "old listing, still heavily used" from "old and dead":
+    // release age alone flags Phantom (#9, 3,008 reviews, releases via Play
+    // Store) the same as four-review shovelware, and a hide-dead filter built
+    // on age alone would delete the biggest apps on Solana as abandonware.
+    // Absent when the app wasn't in the ~30d-old snapshot (too new to judge,
+    // and too new to be hidden anyway) — consumers must treat missing as
+    // unknown, not zero.
+    const velFiles = readdirSync(historyDir)
+      .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f) && f.slice(0, 10) < day)
+      .sort();
+    if (velFiles.length) {
+      // Oldest file within the window, so a gap in snapshots degrades to a
+      // shorter window instead of silently comparing against last year.
+      const cutoff = new Date(Date.now() - 30 * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const baseFile =
+        velFiles.find((f) => f.slice(0, 10) >= cutoff) ?? velFiles[velFiles.length - 1];
+      try {
+        const rows = JSON.parse(
+          readFileSync(new URL(`./history/${baseFile}`, import.meta.url), 'utf8'),
+        );
+        const base = new Map(rows.map((r) => [r.id, r.reviews]));
+        let stamped = 0;
+        entries.forEach((e) => {
+          const then = base.get(e.id);
+          if (typeof then === 'number' && typeof e.reviews === 'number') {
+            // Clamp at 0: a review count can go DOWN (store moderation) and a
+            // negative "gained" would read as nonsense in any consumer.
+            e.reviews30d = Math.max(0, e.reviews - then);
+            stamped += 1;
+          }
+        });
+        console.log(
+          `reviews30d vs ${baseFile.slice(0, 10)}: stamped ${stamped}/${entries.length}`,
+        );
+      } catch (e) {
+        console.warn(`no reviews30d this run: ${e.message}`);
+      }
+    }
+
     if (!readOnly) {
       const rows = entries.map((e, i) => ({
         id: e.id, rank: i + 1, trendScore: e.trendScore, rating: e.rating,

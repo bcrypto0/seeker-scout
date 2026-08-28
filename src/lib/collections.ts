@@ -66,10 +66,48 @@ export function daysSinceUpdate(a: DappEntry, now: number = Date.now()): number 
  * An app with no usable release date is UNKNOWN, not stale — hiding it would
  * drop an app for missing metadata rather than for evidence about the app.
  * (No catalog entry lacks a date today; this is the safe direction to fail.)
+ *
+ * This is the BADGE predicate: it measures dApp Store release age and nothing
+ * else. Do not use it to hide apps — see isAbandoned() for why.
  */
 export function isStale(a: DappEntry, now: number = Date.now()): boolean {
   const days = daysSinceUpdate(a, now);
   return days !== null && days > FRESH_STALE_DAYS;
+}
+
+/**
+ * Aliveness overrides for the hide filter. An old listing is spared when the
+ * app is demonstrably still in use, by either signal:
+ * - velocity: people are still writing reviews (Daemon Protocol: +202/30d on
+ *   a 227-day-old listing);
+ * - mass: the store's own users have voted at scale (Phantom: 3,008 reviews;
+ *   its releases ship via Play Store, so its dApp Store listing ages even
+ *   though the app is the most-used wallet on the platform — and its velocity
+ *   is LOW, +2/30d, because everyone already has it. Mass is what saves it).
+ * Measured against the live catalog: this cut the hidden set from 384 apps
+ * (30%, including Phantom #9, Jito #33, SolanaFloor #27) to 173 (13%) whose
+ * best-ranked member sat at #94 with +1 review in 30 days.
+ */
+export const ALIVE_REVIEWS_30D = 3;
+export const ALIVE_REVIEW_MASS = 500;
+
+/**
+ * The FILTER predicate: old AND quiet, not merely old.
+ *
+ * "Stale" (the badge) states a fact: no dApp Store release in 6+ months.
+ * "Abandoned" (this) makes a judgement: old and showing no signs of use —
+ * which is the only thing a user means by "hide the dead ones". Hiding on
+ * age alone deletes the platform's pillars for shipping through a different
+ * channel. Missing reviews30d fails toward the mass rule alone (an old
+ * cached catalog must not start hiding pillars).
+ */
+export function isAbandoned(a: DappEntry, now: number = Date.now()): boolean {
+  if (!isStale(a, now)) return false;
+  if ((a.reviews ?? 0) >= ALIVE_REVIEW_MASS) return false;
+  if (typeof a.reviews30d === 'number' && a.reviews30d >= ALIVE_REVIEWS_30D) {
+    return false;
+  }
+  return true;
 }
 
 /** Biggest daily rank climbers (needs rankDelta from the indexer). */

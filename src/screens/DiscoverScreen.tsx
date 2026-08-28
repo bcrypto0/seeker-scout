@@ -18,8 +18,8 @@ import { fetchCatalog, isCatalogCached, isSeedCatalog } from '../lib/catalog';
 import {
   bayesRating,
   FRESH_STALE_DAYS,
+  isAbandoned,
   isHighlyRated,
-  isStale,
   RATING_HIGH,
 } from '../lib/collections';
 import { checkWatchlist } from '../lib/notify';
@@ -59,10 +59,12 @@ export function DiscoverScreen() {
   // bacon.skr's ask, literal half: hide anything that isn't genuinely
   // well-rated (review-count gated so it can't fill up with 5.0-from-3 apps).
   const [topRatedOnly, setTopRatedOnly] = useState(false);
-  // Hide apps whose developer hasn't shipped in 6+ months. Opt-IN, not the
-  // default: this removes ~30% of the store (382 of 1,295 today), and a stale
-  // badge is not a verdict — a finished game may never need another release.
-  // The user asks for it; we don't quietly shrink the catalog for everyone.
+  // Hide apps that look ABANDONED: 6+ months without a release AND no recent
+  // review activity AND no large installed base (isAbandoned). Opt-IN, not
+  // the default: it removes ~13% of the store, and even the combined signal
+  // is evidence of quiet, not proof of death — a finished single-purpose
+  // tool can be quiet and fine. The user asks for it; we don't quietly
+  // shrink the catalog for everyone.
   const [hideStale, setHideStale] = useState(false);
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [toTry, setToTry] = useState<Set<string>>(new Set());
@@ -135,11 +137,12 @@ export function DiscoverScreen() {
                 : a.category === cat,
         )
         .filter((a) => !topRatedOnly || isHighlyRated(a))
-        // Never age-judge the offline seed — its dates are frozen at build
-        // time, so the filter would delete real apps (Phantom, Tensor) as
-        // abandonware purely because the binary got old. Ratings don't decay,
-        // so topRatedOnly needs no such guard.
-        .filter((a) => !hideStale || offlineSeed || !isStale(a))
+        // isAbandoned, not isStale: hide old-AND-quiet, never merely old.
+        // Age alone flags Phantom (#9, releases via Play Store) the same as
+        // dead shovelware. The offline seed is never judged at all — its
+        // dates AND review counts are frozen at build time. Ratings don't
+        // decay, so topRatedOnly needs no such guard.
+        .filter((a) => !hideStale || offlineSeed || !isAbandoned(a))
         .sort((a, b) =>
           sort === 'newest'
             ? newestKey(b).localeCompare(newestKey(a)) ||
@@ -192,10 +195,10 @@ export function DiscoverScreen() {
     (topRatedOnly || hideStale) && filtered.length === 0 && !emptySavedList;
   const emptyReason =
     topRatedOnly && hideStale
-      ? `No app here holds ${RATING_HIGH}+ with enough reviews AND has shipped in the last ${FRESH_STALE_DAYS} days.`
+      ? `No app here holds ${RATING_HIGH}+ with enough reviews AND shows recent signs of life.`
       : topRatedOnly
         ? `No app here holds ${RATING_HIGH}+ with enough reviews to trust it yet.`
-        : `Every app here last shipped over ${FRESH_STALE_DAYS} days ago.`;
+        : `Every app here looks abandoned — no release in ${FRESH_STALE_DAYS}+ days and no recent review activity.`;
   const emptyWatching = !emptyFiltered && cat === WATCHING && filtered.length === 0;
   const emptyToTry = !emptyFiltered && cat === TO_TRY && filtered.length === 0;
 
@@ -264,8 +267,12 @@ export function DiscoverScreen() {
           hitSlop={{ top: 8, bottom: 8 }}
           style={[styles.chip, hideStale && styles.chipActive]}
         >
+          {/* "Abandoned", not "stale": the Stale badge is pure release age,
+              and this filter deliberately keeps old-but-alive apps (Phantom).
+              A chip named "hide stale" next to a visible Stale badge it
+              didn't hide would read as a bug. */}
           <Text style={[styles.chipText, hideStale && styles.chipTextActive]}>
-            🕒 Hide stale
+            🕒 Hide abandoned
           </Text>
         </Pressable>
         )}

@@ -45,6 +45,12 @@ export interface DappEntry {
   rankDelta?: number;
   /** Up to 7 daily ranks, oldest→newest (sparkline data; UI lands v0.3) */
   rankHistory?: number[];
+  /**
+   * Reviews gained over the trailing ~30 days (indexer, from daily
+   * snapshots). ABSENT = unknown (app too new for the window, or an old
+   * cached catalog) — never treat missing as zero.
+   */
+  reviews30d?: number;
   /** True when release history was verified on-chain (DAS/Triton) */
   onchainVerified?: boolean;
   /** Count of immutable on-chain Release NFTs for this app */
