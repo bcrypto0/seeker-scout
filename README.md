@@ -1,74 +1,95 @@
 # Seeker Scout
 
-**A better way to discover apps on the Solana Seeker.**
+**Your radar for the Solana dApp Store.** Live on the store since 2026-07-13, now v0.9.0 (versionCode 11).
 
-The Solana dApp Store has ~1,500 apps, but the official store gives you little signal about which ones are good, maintained, or Seed Vault-native. A Cointelegraph analysis found barely 60% of listed apps had been updated within a year; some are just browser shortcuts. Solana Mobile shipped "dApp Spotlight" (June 2026) — a centrally curated fix. Seeker Scout is the community-driven one.
+The dApp Store lists ~1,500 apps and gives you little signal about which ones are maintained, which are Seed Vault-native, and which are worth your time. Seeker Scout is a Seeker-only companion that ranks the catalog, tracks it daily, and gates its community features behind the Seeker Genesis Token so that every voice belongs to a real device.
 
-## What makes it better
+- **Store listing:** open `solanadappstore://details?id=com.bilal.seekerscout` on a Seeker
+- **Site:** [seekerscout.com](https://seekerscout.com)
+- **Hackathon (CLOCK IN, Sep 8 to Oct 9 2026):** see [docs/HACKATHON.md](docs/HACKATHON.md) for the pre-hackathon boundary tag and everything built during the window
 
-- **Freshness badges** — green/yellow/red based on last release date. Instantly spot abandoned apps.
-- **Seed Vault badge** — flags apps with true wallet-native onboarding vs. email/Google login walls.
-- **Verified-owner reviews** — reviews gated to wallets holding a Seeker Genesis Token (soulbound NFT every Seeker owner has). No bot reviews, no paid shills.
-- **Trending** — ranked by real activity signals, not marketing.
-- **Rewards tab** — active Seeker Season boosts, airdrops, and claim deadlines in one place, with push notifications (planned).
+## What is shipped (v0.9.0)
+
+Six tabs: Discover, Search, Rewards, Alpha, Lounge, Profile.
+
+- **Discover.** The catalog ranked by a Bayesian rating with freshness and volume terms. Freshness badges (green / yellow / red from last release date), a hide-stale filter, rank-delta chips and sparklines from daily snapshots, Scout Pick and movers, remote-config banners.
+- **Search** across the full catalog.
+- **App Detail.** Rating histogram, What's New, try-later list, share, watch button (local notifications when an app you watch updates), and an on-chain release badge where the publisher's Release NFTs have been resolved.
+- **Rewards.** Seeker Season rewards and app perks in one feed, with a freshness pipeline so expired offers do not linger.
+- **Alpha.** A paid intel tab. Free tier is a delayed digest; the paid tier unlocks with a USDC transfer signed by the user through Mobile Wallet Adapter, or is free for Lounge founders. Freshness is shown honestly and the paid switch is server-gated off when the feed is stale.
+- **Lounge.** The Owners' Lounge: Genesis-gated founding numbers (one claim per Genesis Token, signed on device and verified on the worker) and a members' chat.
+- **Profile.** Mobile Wallet Adapter connect, Genesis Token verification, founding-number claim, notification settings.
+
+**Seed Vault badges** on Discover are currently hand-curated in `indexer/overrides.json`. They are not yet measured from the APKs; that is on the roadmap.
 
 ## Architecture
 
 ```
 seeker-scout/
-├── App.tsx               # Bottom tabs: Discover / Search / Rewards / Profile
-├── index.ts              # Entry + web3.js polyfills
+├── App.tsx                 # Six bottom tabs + AppDetail / Chat stack
 ├── src/
 │   ├── lib/
-│   │   ├── types.ts      # DappEntry, RewardOpportunity
-│   │   ├── catalog.ts    # Fetch catalog JSON (bundled seed data fallback)
-│   │   └── wallet.ts     # Mobile Wallet Adapter connect + Genesis Token check
-│   ├── screens/          # Discover, Search, Rewards, Profile
-│   └── theme.ts
-├── indexer/
-│   └── fetch-catalog.mjs # Node script: build catalog.json from on-chain data
-└── docs/
-    └── PUBLISHING.md     # How to ship to the Solana dApp Store
+│   │   ├── wallet.ts       # MWA connect, signMessages, Genesis Token check (Token-2022 SGT)
+│   │   ├── lounge.ts       # Worker client: claim, chat, ping, stats
+│   │   ├── alpha.ts        # Alpha digest + USDC unlock (the app's only on-chain write)
+│   │   ├── catalog.ts      # catalog.json / banners / rewards / perks from Cloudflare Pages
+│   │   └── types.ts
+│   ├── screens/            # Discover, Search, Rewards, Alpha, Lounge, Chat, Profile, AppDetail
+│   └── components/
+├── lounge-worker/          # Cloudflare Worker + D1: claims, chat, alpha, ping/metrics
+├── indexer/                # Catalog fetch, ranking, overrides, perks, rewards, first-seen, daily history
+├── watcher/                # Yellowstone gRPC watcher for new dApp Store mints
+├── scripts/                # Daily refresh (scheduled task), watchdog, publisher-key helpers
+├── web/                    # seekerscout.com + assetlinks.json
+└── docs/                   # PUBLISHING.md, SCOUT_ALPHA_SPEC.md, ONCHAIN_INDEXER_SPIKE.md, HACKATHON.md
 ```
 
-**Catalog strategy (verified working, July 2026):** the dApp Store's "explore" GraphQL feed returns the full catalog (~1,100+ apps, 12 categories) in one unpaginated response, including ratings, review histograms, `updatedOn` dates, icons, and publisher info. The `indexer/` script fetches it (currently via seekertracker.com's public proxy `/api/dappstore` — swap in the official endpoint via `DAPPSTORE_URL` if you find one), ranks apps (Bayesian rating + freshness + volume), and emits `catalog.json` to host anywhere static. The app fetches that JSON — no backend server needed for v1. Real seed data for 44 top apps is bundled as fallback.
+**Catalog source, stated plainly.** The store's "explore" GraphQL feed returns the whole catalog with ratings, review histograms and `updatedOn` in one response. Seeker Scout currently mirrors it through seekertracker.com's public proxy (`DAPPSTORE_URL` overrides the endpoint) and never queries the store's own persisted-query endpoint. Official catalog access is pending with Solana Mobile. On top of the feed, `indexer/` keeps its own first-seen dates and daily rank history (`indexer/history/`), which cannot be backfilled from any source, and `indexer/onchain.mjs` resolves Release NFTs by publisher wallet through DAS for the apps whose publisher is known.
+
+**Backend.** One Cloudflare Worker (`seeker-lounge`) with a D1 database. It stores no PII: founding claims keyed by Genesis mint, chat messages, Alpha entitlements, and an anonymous per-day opens counter.
+
+## Security posture
+
+- **Wallet:** Mobile Wallet Adapter only. The app never sees a seed phrase or private key and never asks for one.
+- **Genesis Token:** verified as a Token-2022 asset against the official mint authority, metadata pointer and group, per the [Seeker Genesis Token docs](https://docs.solanamobile.com/solana-mobile-stack/seeker-genesis-token). The client check is for UX; every write on the worker re-verifies the signature and the token server-side.
+- **RPC keys:** none in the app. The APK talks to the public mainnet RPC and to the worker. The paid RPC endpoint exists only as a worker secret (`wrangler secret put RPC_URL`) and as environment variables for the indexer and watcher; nothing in this repository carries a key.
+- **On-chain writes:** exactly one today, the Alpha unlock (a USDC transfer the user signs on device). Everything else is read-only or a signed message.
 
 ## Setup
 
-Requires Node 20+, Android Studio + SDK, a physical Android device or emulator.
+Requires Node 20+, Android Studio + SDK, a physical Android device (a Seeker for MWA and Seed Vault).
 
 ```bash
 npm install
-npx expo prebuild          # generate android/ project
-npx expo run:android       # build + install dev client
+npx expo prebuild
+npx expo run:android
 ```
 
-> **Important:** Mobile Wallet Adapter does NOT work in Expo Go. You must use a
-> development build (`expo-dev-client`, already in deps) or `expo run:android`.
+> Mobile Wallet Adapter does not work in Expo Go. Use the dev client (`expo-dev-client` is a dependency) or `expo run:android`.
 
-Build the catalog (no API key needed):
+Build the catalog (no API key needed for the feed itself):
 
 ```bash
 npm run index-catalog
 ```
 
-## Roadmap
+On-chain enrichment and the watcher need an RPC endpoint from the environment (`RPC_URL`, or `TRITON_GRPC_ENDPOINT` + `TRITON_X_TOKEN`). They fail loudly without one; there is no default.
 
-1. **v0.1** — browse/search catalog, freshness + Seed Vault badges, rewards tab (manual feed), wallet connect.
-2. **v0.2** — Genesis Token verification, on-chain attested reviews, push notifications for reward deadlines.
-3. **v0.3** — usage-based trending (indexer heuristics), personalized recommendations.
-4. **Publish** — see `docs/PUBLISHING.md`. 0% store fees.
+Worker:
 
-## Open TODOs (marked in code)
+```bash
+cd lounge-worker && npx wrangler deploy
+```
 
-- `RPC_URL` in `src/lib/wallet.ts` — add your Helius API key (free tier fine; `getTokenAccountsByOwnerV2` used for Genesis Token checks is Helius-specific).
-- `CATALOG_URL` in `src/lib/catalog.ts` — host `indexer/catalog.json` (GitHub Pages/Cloudflare) and point this at it.
-- `seedVaultNative` flags — community-curated via `indexer/overrides.json` (the store feed doesn't expose this; that's exactly why the badge is valuable).
-- Reviews storage (v0.2): tiny serverless API that verifies a wallet signature + Genesis Token (mint address = anti-sybil key, per official SGT docs) before accepting a review.
+Secrets (`RPC_URL`, `CHAT_SECRET`, `ALPHA_INGEST_SECRET`) are set with `wrangler secret put`, never in `wrangler.toml`.
 
-## Resolved (so you don't re-research)
+## Publishing
 
-- **Genesis Token verification**: SGT is Token-2022 (not Metaplex). Check mint authority `GT2zu…p3A4` + metadata pointer + group `GT22s…99Te` — implemented in `src/lib/wallet.ts` per [official docs](https://docs.solanamobile.com/solana-mobile-stack/seeker-genesis-token).
-- **Catalog source**: full store feed with ratings/updatedOn confirmed working — see `indexer/fetch-catalog.mjs` header for the schema.
-- **Publishing flow (2026)**: Publisher Portal for first submit, CLI for updates — see `docs/PUBLISHING.md`.
-- **Listing deep link**: `solanadappstore://details?id=<package>` (used in `AppCard`).
+See [docs/PUBLISHING.md](docs/PUBLISHING.md). The reusable parts of that flow are open-sourced separately as [expo-dapp-store-kit](https://github.com/bcrypto0/expo-dapp-store-kit).
+
+## Resolved (so you do not re-research)
+
+- **Genesis Token verification:** SGT is Token-2022, not Metaplex. Check mint authority `GT2zu…p3A4`, the metadata pointer and group `GT22s…99Te`. Implemented in `src/lib/wallet.ts` and in `lounge-worker/src/index.js`.
+- **No global on-chain registry** for the store. Publisher NFT, App NFT and Release NFT are Metaplex collections authored by each publisher's own wallet; discovery is by known publisher. See `docs/ONCHAIN_INDEXER_SPIKE.md`.
+- **Listing deep link:** `solanadappstore://details?id=<package>`.
+- **Lockfile:** intentionally not committed; EAS builds on npm 10, whose strict `npm ci` rejects a lock produced by npm 11.
