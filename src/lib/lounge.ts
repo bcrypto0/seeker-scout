@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { signMessageBytes } from './wallet';
 
 /**
@@ -34,11 +35,11 @@ const base58Encode = (bytes: Uint8Array): string => {
  */
 export function pingOpen(): void {
   // x-ss (= versionCode) is the worker's spam gate: pings without it are
-  // accepted but not counted, so curl loops can't inflate the ad metric.
-  // Bump this with every android.versionCode in app.json.
+  // accepted but not counted, so curl loops can't inflate the opens metric.
+  // Read from the native build so it can never go stale against app.json.
   fetch(`${LOUNGE_URL}/ping`, {
     method: 'POST',
-    headers: { 'x-ss': '8' },
+    headers: { 'x-ss': Constants.nativeBuildVersion ?? '0' },
   }).catch(() => {});
 }
 
