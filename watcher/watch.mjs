@@ -33,11 +33,17 @@ const TOKEN_METADATA_PROGRAM = 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s';
 const DAPP_STORE_CDN = 'r2.solanamobiledappstore.com';
 const PUBLISHERS_PATH = new URL('../indexer/publishers.json', import.meta.url);
 
+// HTTP RPC comes from the environment only (Triton embeds the key in the path).
 const HTTP_RPC =
   process.env.RPC_URL ||
   (process.env.TRITON_X_TOKEN && process.env.TRITON_GRPC_ENDPOINT
     ? `${process.env.TRITON_GRPC_ENDPOINT.replace(/\/$/, '')}/${process.env.TRITON_X_TOKEN}`
-    : 'https://bilalal-mainnet-c2d8.mainnet.rpcpool.com/***REMOVED***');
+    : null);
+if (!HTTP_RPC) {
+  throw new Error(
+    'watch.mjs: set RPC_URL, or TRITON_GRPC_ENDPOINT + TRITON_X_TOKEN (no hard-coded endpoint)',
+  );
+}
 
 // ── metadata instruction decode ──────────────────────────────────────────
 // Token Metadata create instructions carry name/symbol/uri as sequential

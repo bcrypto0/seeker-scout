@@ -11,13 +11,22 @@
  *
  * Usage:
  *   node indexer/onchain.mjs <publisherWallet>          # print release history
- *   RPC_URL=<triton> node indexer/onchain.mjs <wallet>  # override endpoint
+ *   RPC_URL=<url> node indexer/onchain.mjs <wallet>     # or TRITON_GRPC_ENDPOINT+TRITON_X_TOKEN
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
-const RPC_URL =
-  process.env.RPC_URL ||
-  'https://bilalal-mainnet-c2d8.mainnet.rpcpool.com/***REMOVED***';
+// RPC endpoint comes from the environment only. Triton embeds the API key in
+// the URL path, so a default here would be a credential committed to git.
+const RPC_URL = resolveRpcUrl();
+
+function resolveRpcUrl() {
+  if (process.env.RPC_URL) return process.env.RPC_URL;
+  const { TRITON_GRPC_ENDPOINT: endpoint, TRITON_X_TOKEN: token } = process.env;
+  if (endpoint && token) return `${endpoint.replace(/\/$/, '')}/${token}`;
+  throw new Error(
+    'onchain.mjs: set RPC_URL, or TRITON_GRPC_ENDPOINT + TRITON_X_TOKEN (no hard-coded endpoint)',
+  );
+}
 
 async function das(method, params) {
   const res = await fetch(RPC_URL, {
