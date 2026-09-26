@@ -38,6 +38,12 @@ export function bayesRating(a: DappEntry): number {
   );
 }
 
+/**
+ * The app's real, current store category. Use this, never `a.category`
+ * directly: `category` holds a pre-September legacy name for v0.9's sake.
+ */
+export const catOf = (a: DappEntry): string => a.storeCategory ?? a.category;
+
 /** True when an app's rating is both high AND backed by enough reviews. */
 export function isHighlyRated(a: DappEntry): boolean {
   return (a.rating ?? 0) >= RATING_HIGH && (a.reviews ?? 0) >= RATING_MIN_REVIEWS;
@@ -89,6 +95,8 @@ export function isStale(a: DappEntry, now: number = Date.now()): boolean {
  * best-ranked member sat at #94 with +1 review in 30 days.
  */
 export const ALIVE_REVIEWS_30D = 3;
+/** Reviews on at least this many different days in 30 = still in use. */
+export const ALIVE_REVIEW_DAYS_30D = 3;
 export const ALIVE_REVIEW_MASS = 500;
 
 /**
@@ -104,6 +112,12 @@ export const ALIVE_REVIEW_MASS = 500;
 export function isAbandoned(a: DappEntry, now: number = Date.now()): boolean {
   if (!isStale(a, now)) return false;
   if ((a.reviews ?? 0) >= ALIVE_REVIEW_MASS) return false;
+  // Prefer DISTINCT review days: sixteen templated reviews on one day
+  // (2026-09-15) would clear a volume rule on their own. Fall back to the
+  // raw 30-day count only on a catalog that predates reviewDays30.
+  if (typeof a.reviewDays30 === 'number') {
+    return a.reviewDays30 < ALIVE_REVIEW_DAYS_30D;
+  }
   if (typeof a.reviews30d === 'number' && a.reviews30d >= ALIVE_REVIEWS_30D) {
     return false;
   }

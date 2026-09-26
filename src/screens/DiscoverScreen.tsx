@@ -17,6 +17,7 @@ import { Ticker } from '../components/Ticker';
 import { fetchCatalog, isCatalogCached, isSeedCatalog } from '../lib/catalog';
 import {
   bayesRating,
+  catOf,
   FRESH_STALE_DAYS,
   isAbandoned,
   isHighlyRated,
@@ -26,17 +27,19 @@ import { checkWatchlist } from '../lib/notify';
 import { maybeAskAfterSessions } from '../lib/reviewPrompt';
 import { getTryList, onTryListChange } from '../lib/trylist';
 import { getWatchlist, onWatchlistChange } from '../lib/watchlist';
-import { Category, DappEntry } from '../lib/types';
+import { DappEntry } from '../lib/types';
 import { colors, heading } from '../theme';
 
 const WATCHING = '★ Watching';
 const TO_TRY = '📌 To try';
 
-const CATEGORIES: (Category | 'All' | typeof WATCHING | typeof TO_TRY)[] = [
-  'All', WATCHING, TO_TRY, 'DeFi & Trading', 'Games', 'Wallets', 'DePIN',
-  'NFTs', 'Privacy & Security', 'Content & Streaming', 'Productivity',
-  'Social & Identity', 'AI & Agents', 'Lifestyle',
-];
+/**
+ * The chips that aren't store categories. Store categories themselves are
+ * read from the catalog (see `chips` below), never hardcoded: in September
+ * 2026 the dApp Store renamed and re-sorted all of them, and v0.9's
+ * hardcoded list silently left 7 of 11 chips empty for every user.
+ */
+const FIXED_CHIPS = ['All', WATCHING, TO_TRY];
 
 type SortMode = 'trending' | 'newest' | 'rated';
 
@@ -54,7 +57,7 @@ export function DiscoverScreen() {
   const [apps, setApps] = useState<DappEntry[]>([]);
   const [loading, setLoading] = useState(() => !isCatalogCached());
   const [refreshing, setRefreshing] = useState(false);
-  const [cat, setCat] = useState<Category | 'All' | typeof WATCHING | typeof TO_TRY>('All');
+  const [cat, setCat] = useState<string>('All');
   const [sort, setSort] = useState<SortMode>('trending');
   // bacon.skr's ask, literal half: hide anything that isn't genuinely
   // well-rated (review-count gated so it can't fill up with 5.0-from-3 apps).
@@ -121,6 +124,23 @@ export function DiscoverScreen() {
     });
   };
 
+  // Store categories straight from the catalog, biggest first.
+  const chips = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const a of apps) {
+      const c = catOf(a);
+      if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    const cats = [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([c]) => c);
+    return [...FIXED_CHIPS, ...cats];
+  }, [apps]);
+
+  // A refresh can drop the category a user had selected (the store renames
+  // them); don't strand them on an empty list with no chip to tap.
+  useEffect(() => {
+    if (apps.length && !chips.includes(cat)) setCat('All');
+  }, [apps.length, chips, cat]);
+
   // Live catalog vs the build-frozen fallback we serve when the fetch fails.
   const offlineSeed = useMemo(() => isSeedCatalog(apps), [apps]);
 
@@ -134,7 +154,7 @@ export function DiscoverScreen() {
               ? watched.has(a.id)
               : cat === TO_TRY
                 ? toTry.has(a.id)
-                : a.category === cat,
+                : catOf(a) === cat,
         )
         .filter((a) => !topRatedOnly || isHighlyRated(a))
         // isAbandoned, not isStale: hide old-AND-quiet, never merely old.
@@ -212,7 +232,7 @@ export function DiscoverScreen() {
         style={styles.chips}
         contentContainerStyle={styles.chipsContent}
       >
-        {CATEGORIES.map((c) => (
+        {chips.map((c) => (
           <Pressable
             key={c}
             onPress={() => setCat(c)}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { catOf } from '../lib/collections';
 import { DappEntry } from '../lib/types';
 import { colors, freshness } from '../theme';
 import { AppIcon } from './AppIcon';
@@ -55,7 +56,7 @@ export function AppCard({ app }: { app: DappEntry }) {
           </Text>
           <Text style={styles.meta}>
             ★ {app.rating.toFixed(1)} ({app.reviews.toLocaleString()}) ·{' '}
-            {app.category} · updated {app.lastUpdated}
+            {catOf(app)} · updated {app.lastUpdated}
           </Text>
         </View>
         <WatchButton id={app.id} size={20} />

@@ -8,8 +8,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { clearToken } from '../lib/chat';
+import { GameError, getToday, Today, untilNext } from '../lib/game';
+import { onUnreadChange } from '../lib/unread';
+import { useLoungeToken } from '../lib/useLounge';
 import { connectWallet, findGenesisToken } from '../lib/wallet';
 import {
   claimFounderNumber,
@@ -43,12 +47,36 @@ export function LoungeScreen() {
   const [error, setError] = useState<string>();
   const sessionRef = useRef(0);
   const claimingRef = useRef(false);
+  const lounge = useLoungeToken();
+  const [today, setToday] = useState<Today | null>(null);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     getLoungeStats().then((s) => {
       if (s) setStats(s);
     });
+    return onUnreadChange(setUnread);
   }, []);
+
+  // Refresh the game status every time the tab is shown, so coming back
+  // from a game shows the result instead of a stale "Play".
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!lounge.token) {
+        setToday(null);
+        return;
+      }
+      let live = true;
+      getToday(lounge.token)
+        .then((t) => live && setToday(t))
+        .catch(async (e) => {
+          if (e instanceof GameError && e.status === 401) await clearToken();
+        });
+      return () => {
+        live = false;
+      };
+    }, [lounge.token]),
+  );
 
   async function onVerify() {
     setError(undefined);
@@ -114,8 +142,16 @@ export function LoungeScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         <Text style={styles.h1}>The Lounge</Text>
         <Text style={styles.sub}>
-          A members' space for verified Seeker owners only — no bots, ever.
+          Verified Seeker owners only. Chat, play the daily games, climb the board.
         </Text>
+
+        <ScoutDailyCard
+          today={today}
+          signedIn={!!lounge.token}
+          onGuess={() => nav.navigate('Guess')}
+          onHol={() => nav.navigate('HigherLower')}
+          onBoard={() => nav.navigate('Leaderboard')}
+        />
 
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>THE FOUNDING 100</Text>
@@ -171,7 +207,9 @@ export function LoungeScreen() {
         </View>
 
         <Pressable style={styles.chatBtn} onPress={() => nav.navigate('Chat')}>
-          <Text style={styles.chatBtnText}>💬  Open the members' chat</Text>
+          <Text style={styles.chatBtnText}>
+            💬  Members' chat{unread > 0 ? `  ·  ${unread > 9 ? '9+' : unread} new` : ''}
+          </Text>
         </Pressable>
 
         <Text style={styles.section}>COMING TO THE LOUNGE</Text>
@@ -193,8 +231,105 @@ export function LoungeScreen() {
   );
 }
 
+/**
+ * The daily games, front and centre. Signed out, it's a pitch that leads to
+ * the games (which offer practice and the seat check). Signed in, each tile
+ * says exactly where you are today, so the hub answers "have I played?".
+ */
+function ScoutDailyCard({
+  today,
+  signedIn,
+  onGuess,
+  onHol,
+  onBoard,
+}: {
+  today: Today | null;
+  signedIn: boolean;
+  onGuess: () => void;
+  onHol: () => void;
+  onBoard: () => void;
+}) {
+  const g = today?.guess;
+  const h = today?.hol;
+  const guessStatus = !g
+    ? 'Play'
+    : g.done
+      ? g.solved
+        ? `Solved in ${g.guesses.length} ✅`
+        : 'Missed today'
+      : g.guesses.length
+        ? `${g.maxGuesses - g.guesses.length} guesses left`
+        : 'Play';
+  const holStatus = !h
+    ? 'Play'
+    : h.done
+      ? `🔥 ${h.score} today`
+      : h.step
+        ? `🔥 ${h.score} so far`
+        : 'Play';
+  return (
+    <View style={styles.daily}>
+      <View style={styles.dailyTop}>
+        <Text style={styles.dailyLabel}>
+          🧭 SCOUT DAILY{today ? ` #${today.puzzleNo}` : ''}
+        </Text>
+        {today && <Text style={styles.dailyNext}>new in {untilNext(today.nextAt)}</Text>}
+      </View>
+      <Text style={styles.dailyPitch}>
+        {signedIn
+          ? 'Two quick games about the dApp Store. Same puzzle for every member, once a day.'
+          : 'Two daily games about the dApp Store. One run per Seeker, so the board stays fair.'}
+      </Text>
+      <View style={styles.tiles}>
+        <Pressable style={styles.tile} onPress={onGuess}>
+          <Text style={styles.tileIcon}>🔎</Text>
+          <Text style={styles.tileName}>Guess the dApp</Text>
+          <Text style={[styles.tileStatus, g?.done && styles.tileDone]}>{guessStatus}</Text>
+        </Pressable>
+        <Pressable style={styles.tile} onPress={onHol}>
+          <Text style={styles.tileIcon}>⚖️</Text>
+          <Text style={styles.tileName}>Higher or Lower</Text>
+          <Text style={[styles.tileStatus, h?.done && styles.tileDone]}>{holStatus}</Text>
+        </Pressable>
+      </View>
+      <Pressable style={styles.dailyFoot} onPress={onBoard}>
+        <Text style={styles.dailyFootText}>
+          {today
+            ? `${today.streak}-day streak · ${today.week.rank ? `#${today.week.rank} this week` : 'unranked this week'} · ${today.week.score} pts`
+            : "This week's leaderboard"}
+        </Text>
+        <Text style={styles.dailyFootLink}>Board →</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
+  daily: {
+    backgroundColor: colors.card, borderRadius: 18, padding: 16,
+    marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.green,
+  },
+  dailyTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dailyLabel: { color: colors.green, fontSize: 11, fontWeight: '800', letterSpacing: 1.1 },
+  dailyNext: { color: colors.textDim, fontSize: 11 },
+  dailyPitch: { color: colors.textDim, fontSize: 13, lineHeight: 18, marginTop: 8 },
+  tiles: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  tile: {
+    flex: 1, backgroundColor: colors.cardNested, borderRadius: 14, padding: 12,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  tileIcon: { fontSize: 22 },
+  tileName: { color: colors.text, fontSize: 14, fontFamily: fonts.semi, marginTop: 6 },
+  tileStatus: { color: colors.purple, fontSize: 12, fontWeight: '800', marginTop: 4 },
+  tileDone: { color: colors.green },
+  dailyFoot: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: 14, paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
+  },
+  dailyFootText: { color: colors.textDim, fontSize: 12, flex: 1 },
+  dailyFootLink: { color: colors.green, fontSize: 12, fontWeight: '800' },
   h1: { ...heading, paddingHorizontal: 16 },
   sub: {
     color: colors.textDim, fontSize: 13,

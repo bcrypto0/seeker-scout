@@ -17,6 +17,7 @@ import { Sparkline } from '../components/Sparkline';
 import { TryButton } from '../components/TryButton';
 import { WatchButton } from '../components/WatchButton';
 import { fetchCatalog } from '../lib/catalog';
+import { catOf } from '../lib/collections';
 import { DappEntry } from '../lib/types';
 import { colors, fonts, freshness } from '../theme';
 
@@ -45,7 +46,7 @@ export function AppDetailScreen() {
       // older category label than the current catalog).
       const cat = live
         ? sorted
-            .filter((x) => x.category === live.category)
+            .filter((x) => catOf(x) === catOf(live))
             .findIndex((x) => x.id === routeApp.id) + 1
         : 0;
       setRanks({ overall: overall || undefined, cat: cat || undefined });
@@ -136,7 +137,7 @@ export function AppDetailScreen() {
             <Stat
               label="Rank"
               value={`#${ranks.overall}`}
-              sub={ranks.cat ? `#${ranks.cat} in ${app.category}` : 'overall'}
+              sub={ranks.cat ? `#${ranks.cat} in ${catOf(app)}` : 'overall'}
             />
           )}
         </View>
@@ -243,7 +244,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 
 function InfoCard({ app }: { app: DappEntry }) {
   const rows: { label: string; value: string; url?: string }[] = [
-    { label: 'Category', value: String(app.category) },
+    { label: 'Category', value: String(catOf(app)) },
     ...(app.version ? [{ label: 'Version', value: app.version }] : []),
     { label: 'Last updated', value: app.lastUpdated || '—' },
     ...(app.firstSeen

@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { AppState, Text } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -31,6 +31,10 @@ import { LoungeScreen } from './src/screens/LoungeScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AppDetailScreen } from './src/screens/AppDetailScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
+import { GuessScreen } from './src/screens/GuessScreen';
+import { HigherLowerScreen } from './src/screens/HigherLowerScreen';
+import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
+import { checkUnread, onUnreadChange } from './src/lib/unread';
 import { colors } from './src/theme';
 import { pingOpen } from './src/lib/lounge';
 import { bumpSession } from './src/lib/reviewPrompt';
@@ -59,7 +63,35 @@ const theme = {
   },
 };
 
+// How often the Lounge badge re-checks while the app is in the foreground.
+// The request returns two numbers, so this is cheap on data and on the worker.
+const UNREAD_POLL_MS = 60_000;
+
 function Tabs() {
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    const off = onUnreadChange(setUnread);
+    checkUnread();
+    let timer: ReturnType<typeof setInterval> | null = setInterval(checkUnread, UNREAD_POLL_MS);
+    // Pause while backgrounded; re-check the moment the app comes back,
+    // which is exactly when someone would want to see what they missed.
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') {
+        checkUnread();
+        if (!timer) timer = setInterval(checkUnread, UNREAD_POLL_MS);
+      } else if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    });
+    return () => {
+      off();
+      sub.remove();
+      if (timer) clearInterval(timer);
+    };
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -78,7 +110,14 @@ function Tabs() {
       {/* 6 tabs as of v0.6 — the bar is at its practical limit on a Seeker;
           verify label truncation on hardware before shipping another one. */}
       <Tab.Screen name="Alpha" component={AlphaScreen} />
-      <Tab.Screen name="Lounge" component={LoungeScreen} />
+      <Tab.Screen
+        name="Lounge"
+        component={LoungeScreen}
+        options={{
+          tabBarBadge: unread > 0 ? (unread > 9 ? '9+' : unread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.purple, color: colors.text, fontSize: 10 },
+        }}
+      />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -116,6 +155,21 @@ export default function App() {
           <Stack.Screen
             name="Chat"
             component={ChatScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="Guess"
+            component={GuessScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="HigherLower"
+            component={HigherLowerScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="Leaderboard"
+            component={LeaderboardScreen}
             options={{ animation: 'slide_from_right' }}
           />
         </Stack.Navigator>

@@ -37,7 +37,8 @@ const REVIEW_CLOSE = 0.1; // reviews within 10% read as "close"
 // swamps the other: raw scores would let a 30-long Higher or Lower run
 // outweigh five perfect days of Guess the dApp.
 const GUESS_POINTS = [10, 8, 6, 5, 4, 3]; // solved on guess 1..6
-const holPoints = (streak) => Math.round(streak / 3); // 0..10 over a 30 run
+// floor, not round: "1 point for every 3 in a row" must be literally true.
+const holPoints = (streak) => Math.floor(streak / 3); // 0..10 over a 30 run
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

@@ -5,7 +5,7 @@ import { AdBanner } from './AdBanner';
 import { AppIcon } from './AppIcon';
 import { DeltaChip } from './DeltaChip';
 import { PressableCard } from './PressableCard';
-import { scoutPick, topClimbers } from '../lib/collections';
+import { catOf, scoutPick, topClimbers } from '../lib/collections';
 import { DappEntry } from '../lib/types';
 import { colors, fonts } from '../theme';
 
@@ -44,7 +44,7 @@ export function DiscoverHeader({
               <View style={styles.heroMeta}>
                 <DeltaChip delta={pick.rankDelta} />
                 <Text style={styles.heroMetaText}>
-                  ★ {pick.rating.toFixed(1)} · {pick.category}
+                  ★ {pick.rating.toFixed(1)} · {catOf(pick)}
                 </Text>
               </View>
             </View>

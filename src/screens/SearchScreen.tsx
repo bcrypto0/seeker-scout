@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppCard } from '../components/AppCard';
 import { SkeletonList } from '../components/Skeleton';
 import { fetchCatalog, isCatalogCached } from '../lib/catalog';
+import { catOf } from '../lib/collections';
 import { DappEntry } from '../lib/types';
 import { colors, heading } from '../theme';
 
@@ -26,6 +27,9 @@ export function SearchScreen() {
       (a) =>
         a.name.toLowerCase().includes(needle) ||
         (a.description ?? '').toLowerCase().includes(needle) ||
+        // Both names: the store's current category AND the pre-September
+        // one, so "defi" still finds apps now filed under "Earn & DeFi".
+        catOf(a).toLowerCase().includes(needle) ||
         a.category.toLowerCase().includes(needle),
     );
   }, [apps, q]);

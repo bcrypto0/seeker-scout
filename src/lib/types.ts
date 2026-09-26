@@ -51,6 +51,18 @@ export interface DappEntry {
    * cached catalog) — never treat missing as zero.
    */
   reviews30d?: number;
+  /**
+   * DISTINCT days in the trailing ~30 on which new reviews arrived. The
+   * farm-resistant aliveness signal: a burst of templated reviews lands on
+   * one day, real use spreads across many. Absent = unknown.
+   */
+  reviewDays30?: number;
+  /**
+   * The dApp Store's own, current category (18 of them since Sep 2026).
+   * `category` is kept as the pre-September name so v0.9's hardcoded chips
+   * keep working; read this one via catOf() everywhere in v0.10+.
+   */
+  storeCategory?: string;
   /** True when release history was verified on-chain (DAS/Triton) */
   onchainVerified?: boolean;
   /** Count of immutable on-chain Release NFTs for this app */

@@ -15,7 +15,32 @@ export type ChatMessage = {
   tier: 'founding' | 'early' | 'member';
   text: string;
   created_at: string;
+  /** emoji -> count (v0.10 server; absent on an older server). */
+  reactions?: Record<string, number>;
+  /** The emojis the signed-in viewer added (only when a token was sent). */
+  mine?: string[];
 };
+
+/**
+ * The reaction set, identical to the worker's REACTIONS. Exact strings
+ * matter: '❤️' is U+2764 + U+FE0F, and a bare U+2764 is rejected.
+ */
+export const REACTIONS = ['👍', '🔥', '😂', '👀', '❤️'] as const;
+
+// One token for the whole Lounge: verifying in the chat also unlocks the
+// games and vice versa, so every screen hears when it changes.
+const tokenListeners = new Set<(t: string | null) => void>();
+export function onTokenChange(fn: (t: string | null) => void): () => void {
+  tokenListeners.add(fn);
+  return () => tokenListeners.delete(fn);
+}
+const emitToken = (t: string | null) => tokenListeners.forEach((fn) => fn(t));
+
+/** Forget an expired or rejected token everywhere. */
+export async function clearToken(): Promise<void> {
+  await AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
+  emitToken(null);
+}
 
 const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 const base58Encode = (bytes: Uint8Array): string => {
@@ -79,6 +104,7 @@ export async function authChat(
         TOKEN_KEY,
         JSON.stringify({ token: body.token, exp: Date.now() + 23 * 60 * 60 * 1000 }),
       );
+      emitToken(body.token);
       return body.token;
     }
     lastErr = body.error || `auth failed (${res.status})`;
@@ -87,9 +113,17 @@ export async function authChat(
   throw new Error(lastErr);
 }
 
-export async function fetchMessages(since = 0): Promise<ChatMessage[]> {
+/**
+ * Read is public. Passing the token only adds which reactions are yours, so
+ * a missing or expired token still reads fine.
+ */
+export async function fetchMessages(since = 0, token?: string | null): Promise<ChatMessage[]> {
   try {
-    const res = await withTimeout(`${BASE}/chat/messages?since=${since}`, {}, 10_000);
+    const res = await withTimeout(
+      `${BASE}/chat/messages?since=${since}`,
+      token ? { headers: { authorization: `Bearer ${token}` } } : {},
+      10_000,
+    );
     if (!res.ok) return [];
     const body = await res.json();
     return Array.isArray(body.messages) ? body.messages : [];
@@ -107,6 +141,38 @@ export async function sendMessage(token: string, text: string): Promise<ChatMess
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `send failed (${res.status})`);
   return body.message;
+}
+
+/** Toggle a reaction; resolves with the message's fresh counts and yours. */
+export async function reactToMessage(
+  token: string,
+  messageId: number,
+  emoji: string,
+): Promise<{ reactions: Record<string, number>; mine: string[] }> {
+  const res = await withTimeout(`${BASE}/chat/react`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ messageId, emoji }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `reaction failed (${res.status})`);
+  return { reactions: body.reactions ?? {}, mine: body.mine ?? [] };
+}
+
+/** Newest message id + how many arrived after `since`. Null if unreachable. */
+export async function fetchLatest(
+  since: number,
+): Promise<{ latestId: number; newCount: number } | null> {
+  try {
+    const res = await withTimeout(`${BASE}/chat/latest?since=${since}`, {}, 8_000);
+    if (!res.ok) return null;
+    const body = await res.json();
+    return typeof body.latestId === 'number'
+      ? { latestId: body.latestId, newCount: Number(body.newCount) || 0 }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function reportMessage(token: string, messageId: number): Promise<void> {
