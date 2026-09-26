@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -21,6 +21,7 @@ import { clearToken, sendMessage } from '../lib/chat';
 import {
   Dir,
   GameError,
+  streakLabel,
   getToday,
   GuessRow,
   isGuessable,
@@ -50,6 +51,12 @@ export function GuessScreen() {
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [shared, setShared] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  // While typing, keep the box and its suggestions above the keyboard: the
+  // input sits under the clue board, so without this the list opens
+  // off-screen.
+  const typing = query.trim().length > 0;
+  const toEnd = () => scrollRef.current?.scrollToEnd({ animated: true });
 
   useEffect(() => {
     fetchCatalog().then(setCatalog);
@@ -142,8 +149,10 @@ export function GuessScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.body}
           keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => typing && toEnd()}
         >
           {!lounge.ready || (loading && !today) ? (
             <ActivityIndicator color={colors.purple} style={{ marginTop: 40 }} />
@@ -194,6 +203,8 @@ export function GuessScreen() {
                     autoCorrect={false}
                     autoCapitalize="none"
                     editable={!busy}
+                    // After the keyboard has resized the window.
+                    onFocus={() => setTimeout(toEnd, 300)}
                   />
                   {suggestions.map((a) => (
                     <Pressable
@@ -325,7 +336,7 @@ function Result({
         </Pressable>
       )}
       <Text style={styles.stats}>
-        +{g.points} pts · {today.streak}-day streak · week {today.week.score} pts
+        +{g.points} pts · {streakLabel(today.streak)} · week {today.week.score} pts
         {today.week.rank ? ` (#${today.week.rank})` : ''}
       </Text>
       <Pressable style={[styles.btn, shared && styles.btnDim]} onPress={onShare} disabled={shared}>

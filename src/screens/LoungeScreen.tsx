@@ -10,8 +10,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { clearToken } from '../lib/chat';
-import { GameError, getToday, Today, untilNext } from '../lib/game';
+import { claimFromToken, clearToken } from '../lib/chat';
+import { GameError, getToday, streakLabel, Today, untilNext } from '../lib/game';
 import { onUnreadChange } from '../lib/unread';
 import { useLoungeToken } from '../lib/useLounge';
 import { connectWallet, findGenesisToken } from '../lib/wallet';
@@ -136,6 +136,9 @@ export function LoungeScreen() {
   }
 
   const founding = stats ? Math.min(stats.founding, 100) : null;
+  // Signed in already means claimed (the worker refuses a token to anyone
+  // without a number), so show the badge instead of asking them to verify.
+  const seat = claim ?? claimFromToken(lounge.token);
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -173,9 +176,9 @@ export function LoungeScreen() {
             #101–500 become ⭐ PIONEERS. One claim per Seeker, forever.
           </Text>
 
-          {claim ? (
+          {seat ? (
             <View style={styles.claimBadge}>
-              <Text style={styles.claimBadgeText}>{tierLabel(claim)}</Text>
+              <Text style={styles.claimBadgeText}>{tierLabel(seat)}</Text>
               <Text style={styles.claimBadgeSub}>permanently yours</Text>
             </View>
           ) : !mint ? (
@@ -295,7 +298,7 @@ function ScoutDailyCard({
       <Pressable style={styles.dailyFoot} onPress={onBoard}>
         <Text style={styles.dailyFootText}>
           {today
-            ? `${today.streak}-day streak · ${today.week.rank ? `#${today.week.rank} this week` : 'unranked this week'} · ${today.week.score} pts`
+            ? `${streakLabel(today.streak)} · ${today.week.rank ? `#${today.week.rank} this week` : 'unranked this week'} · ${today.week.score} pts`
             : "This week's leaderboard"}
         </Text>
         <Text style={styles.dailyFootLink}>Board →</Text>

@@ -71,7 +71,11 @@ export function LeaderboardScreen() {
                 <Text style={styles.meValue}>
                   {me.week.rank ? `#${me.week.rank}` : 'Unranked'} · {me.week.score} pts
                 </Text>
-                <Text style={styles.meSub}>{me.streak}-day streak</Text>
+                <Text style={styles.meSub}>
+                  {me.streak > 0
+                    ? `${me.streak}-day streak`
+                    : "No streak yet. Finish today's Guess the dApp to start one."}
+                </Text>
               </View>
             )}
 

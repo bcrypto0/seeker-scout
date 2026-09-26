@@ -371,6 +371,9 @@ const styles = StyleSheet.create({
   chipText: {
     color: colors.textDim,
     fontSize: 13,
+    // Fixed line box: "★" falls back to a font with taller metrics, which
+    // pushed "★ Watching" down and clipped its "g" in the 34px chip.
+    lineHeight: 18,
     includeFontPadding: false,
     textAlignVertical: 'center',
   },

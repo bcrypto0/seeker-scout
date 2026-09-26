@@ -42,6 +42,41 @@ export async function clearToken(): Promise<void> {
   emitToken(null);
 }
 
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+/**
+ * The seat a token was issued for, read from its payload, for DISPLAY only:
+ * the worker checks the signature on every request, so a tampered token
+ * shows a wrong badge on its own screen and nothing else. Lets the Lounge
+ * show "Founder #1" to a signed-in member without another wallet prompt.
+ * The payload is ASCII JSON (numbers, base58, tier), so bytes map to chars.
+ */
+export function claimFromToken(
+  token: string | null,
+): { number: number; tier: 'founding' | 'early' | 'member' } | null {
+  try {
+    const body = token?.split('.')[0];
+    if (!body) return null;
+    let bits = 0, acc = 0, out = '';
+    for (const ch of body) {
+      const v = B64.indexOf(ch);
+      if (v < 0) return null;
+      acc = (acc << 6) | v;
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        out += String.fromCharCode((acc >> bits) & 0xff);
+      }
+    }
+    const p = JSON.parse(out);
+    return Number.isInteger(p.number) && ['founding', 'early', 'member'].includes(p.tier)
+      ? { number: p.number, tier: p.tier }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 const base58Encode = (bytes: Uint8Array): string => {
   let n = 0n;

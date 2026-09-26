@@ -316,8 +316,14 @@ function Board({
     <View>
       <Text style={styles.progress}>{of ? `${Math.min(step, of)} of ${of}` : `Round ${step}`}</Text>
       <AppPanel app={pair.a} shown />
-      <Text style={styles.vs}>more or fewer reviews than</Text>
+      <Text style={styles.vs}>VS</Text>
       <AppPanel app={pair.b} shown={!!reveal} fade={fade} verdict={reveal?.correct} />
+      {/* Asked about the HIDDEN app, because that's what the buttons answer.
+          "A, more or fewer than, B" read as a question about A. */}
+      <Text style={styles.question}>
+        Does <Text style={styles.questionApp}>{pair.b.n}</Text> have more or fewer
+        reviews than <Text style={styles.questionApp}>{pair.a.n}</Text>?
+      </Text>
       <View style={styles.picks}>
         <Pressable
           style={({ pressed }) => [styles.pick, styles.pickUp, (disabled || pressed) && styles.btnDim]}
@@ -389,7 +395,9 @@ const styles = StyleSheet.create({
   panelHidden: { color: colors.purple, fontSize: 20, fontFamily: fonts.heavy, marginTop: 6 },
   verdict: { fontSize: 22 },
   vs: { color: colors.textDim, fontSize: 12, textAlign: 'center', marginVertical: 10, fontWeight: '700' },
-  picks: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  question: { color: colors.text, fontSize: 15, lineHeight: 21, textAlign: 'center', marginTop: 16 },
+  questionApp: { fontFamily: fonts.heavy },
+  picks: { flexDirection: 'row', gap: 10, marginTop: 14 },
   pick: { flex: 1, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   pickUp: { backgroundColor: colors.green },
   pickDown: { backgroundColor: colors.purple },

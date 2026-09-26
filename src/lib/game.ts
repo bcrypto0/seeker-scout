@@ -147,6 +147,12 @@ export const sendPick = (token: string, pick: 'higher' | 'lower', day: string) =
   call<{ hol: HolState }>('/game/hol', token, { pick, day }).then((r) => r.hol);
 export const getBoard = () => call<Board>('/game/leaderboard', null);
 
+/**
+ * The streak counts days in a row with Guess the dApp finished. "0-day
+ * streak" reads like a bug, so zero gets words instead of a number.
+ */
+export const streakLabel = (n: number) => (n > 0 ? `${n}-day streak` : 'No streak yet');
+
 /** "4h 12m" until the next puzzle (UTC midnight). */
 export function untilNext(nextAt: string, now = Date.now()): string {
   const ms = Math.max(0, Date.parse(nextAt) - now);
