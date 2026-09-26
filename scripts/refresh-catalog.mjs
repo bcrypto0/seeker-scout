@@ -61,8 +61,21 @@ try {
     try {
       const data = JSON.parse(readFileSync(src, 'utf8'));
       if (!Array.isArray(data)) throw new Error('not an array');
-      writeFileSync(join(stage, name), JSON.stringify(data, null, 1));
-      log(`staged ${name}: ${data.length} entries`);
+      // Banners with an `expires` date (YYYY-MM-DD, last day shown) drop out
+      // on the next daily deploy. Done HERE rather than in the app so it works
+      // for every installed version at once. Without it a promo keeps running
+      // until someone remembers to delete it: a "20% off, ends Aug 30" code was
+      // still in the carousel on Sep 26, handing users a dead discount code.
+      const today = new Date().toISOString().slice(0, 10);
+      const live =
+        name === 'banners.json'
+          ? data.filter((b) => !b.expires || String(b.expires) >= today)
+          : data;
+      if (live.length !== data.length) {
+        log(`${name}: dropped ${data.length - live.length} expired entr${data.length - live.length === 1 ? 'y' : 'ies'}`);
+      }
+      writeFileSync(join(stage, name), JSON.stringify(live, null, 1));
+      log(`staged ${name}: ${live.length} entries`);
     } catch (e) {
       log(`WARN: ${name} invalid (${e.message}) — not staged`);
     }

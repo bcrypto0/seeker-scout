@@ -2,53 +2,44 @@
   {
     "id": "you-asked-we-shipped",
     "title": "You asked → we shipped ⭐",
-    "tagline": "Newest-first, rewards and Top rated all came from reviews. Ask for yours in a review.",
-    "label": "Seeker Scout",
-    "storePackage": "com.bilal.seekerscout"
+    "tagline": "Top rated, try-later and Hide abandoned all came from reviews. Ask for yours.",
+    "storePackage": "com.bilal.seekerscout",
+    "label": "Seeker Scout"
   },
   {
     "id": "alpha-live",
-    "title": "Alpha 🛰️ — our trading intel, in the app",
-    "tagline": "Smart-money wallet clusters, exchange listing radar and catalysts, straight from our own stack. Founders #1–100 read the live feed free; everyone gets a daily preview. Open the Alpha tab.",
-    "label": "New",
+    "title": "Alpha 🛰️ exchange listing radar",
+    "tagline": "Exchange deposit switch-ons, logged within 5 minutes. Free daily preview in the Alpha tab.",
     "color": "#9945FF",
     "imageUrl": "https://r2.solanamobiledappstore.com/a/de3f0b18d5f032cadff1de0a1764dcfb007ad6277631ed08f6ed5233fd2a0363.png"
   },
   {
     "id": "cook-app",
-    "title": "COOK 🍳 — launch a meme coin in 30s",
-    "tagline": "AI names it, draws the logo, and launches it on Solana. Pick your rail, earn 50% of every trade. Live on the dApp Store.",
+    "title": "COOK 🍳 meme coins in 30s",
+    "tagline": "AI picks the name and logo. 4 launchpads, plus half the trading fees on COOK's own.",
+    "label": "Our app",
     "color": "#FF6A3D",
     "storePackage": "fun.cook.app"
   },
   {
     "id": "rangekeeper-app",
-    "title": "RangeKeeper 📐 — is your LP earning $0?",
-    "tagline": "81% of DLMM positions earn nothing. Check yours free — live on the dApp Store.",
+    "title": "Is your LP earning $0? 📐",
+    "tagline": "81% of DLMM positions earn nothing. RangeKeeper checks yours for free.",
+    "label": "Our app",
     "color": "#3DD6F5",
     "storePackage": "fun.rangekeeper.app"
   },
   {
-    "id": "seeker-summer-cards20",
-    "title": "Seeker Summer ☀️ 20% off a Seeker",
-    "tagline": "Code CARDS20 at store.solanamobile.com with Solana Pay — first 5,000 orders get a free $50 Collector Crypt pack. Ends Aug 30.",
-    "label": "Deal",
-    "color": "#F5C518",
-    "url": "https://store.solanamobile.com"
-  },
-  {
     "id": "lounge-live",
-    "title": "The Owners' Lounge 🔒 is live",
-    "tagline": "Verified Seeker owners only — no bots, ever. Claim your founding number (first 100) in Profile → the Lounge.",
-    "label": "New",
+    "title": "The Owners' Lounge 🔒",
+    "tagline": "Ask other verified Seeker owners which apps are worth it. No bots. Open the Lounge tab.",
     "color": "#9945FF",
-    "url": "https://seekerscout.com",
     "imageUrl": "https://r2.solanamobiledappstore.com/a/de3f0b18d5f032cadff1de0a1764dcfb007ad6277631ed08f6ed5233fd2a0363.png"
   },
   {
     "id": "ad-slot",
     "title": "Your dApp here 📡",
-    "tagline": "Reach Seeker owners inside the daily radar — 1,208 apps tracked, on-chain verified, no bots and no bought traffic. seekerscout.com to book a slot.",
+    "tagline": "Reach verified Seeker owners inside a daily radar of 1,400+ apps. Book at seekerscout.com",
     "label": "Ad slot",
     "url": "https://seekerscout.com"
   }
