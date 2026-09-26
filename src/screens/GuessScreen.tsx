@@ -95,7 +95,7 @@ export function GuessScreen() {
     setBusy(true);
     setError(undefined);
     try {
-      const g = await sendGuess(lounge.token, app.id);
+      const g = await sendGuess(lounge.token, app.id, today.day);
       setQuery('');
       const last = g.guesses[g.guesses.length - 1];
       Haptics.notificationAsync(
@@ -108,7 +108,10 @@ export function GuessScreen() {
       if (g.done) load(lounge.token);
     } catch (e) {
       if (e instanceof GameError && e.status === 401) await clearToken();
-      else setError(e instanceof Error ? e.message : 'Guess failed.');
+      else if (e instanceof GameError && e.stale) {
+        setQuery('');
+        await load(lounge.token); // a new day's puzzle started: show it
+      } else setError(e instanceof Error ? e.message : 'Guess failed.');
     } finally {
       setBusy(false);
     }

@@ -139,7 +139,7 @@ export function HigherLowerScreen() {
     setBusy(true);
     setError(undefined);
     try {
-      const hol = await sendPick(lounge.token, pick);
+      const hol = await sendPick(lounge.token, pick, today.day);
       const last = hol.history[hol.history.length - 1];
       showReveal({ a: last.a, b: last.b, correct: last.correct });
       setTimeout(() => {
@@ -149,6 +149,7 @@ export function HigherLowerScreen() {
       }, REVEAL_MS);
     } catch (e) {
       if (e instanceof GameError && e.status === 401) await clearToken();
+      else if (e instanceof GameError && e.stale) await load(lounge.token); // new day's run
       else setError(e instanceof Error ? e.message : 'Pick failed.');
     } finally {
       setBusy(false);

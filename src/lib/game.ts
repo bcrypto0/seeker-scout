@@ -98,9 +98,13 @@ export interface Board {
   players: number;
 }
 
-/** Thrown for any non-2xx, carrying the server's own message when it sent one. */
+/**
+ * Thrown for any non-2xx, carrying the server's own message when it sent one.
+ * `stale` means a new UTC day's puzzle started while this one was open: the
+ * right response is to reload, not to show an error.
+ */
 export class GameError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly stale = false) {
     super(message);
   }
 }
@@ -119,7 +123,13 @@ async function call<T>(path: string, token: string | null, body?: object): Promi
       signal: c.signal,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new GameError(data?.error || `Something went wrong (${res.status})`, res.status);
+    if (!res.ok) {
+      throw new GameError(
+        data?.error || `Something went wrong (${res.status})`,
+        res.status,
+        data?.stale === true,
+      );
+    }
     return data as T;
   } catch (e) {
     if (e instanceof GameError) throw e;
@@ -130,10 +140,11 @@ async function call<T>(path: string, token: string | null, body?: object): Promi
 }
 
 export const getToday = (token: string) => call<Today>('/game/today', token);
-export const sendGuess = (token: string, appId: string) =>
-  call<{ guess: GuessState }>('/game/guess', token, { appId }).then((r) => r.guess);
-export const sendPick = (token: string, pick: 'higher' | 'lower') =>
-  call<{ hol: HolState }>('/game/hol', token, { pick }).then((r) => r.hol);
+/** `day` is the puzzle on screen; the server refuses it once midnight passes. */
+export const sendGuess = (token: string, appId: string, day: string) =>
+  call<{ guess: GuessState }>('/game/guess', token, { appId, day }).then((r) => r.guess);
+export const sendPick = (token: string, pick: 'higher' | 'lower', day: string) =>
+  call<{ hol: HolState }>('/game/hol', token, { pick, day }).then((r) => r.hol);
 export const getBoard = () => call<Board>('/game/leaderboard', null);
 
 /** "4h 12m" until the next puzzle (UTC midnight). */

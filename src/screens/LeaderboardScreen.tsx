@@ -59,8 +59,10 @@ export function LeaderboardScreen() {
         ) : (
           <>
             <Text style={styles.sub}>
-              Week of {shortDate(board.weekStart)} · {board.players}{' '}
-              {board.players === 1 ? 'player' : 'players'} · resets Monday 00:00 UTC
+              {/* "on the board", not "players": the count only includes
+                  members who scored this week, not everyone who played. */}
+              Week of {shortDate(board.weekStart)} · {board.players} on the board · resets
+              Monday 00:00 UTC
             </Text>
 
             {me && (

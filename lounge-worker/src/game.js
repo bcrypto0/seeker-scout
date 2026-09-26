@@ -348,6 +348,17 @@ export async function handleGame(request, env, url) {
       .bind(claims.wallet).first();
     if (m?.blocked) return json({ error: 'account blocked' }, 403);
 
+    // A client still showing yesterday's puzzle after UTC midnight must not
+    // have its next move land on TODAY's puzzle behind the old clues. The
+    // app sends the day it is playing; a mismatch tells it to reload.
+    // Optional for compatibility: a request without `day` is simply trusted.
+    if (request.method === 'POST') {
+      const peek = await request.clone().json().catch(() => ({}));
+      if (typeof peek?.day === 'string' && peek.day !== day) {
+        return json({ error: 'A new puzzle has started.', stale: true, day }, 409);
+      }
+    }
+
     const dayData = await getDay(env, secret, day);
 
     if (request.method === 'GET' && path === '/game/today') {
