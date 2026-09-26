@@ -20,3 +20,4 @@ release/
 
 # release APKs are build artifacts (EAS holds the canonical copies)
 store-assets/*.apk
+indexer/game-pool.last.json

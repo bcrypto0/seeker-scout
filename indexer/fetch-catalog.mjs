@@ -166,6 +166,58 @@ async function main() {
     }
   }
 
+  // Category compatibility (2026-09-26). In September the Solana dApp Store
+  // replaced its 11 categories with 18 new ones AND re-sorted apps between
+  // them (NFTs was dissolved outright). The v0.9 app hardcodes the OLD names
+  // and filters by exact match, so 7 of its 11 category chips went silently
+  // empty for every user. We can't reach installed apps without a release,
+  // but we control this file:
+  //   - storeCategory = the store's real, current category (v0.10+ reads this)
+  //   - category      = the old bucket that v0.9's chips understand
+  // Each new category maps to where MOST of its apps sat on Aug 28, measured
+  // by joining that day's deployed catalog to today's feed by package id, so
+  // a v0.9 user tapping "Lifestyle" sees roughly what "Lifestyle" meant.
+  // Remove once v0.9 is no longer in use.
+  const LEGACY_CATEGORY = {
+    'Trading & Markets': 'DeFi & Trading', //   85% came from DeFi & Trading
+    'Earn & DeFi': 'DeFi & Trading', //         78%
+    'Payments & Transfers': 'DeFi & Trading', // 85%
+    'Portfolio & Tracking': 'DeFi & Trading', // 75%
+    'Shopping & Commerce': 'DeFi & Trading', // 60%
+    'Productivity & Utility': 'Productivity', // 35% (plurality)
+    'Creator & Media': 'Content & Streaming', // 44%
+    'News & Learning': 'Content & Streaming', // 38% (plurality)
+    'Social & Messaging': 'Social & Identity', // 78%
+    'AI Assistants': 'AI & Agents', //           80%
+    'Health & Wellbeing': 'Lifestyle', //        83%
+    Spiritual: 'Lifestyle', //                   84%
+    'Travel & Local': 'Lifestyle', //            45% (plurality)
+    // Unchanged names pass through: Games, Wallets, DePIN,
+    // Privacy & Security, Top Picks.
+  };
+  // NFTs has no successor category, so no mapping can refill that chip. These
+  // are the apps the STORE itself labelled NFTs on Aug 28 (still listed on
+  // Sep 26); keeping that label for v0.9 users is the store's own call, not
+  // ours, and it stops the NFTs chip rendering a blank screen.
+  const LEGACY_NFT_IDS = new Set([
+    'app.chadbot.www.twa', 'app.pixelart.pixelartsolgallery', 'art.mallow.twa',
+    'art.mollyverse', 'com.CryptoIdolz.CryptoIdolz3DTeaser', 'com.agill.seekerpaint',
+    'com.evidence.onchain', 'com.fox.monkelivewallpaper', 'com.kloutgg.app',
+    'com.mygeotokens.twa', 'com.onchainerslab.pixelmint',
+    'com.poof.app69b9861389ad234b218c5b07', 'com.solanaimage', 'com.soldotnew',
+    'com.supercollect.seekercomics', 'com.tiexo', 'gallery.mantel.app',
+    'io.magiceden.twa', 'trade.tensor.www.twa', 'xyz.getkees',
+    'xyz.pukapasoft.gibmemestrategist', 'xyz.thesimulacrum.explorer.twa',
+    'xyz.tweetonium.twa',
+  ]);
+  for (const e of entries) {
+    if (!e.category) continue;
+    e.storeCategory = e.category;
+    e.category = LEGACY_NFT_IDS.has(e.id)
+      ? 'NFTs'
+      : LEGACY_CATEGORY[e.category] ?? e.category;
+  }
+
   // First-seen tracking (since 2026-07-14): ids new to the feed are stamped
   // with today's date; ids from the pre-tracking baseline stay null (unknown).
   // first-seen.json is ratchet state that can't be regenerated from the feed,
@@ -370,6 +422,40 @@ async function main() {
         });
         console.log(
           `reviews30d vs ${baseFile.slice(0, 10)}: stamped ${stamped}/${entries.length}`,
+        );
+
+        // reviewDays30: on how many DISTINCT days did reviews arrive in the
+        // window? Volume alone is farmable: on 2026-09-15 sixteen templated
+        // 4-star reviews from 2-3 character .skr names landed on Seeker Scout
+        // in ONE day, which alone clears any "3+ reviews = alive" rule. Real
+        // use spreads across days; a burst lands on one. The abandoned filter
+        // (v0.10+) reads this instead of the raw count.
+        const winFiles = velFiles.filter((f) => f.slice(0, 10) >= baseFile.slice(0, 10));
+        const series = winFiles.map((f) => {
+          const r = JSON.parse(
+            readFileSync(new URL(`./history/${f}`, import.meta.url), 'utf8'),
+          );
+          return new Map(r.map((x) => [x.id, x.reviews]));
+        });
+        series.push(new Map(entries.map((x) => [x.id, x.reviews])));
+        let dayStamped = 0;
+        entries.forEach((e) => {
+          let days = 0;
+          let seen = false;
+          for (let i = 1; i < series.length; i++) {
+            const prev = series[i - 1].get(e.id);
+            const cur = series[i].get(e.id);
+            if (typeof prev !== 'number' || typeof cur !== 'number') continue;
+            seen = true;
+            if (cur > prev) days += 1;
+          }
+          if (seen) {
+            e.reviewDays30 = days;
+            dayStamped += 1;
+          }
+        });
+        console.log(
+          `reviewDays30 over ${series.length - 1} daily steps: stamped ${dayStamped}/${entries.length}`,
         );
       } catch (e) {
         console.warn(`no reviews30d this run: ${e.message}`);

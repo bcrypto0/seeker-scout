@@ -33,8 +33,12 @@ try {
 
   // 1. Rebuild catalog.json from the live feed (throws on non-zero exit).
   // Dry runs must not advance the first-seen ratchet state.
+  // 420s, not 120s. The upstream feed (seekertracker.com) degraded in late
+  // Sep 2026: measured 2026-09-26 at 122-145s to FIRST byte, ~170s total, so
+  // a 120s cap failed every run and the daily catalog silently stopped
+  // refreshing. The cap exists to stop a truly hung run, not a slow one.
   execFileSync(NODE, [join(ROOT, 'indexer', 'fetch-catalog.mjs')], {
-    cwd: ROOT, stdio: 'inherit', timeout: 120_000,
+    cwd: ROOT, stdio: 'inherit', timeout: 420_000,
     env: { ...process.env, ...(DRY_RUN ? { FIRSTSEEN_READONLY: '1' } : {}) },
   });
 
@@ -112,6 +116,29 @@ try {
     // Don't silently redeploy a stale staged perks.json — the app's
     // []-fallback (section hidden) is better than frozen "updated daily".
     try { rmSync(join(stage, 'perks.json'), { force: true }); } catch {}
+  }
+
+  // 3e. Scout Daily game pool (v0.10): the small public file the Lounge worker
+  // reads to set each day's puzzles. Unlike perks, a failure must NOT drop
+  // the file: Pages deploys this directory as an atomic snapshot, so anything
+  // not staged 404s, and no pool means no game. Yesterday's pool still plays
+  // fine, so on failure we re-stage the last good one.
+  const lastPool = join(ROOT, 'indexer', 'game-pool.last.json');
+  try {
+    execFileSync(NODE, [
+      join(ROOT, 'indexer', 'game-pool.mjs'),
+      join(stage, 'catalog.json'),
+      join(stage, 'game-pool.json'),
+    ], { cwd: ROOT, stdio: 'inherit', timeout: 30_000 });
+    writeFileSync(lastPool, readFileSync(join(stage, 'game-pool.json')));
+    log('staged game-pool.json');
+  } catch (e) {
+    if (existsSync(lastPool)) {
+      writeFileSync(join(stage, 'game-pool.json'), readFileSync(lastPool));
+      log(`WARN: game pool build failed (${e.message}); re-staged last good pool`);
+    } else {
+      log(`WARN: game pool build failed (${e.message}) and no previous pool exists`);
+    }
   }
 
   // 2b. On-chain enrichment (Track A) — stamps verified release data onto

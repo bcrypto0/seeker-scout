@@ -10,6 +10,8 @@
  *   GET  /chat/messages?since=<id>                        -> {messages:[...]}
  *   POST /chat/send   Bearer token, {text}               -> {message}
  *   POST /chat/report Bearer token, {messageId}          -> {ok}
+ *   GET  /chat/latest?since=<id>                          -> {latestId, newCount}
+ *   POST /chat/react  Bearer token, {messageId, emoji}    -> {messageId, reactions, mine}
  *
  * Moderation: max length, link-stripping (drainer defense), per-wallet rate
  * limit, report-based auto-hide, and a per-wallet block flag.
@@ -21,6 +23,31 @@ const MAX_LEN = 400;
 const RATE_MS = 4000; // one message per wallet per 4s
 const HIDE_AT_REPORTS = 3; // auto-hide after N distinct reporters
 const PAGE = 50;
+// A closed set: free-form emoji would make reactions a second, unmoderated
+// message channel.
+const REACTIONS = ['👍', '🔥', '😂', '👀', '❤️'];
+
+/** {messageId: {emoji: count}} (+ the caller's own, when signed in). */
+async function reactionsFor(env, ids, number) {
+  const out = {};
+  const mine = {};
+  if (!ids.length) return { out, mine };
+  const marks = ids.map(() => '?').join(',');
+  const rows = await env.DB.prepare(
+    `SELECT message_id, emoji, COUNT(*) AS n FROM reactions
+     WHERE message_id IN (${marks}) GROUP BY message_id, emoji`,
+  ).bind(...ids).all();
+  for (const r of rows.results ?? []) {
+    (out[r.message_id] ??= {})[r.emoji] = r.n;
+  }
+  if (number) {
+    const own = await env.DB.prepare(
+      `SELECT message_id, emoji FROM reactions WHERE number = ? AND message_id IN (${marks})`,
+    ).bind(number, ...ids).all();
+    for (const r of own.results ?? []) (mine[r.message_id] ??= []).push(r.emoji);
+  }
+  return { out, mine };
+}
 
 /**
  * Strip anything link-shaped — the core drainer-link defense. Blocklist by
@@ -79,13 +106,30 @@ export async function handleChat(request, env, url, verifyClaim) {
     return json({ token: await issueToken(secret, payload), number: res.number, tier: res.tier });
   }
 
-  // --- read: public ---
+  // --- read: public (a bearer, if sent, only adds which reactions are yours) ---
   if (request.method === 'GET' && path === '/chat/messages') {
     const since = parseInt(url.searchParams.get('since') || '0', 10) || 0;
     const rows = await env.DB.prepare(
       'SELECT id, number, tier, text, created_at FROM messages WHERE hidden = 0 AND id > ? ORDER BY id DESC LIMIT ?',
     ).bind(since, PAGE).all();
-    return json({ messages: (rows.results ?? []).reverse() });
+    const messages = (rows.results ?? []).reverse();
+    const rauth = request.headers.get('authorization') || '';
+    const viewer = rauth.startsWith('Bearer ') ? await verifyToken(secret, rauth.slice(7)) : null;
+    const { out, mine } = await reactionsFor(env, messages.map((m) => m.id), viewer?.number);
+    for (const m of messages) {
+      m.reactions = out[m.id] ?? {};
+      if (viewer) m.mine = mine[m.id] ?? [];
+    }
+    return json({ messages });
+  }
+
+  // Cheap poll for the Lounge tab's unread badge: no message bodies.
+  if (request.method === 'GET' && path === '/chat/latest') {
+    const since = parseInt(url.searchParams.get('since') || '0', 10) || 0;
+    const row = await env.DB.prepare(
+      'SELECT MAX(id) AS latest, SUM(CASE WHEN id > ? THEN 1 ELSE 0 END) AS fresh FROM messages WHERE hidden = 0',
+    ).bind(since).first();
+    return json({ latestId: row?.latest ?? 0, newCount: row?.fresh ?? 0 });
   }
 
   // --- send / report: require a valid token ---
@@ -124,6 +168,32 @@ export async function handleChat(request, env, url, verifyClaim) {
       'SELECT id, number, tier, text, created_at FROM messages WHERE wallet = ? ORDER BY id DESC LIMIT 1',
     ).bind(claims.wallet).first();
     return json({ message: row });
+  }
+
+  if (request.method === 'POST' && path === '/chat/react') {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const mid = parseInt(body?.messageId, 10);
+    const emoji = body?.emoji;
+    if (!mid) return json({ error: 'messageId required' }, 400);
+    if (!REACTIONS.includes(emoji)) return json({ error: 'unsupported reaction' }, 400);
+    const m = await env.DB.prepare('SELECT blocked FROM chat_members WHERE wallet = ?')
+      .bind(claims.wallet).first();
+    if (m?.blocked) return json({ error: 'account blocked' }, 403);
+    const exists = await env.DB.prepare('SELECT id FROM messages WHERE id = ? AND hidden = 0')
+      .bind(mid).first();
+    if (!exists) return json({ error: 'message not found' }, 404);
+    // Toggle: a second tap on the same emoji takes it back.
+    const del = await env.DB.prepare(
+      'DELETE FROM reactions WHERE message_id = ? AND number = ? AND emoji = ?',
+    ).bind(mid, claims.number, emoji).run();
+    if (!del.meta?.changes) {
+      await env.DB.prepare(
+        'INSERT OR IGNORE INTO reactions (message_id, number, emoji, created_at) VALUES (?, ?, ?, ?)',
+      ).bind(mid, claims.number, emoji, new Date().toISOString()).run();
+    }
+    const { out, mine } = await reactionsFor(env, [mid], claims.number);
+    return json({ messageId: mid, reactions: out[mid] ?? {}, mine: mine[mid] ?? [] });
   }
 
   if (request.method === 'POST' && path === '/chat/report') {

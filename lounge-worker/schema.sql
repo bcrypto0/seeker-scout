@@ -82,3 +82,39 @@ CREATE TABLE IF NOT EXISTS alpha_tx_used (
   wallet TEXT NOT NULL,
   used_at TEXT NOT NULL
 );
+
+-- Scout Daily (v0.10). One row per UTC day, created on the first request of
+-- the day and never changed after: `data` snapshots the answer and the
+-- Higher or Lower chain so the puzzle plays the same all day.
+CREATE TABLE IF NOT EXISTS game_daily (
+  day TEXT PRIMARY KEY,
+  answer_id TEXT NOT NULL,
+  data TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+-- One run per seat per game per day. `moves` guards concurrent writes;
+-- `score` holds weekly-board points (max 10 per game per day).
+CREATE TABLE IF NOT EXISTS game_plays (
+  day TEXT NOT NULL,
+  game TEXT NOT NULL,              -- 'guess' | 'hol'
+  number INTEGER NOT NULL,         -- the player's Lounge number
+  wallet TEXT NOT NULL,
+  state TEXT NOT NULL,             -- JSON: {guesses:[]} or {picks:[]}
+  moves INTEGER NOT NULL DEFAULT 0,
+  done INTEGER NOT NULL DEFAULT 0,
+  score INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (day, game, number)
+);
+CREATE INDEX IF NOT EXISTS idx_game_plays_number ON game_plays (number, game, day);
+
+-- Lounge reactions: a closed emoji set, one of each per member per message.
+CREATE TABLE IF NOT EXISTS reactions (
+  message_id INTEGER NOT NULL,
+  number INTEGER NOT NULL,
+  emoji TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (message_id, number, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_reactions_message ON reactions (message_id);

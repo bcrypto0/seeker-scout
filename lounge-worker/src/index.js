@@ -16,6 +16,7 @@ import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha512';
 import { base58 } from '@scure/base';
 import { handleChat } from './chat.js';
+import { handleGame } from './game.js';
 import { handleAlpha } from './alpha.js';
 import { rpc } from './rpc.js';
 
@@ -256,6 +257,9 @@ export default {
     }
     if (url.pathname.startsWith('/chat/')) {
       return handleChat(request, env, url, (body) => verifyMembership(body, env));
+    }
+    if (url.pathname.startsWith('/game/')) {
+      return handleGame(request, env, url);
     }
     if (url.pathname.startsWith('/alpha/')) {
       return handleAlpha(request, env, url, (body) => verifyAlphaOwner(body, env));
