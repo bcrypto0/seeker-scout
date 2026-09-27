@@ -1,6 +1,6 @@
 {
   "name": "seeker-scout",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "main": "index.ts",
   "scripts": {
     "start": "expo start --dev-client",
@@ -20,6 +20,7 @@
     "@solana/web3.js": "^1.98.0",
     "buffer": "^6.0.3",
     "expo": "~53.0.0",
+    "expo-application": "~6.1.5",
     "expo-asset": "~11.1.7",
     "expo-constants": "~17.1.8",
     "expo-dev-client": "~5.1.0",

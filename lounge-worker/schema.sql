@@ -48,6 +48,24 @@ CREATE TABLE IF NOT EXISTS opens (
   count INTEGER NOT NULL DEFAULT 0
 );
 
+-- Where installs drop off (v0.10.1+). At most one row-bump per install per
+-- day: kind = 'first' (first launch ever on that phone) | 'return';
+-- bucket = days since install, bucketed ON THE PHONE ('0','1','2','3','4-7',
+-- '8-14','15-30','31+'). Still no device id: it counts installs by age.
+-- Read it:
+--   SELECT day, kind, bucket, count FROM opens_age ORDER BY day DESC, kind, bucket;
+-- First opens with bucket '0' vs the portal's installs = how many installers
+-- open the app at all; 'return' rows in '1' / '2'-'3' / '4-7' = who comes back.
+-- A v0.9 user updating also sends one 'first' (with their real install age),
+-- so 'first' rows in older buckets are upgraders, not new installs.
+CREATE TABLE IF NOT EXISTS opens_age (
+  day TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  bucket TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, kind, bucket)
+);
+
 -- ---------------------------------------------------------------------------
 -- Scout Alpha (docs/SCOUT_ALPHA_SPEC.md §2).
 -- APPLY BY HAND — there is no migration runner in this worker:

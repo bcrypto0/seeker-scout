@@ -1,24 +1,35 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Privacy Policy — Seeker Scout</title><link rel="icon" href="/icon.png"/><link rel="stylesheet" href="/style-legal.css"/></head><body><main>
+<title>Privacy Policy | Seeker Scout</title><link rel="icon" href="/icon.png"/><link rel="stylesheet" href="/style-legal.css"/></head><body><main>
 <a class="top" href="/">← seekerscout.com</a>
-<h1>Privacy Policy</h1><div class="updated">Last updated: July 10, 2026</div>
-<p>Seeker Scout ("the app") is built to respect your privacy by design. This policy explains what the app does — and, more importantly, what it does not do.</p>
+<h1>Privacy Policy</h1><div class="updated">Last updated: September 27, 2026</div>
+<p>Seeker Scout ("the app") works without an account, and most of it sends nothing about you. This policy lists exactly what the app sends to our server, what we keep, and why.</p>
 <h2>What we collect</h2>
-<p><strong>Nothing.</strong> Seeker Scout has no accounts, no sign-up, no analytics SDKs, no advertising SDKs, and no tracking. We do not collect, store, sell, or share any personal information.</p>
-<h2>How the app works with data</h2>
+<p>We do not use advertising or analytics SDKs, and we do not sell or share the data below with third parties. Our server runs on Cloudflare (Workers and D1 database).</p>
 <ul>
-<li><strong>App catalog:</strong> the app downloads a public catalog file (app names, ratings, categories) from our server. This request contains no personal data.</li>
-<li><strong>Wallet connection (optional):</strong> if you choose to connect your wallet, the connection happens on your device through the Solana Mobile Wallet Adapter. Your keys never leave your wallet, and we never see or store them.</li>
-<li><strong>Genesis Token verification (optional):</strong> to verify Seeker ownership, the app queries the public Solana blockchain for token accounts associated with your wallet address. This read-only lookup is sent to a public RPC endpoint. Wallet addresses are public information on the blockchain; the app does not store your address or send it to our servers.</li>
+<li><strong>App-open counter:</strong> each launch sends an anonymous ping with the app's build number. Once a day it also says how many days ago the app was installed, as a range (for example "2-3" or "8-14"), and whether this is the app's first launch. It carries no account, wallet address, device identifier or install date. We use it to count daily opens and to see how long installs are kept.</li>
+<li><strong>Owners' Lounge (optional):</strong> verifying your Seeker Genesis Token and claiming a Lounge number sends your wallet address, the Genesis Token's address and a message signed by your wallet. We store the wallet address, the token address, your Lounge number and the claim time.</li>
+<li><strong>Members' chat (optional):</strong> messages you post are stored with your Lounge number and wallet address, and shown to other members with your Lounge number. Reactions are stored with your Lounge number. Reports are stored with the reporting wallet address.</li>
+<li><strong>Scout Daily games (optional):</strong> your guesses, picks and scores are stored with your Lounge number and wallet address. The public leaderboard shows Lounge numbers and scores, not wallet addresses.</li>
+<li><strong>Scout Alpha (optional, paid):</strong> subscribing sends your wallet address, a signed message and the payment's transaction signature. We store the wallet address, the paid-until date and the transaction signatures, to check each payment is used once.</li>
+<li><strong>App catalog, banners and rewards lists:</strong> the app downloads public files from our server. These requests contain no personal data.</li>
+</ul>
+<p>Wallet addresses and transaction signatures are public on the Solana blockchain.</p>
+<h2>Your wallet</h2>
+<ul>
+<li><strong>Wallet connection (optional):</strong> the connection happens on your device through the Solana Mobile Wallet Adapter. Your keys stay in your wallet; we do not see or store them.</li>
+<li><strong>Genesis Token verification (optional):</strong> the app asks a public Solana RPC endpoint which tokens your wallet address holds. This is a read-only blockchain lookup.</li>
 </ul>
 <h2>Data stored on your device</h2>
-<p>Any preferences or connection state live only on your device and are deleted when you uninstall the app.</p>
+<p>Your watchlist, preferences, the Lounge sign-in token (valid for about a day) and the date the open counter last sent its daily install range live only on your device, and are deleted when you uninstall the app.</p>
+<h2>Keeping and deleting data</h2>
+<p>We keep Lounge, chat, game and Alpha records while those features run. You can ask us to delete the records linked to your wallet address by writing to the contact address below from a channel where you can show you control that wallet.</p>
 <h2>Third-party services</h2>
 <ul>
-<li>Cloudflare (catalog and website hosting) — standard server logs may include IP addresses, retained briefly for security.</li>
-<li>Public Solana RPC endpoints (blockchain reads only).</li>
+<li>Cloudflare (website, catalog, Lounge server and database): standard server logs may include IP addresses, retained briefly for security.</li>
+<li>Public Solana RPC endpoints (blockchain reads).</li>
+<li>Your wallet app, through the Solana Mobile Wallet Adapter (signing only when you approve).</li>
 </ul>
-<h2>Children</h2><p>The app does not target children and collects no data from anyone.</p>
-<h2>Changes</h2><p>If this policy changes, the update will be posted at this URL with a new date.</p>
+<h2>Children</h2><p>The app does not target children.</p>
+<h2>Changes</h2><p>We may update this policy as the app changes. Updates are posted at this URL with a new date.</p>
 <h2>Contact</h2><p><a href="/cdn-cgi/l/email-protection#0271676769677071616d777663727242656f636b6e2c616d6f"><span class="__cf_email__" data-cfemail="4330262628263130202c363722333303242e222a2f6d202c2e">[email&#160;protected]</span></a></p>
 </main><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body></html>

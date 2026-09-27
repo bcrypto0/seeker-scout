@@ -31,6 +31,10 @@ const MAX_CLOCK_SKEW_MS = 2 * 60 * 1000; // future-dated tolerance
 // on /claim: keep the replay window to a signature's realistic round-trip.
 const ALPHA_MESSAGE_AGE_MS = 2 * 60 * 1000;
 
+// Days-since-install buckets the app may send with /ping (src/lib/lounge.ts
+// ageBucket). Anything else is ignored, so the table can't be filled with junk.
+const AGE_BUCKETS = new Set(['0', '1', '2', '3', '4-7', '8-14', '15-30', '31+']);
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -273,12 +277,30 @@ export default {
     // so uncounted spam also can't exhaust it.
     if (request.method === 'POST' && url.pathname === '/ping') {
       if (request.headers.get('x-ss')) {
+        const day = new Date().toISOString().slice(0, 10);
         try {
           await env.DB.prepare(
             'INSERT INTO opens (day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count = count + 1',
-          ).bind(new Date().toISOString().slice(0, 10)).run();
+          ).bind(day).run();
         } catch {
           /* best-effort; never fail an open */
+        }
+        // v0.10.1+: at most once a day per install, the phone adds how many
+        // days ago the app was installed (already bucketed on the phone) and
+        // whether this is its first launch ever. No id travels with it, so
+        // this counts installs by age, never a person. Its own try: a missing
+        // table must not cost the opens counter above.
+        const age = request.headers.get('x-age');
+        if (age && AGE_BUCKETS.has(age)) {
+          const kind = request.headers.get('x-first') === '1' ? 'first' : 'return';
+          try {
+            await env.DB.prepare(
+              `INSERT INTO opens_age (day, kind, bucket, count) VALUES (?, ?, ?, 1)
+               ON CONFLICT(day, kind, bucket) DO UPDATE SET count = count + 1`,
+            ).bind(day, kind, age).run();
+          } catch {
+            /* best-effort */
+          }
         }
       }
       return new Response(null, { status: 204, headers: CORS });

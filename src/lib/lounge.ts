@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { signMessageBytes } from './wallet';
 
@@ -29,18 +31,71 @@ const base58Encode = (bytes: Uint8Array): string => {
 };
 
 /**
- * Anonymous app-open ping — fire-and-forget on launch. No wallet, no device
- * id, no PII; just bumps a per-day counter so we can quote a real
- * opens/impressions number (ad-sales metric). Never throws, never blocks.
+ * Anonymous app-open ping, fire-and-forget on launch. No wallet, no device
+ * id, no PII. It bumps a per-day counter (the opens/impressions number for
+ * ad sales) and, at most once a day, adds two coarse facts so we can see
+ * where installs drop off: how many days ago the app was installed (as a
+ * bucket, worked out here on the phone) and whether this is its first
+ * launch ever. The install date itself never leaves the phone. Never
+ * throws, never blocks.
  */
 export function pingOpen(): void {
+  void sendPing();
+}
+
+const AGE_DAY_KEY = 'seekerscout.ping.ageDay.v1'; // local day the age was last sent
+const FIRST_KEY = 'seekerscout.ping.first.v1'; // set once the first launch is counted
+
+/** Must match the worker's AGE_BUCKETS exactly; anything else is dropped. */
+export function ageBucket(days: number): string {
+  if (days <= 3) return String(Math.max(0, days));
+  if (days <= 7) return '4-7';
+  if (days <= 14) return '8-14';
+  if (days <= 30) return '15-30';
+  return '31+';
+}
+
+const localDay = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+async function sendPing(): Promise<void> {
   // x-ss (= versionCode) is the worker's spam gate: pings without it are
   // accepted but not counted, so curl loops can't inflate the opens metric.
   // Read from the native build so it can never go stale against app.json.
-  fetch(`${LOUNGE_URL}/ping`, {
-    method: 'POST',
-    headers: { 'x-ss': Constants.nativeBuildVersion ?? '0' },
-  }).catch(() => {});
+  const headers: Record<string, string> = { 'x-ss': Constants.nativeBuildVersion ?? '0' };
+  const now = new Date();
+  let firstLaunch = false;
+  try {
+    const [lastDay, seen] = await Promise.all([
+      AsyncStorage.getItem(AGE_DAY_KEY),
+      AsyncStorage.getItem(FIRST_KEY),
+    ]);
+    if (lastDay !== localDay(now)) {
+      // Android's first-install time survives app updates, so a v0.9 user
+      // updating reports their real age, not "installed today".
+      const installed = await Application.getInstallationTimeAsync();
+      // Calendar days, not 24h blocks: "came back the next day" is day 1.
+      const days = Math.round((dayStart(now) - dayStart(installed)) / 86_400_000);
+      if (Number.isFinite(days)) {
+        headers['x-age'] = ageBucket(days);
+        firstLaunch = !seen;
+        if (firstLaunch) headers['x-first'] = '1';
+      }
+    }
+  } catch {
+    // No age this time; the plain open still counts.
+  }
+  try {
+    const res = await fetch(`${LOUNGE_URL}/ping`, { method: 'POST', headers });
+    // Only mark the day as sent once the server has it, so an offline
+    // launch tries again on the next one.
+    if (res.ok && headers['x-age']) {
+      await AsyncStorage.setItem(AGE_DAY_KEY, localDay(now));
+      if (firstLaunch) await AsyncStorage.setItem(FIRST_KEY, '1');
+    }
+  } catch {
+    /* fire-and-forget */
+  }
 }
 
 export async function getLoungeStats(): Promise<LoungeStats | null> {
