@@ -6,7 +6,8 @@
     "start": "expo start --dev-client",
     "android": "expo run:android",
     "index-catalog": "node indexer/fetch-catalog.mjs",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "test:app": "node --test src/lib/vouchCore.test.ts src/lib/vouchCore.parity.test.ts"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { authChat, cachedToken, onTokenChange } from './chat';
+import { setSession } from './session';
 import { connectWallet, findGenesisToken } from './wallet';
 
 /**
@@ -41,6 +42,8 @@ export function useLoungeToken() {
     try {
       const conn = await connectWallet();
       const g = await findGenesisToken(conn.address);
+      // The vouch sheet reuses this wallet instead of asking to connect again.
+      setSession({ address: conn.address, authToken: conn.authToken, mint: g.mint, genesis: g.status });
       if (g.status !== 'verified' || !g.mint) {
         setError(
           g.status === 'not-found'

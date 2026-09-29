@@ -1,4 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppPerk, DappEntry, PromoBanner, RewardEntry } from './types';
+import { VOUCH_BASE } from './vouch';
+import { loadRemoteFlags } from './vouchCore';
+import type { RemoteFlags } from './vouchCore';
 
 /**
  * Hosted catalog produced by `npm run index-catalog` (indexer/catalog.json),
@@ -101,6 +105,39 @@ export async function fetchBanners(): Promise<PromoBanner[]> {
     return Array.isArray(data) ? data.filter((b) => b && b.id && b.title) : [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Kill switches served by the lounge worker from its D1 settings rows
+ * (GET /flags): one `wrangler d1 execute` pauses vouching on the worker and
+ * hides the button here, with no store release and no catalog deploy.
+ *
+ * A failed fetch returns the last good copy this device saved, and only a
+ * first run with no network gets the defaults (vouchCore.loadRemoteFlags).
+ * Only a live answer is memoised, for 60 s (the worker's max-age), so a
+ * failed read is retried on the next screen that asks. `force` (the vouch
+ * sheet, right before the Seed Vault prompt) skips the memo and carries a
+ * throwaway query, so Android's HTTP cache cannot answer with a copy from
+ * before a pause.
+ */
+let flagsMemo: { at: number; flags: RemoteFlags } | null = null;
+let flagsInflight: Promise<RemoteFlags> | null = null;
+const FLAGS_TTL_MS = 60_000;
+
+export async function fetchRemoteFlags(force = false): Promise<RemoteFlags> {
+  if (!force && flagsMemo && Date.now() - flagsMemo.at < FLAGS_TTL_MS) return flagsMemo.flags;
+  if (!force && flagsInflight) return flagsInflight;
+  const bust = force ? String(Date.now()) : undefined;
+  const run = loadRemoteFlags({ base: VOUCH_BASE }, AsyncStorage, bust).then(({ flags, source }) => {
+    if (source === 'live') flagsMemo = { at: Date.now(), flags };
+    return flags;
+  });
+  flagsInflight = run;
+  try {
+    return await run;
+  } finally {
+    if (flagsInflight === run) flagsInflight = null;
   }
 }
 

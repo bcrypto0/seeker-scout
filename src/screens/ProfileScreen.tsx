@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { setSession } from '../lib/session';
 import {
   connectWallet,
   findGenesisToken,
@@ -40,6 +41,13 @@ export function ProfileScreen() {
       setVerify('checking');
       const result = await findGenesisToken(conn.address);
       if (sessionRef.current !== session) return;
+      // Shared with the vouch sheet, so vouching from an app page needs no second connect.
+      setSession({
+        address: conn.address,
+        authToken: conn.authToken,
+        mint: result.mint,
+        genesis: result.status,
+      });
       if (result.status === 'verified') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
           .catch(() => {});
@@ -57,6 +65,7 @@ export function ProfileScreen() {
 
   function onDisconnect() {
     sessionRef.current += 1;
+    setSession(null);
     setAddress(undefined);
     setAuthToken(undefined);
     setVerify(undefined);
