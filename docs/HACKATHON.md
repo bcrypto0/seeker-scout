@@ -34,6 +34,7 @@ This section is appended as work lands, in commit order. Dates are the commit da
 | 2026-09-27 | device fixes | Five fixes found on the Seeker: seat badge, streak wording, suggestions above the keyboard, Higher or Lower question wording, chip clipping. |
 | 2026-09-27 | retention, v0.10.1 | Once a day per install the open ping adds a days-since-install bucket and a first-launch flag, computed on the phone, no id; the worker counts them so drop-off can be measured. The privacy policy was rewritten to list what the app actually sends. `scripts/retention.mjs` reads it out. |
 | 2026-09-28 | data | Daily catalog snapshots Sep 10 to Sep 28, one batched commit. |
+| 2026-09-29 | Scout Vouch (worker) | Live in production. `POST /vouch`: a Seed Vault signature over a domain-separated message that names the wallet and the Genesis Token mint, verified on the worker (freshness, ed25519, Token-2022 SGT fingerprint and holder check), one vouch per Genesis Token per app, newer signatures only (monotonic), a kill switch served to the app by `GET /flags`, notes refused if they carry a link, hidden ones included. Reads: per app, per mint, aggregate and this week's top. A per-minute budget in front of every chain check protects the paid RPC for claims, chat and alpha logins too. Tests: 13 unit, 32 end-to-end against a local worker with a fake RPC. |
 
 ## Headline feature: Scout Vouch
 
