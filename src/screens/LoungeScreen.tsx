@@ -10,8 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { TopVouchedCard } from '../components/TopVouchedCard';
 import { claimFromToken, clearToken } from '../lib/chat';
 import { GameError, getToday, streakLabel, Today, untilNext } from '../lib/game';
+import { setSession as setWalletSession } from '../lib/session';
 import { onUnreadChange } from '../lib/unread';
 import { useLoungeToken } from '../lib/useLounge';
 import { connectWallet, findGenesisToken } from '../lib/wallet';
@@ -89,6 +91,13 @@ export function LoungeScreen() {
       setAuthToken(conn.authToken);
       const result = await findGenesisToken(conn.address);
       if (sessionRef.current !== session) return;
+      // Shared with the vouch sheet, so vouching from an app page needs no second connect.
+      setWalletSession({
+        address: conn.address,
+        authToken: conn.authToken,
+        mint: result.mint,
+        genesis: result.status,
+      });
       if (result.status === 'verified' && result.mint) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
           .catch(() => {});
@@ -215,10 +224,13 @@ export function LoungeScreen() {
           </Text>
         </Pressable>
 
+        {/* Where the "Member votes" SOON card stood: the weekly vote was cut (plan C),
+            so the Lounge shows what owners vouched for this week instead of promising it. */}
+        <TopVouchedCard />
+
         <Text style={styles.section}>COMING TO THE LOUNGE</Text>
         {[
           ['🎖️', 'Founding perks', 'Founder and Pioneer badges unlock early access to what ships next.'],
-          ['🗳️', 'Member votes', 'Founding members help pick features and the weekly Scout Pick.'],
         ].map(([icon, title, detail]) => (
           <View key={title} style={styles.roadCard}>
             <Text style={styles.roadIcon}>{icon}</Text>
