@@ -15,10 +15,13 @@ import { AppIcon } from '../components/AppIcon';
 import { DeltaChip } from '../components/DeltaChip';
 import { Sparkline } from '../components/Sparkline';
 import { TryButton } from '../components/TryButton';
+import { VouchCard } from '../components/VouchCard';
+import { VouchSheet } from '../components/VouchSheet';
 import { WatchButton } from '../components/WatchButton';
 import { fetchCatalog } from '../lib/catalog';
 import { catOf } from '../lib/collections';
 import { DappEntry } from '../lib/types';
+import type { VouchResult } from '../lib/vouch';
 import { colors, fonts, freshness } from '../theme';
 
 const NEW_WINDOW_MS = 14 * 86_400_000;
@@ -33,6 +36,10 @@ export function AppDetailScreen() {
   // for ranks anyway — prefer the live entry when it exists.
   const [liveApp, setLiveApp] = useState<DappEntry | null>(null);
   const app = liveApp ?? routeApp;
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // The last signed vouch from the sheet: the card shows its numbers without waiting on a read.
+  const [lastVouch, setLastVouch] = useState<VouchResult | null>(null);
+  const [vouchFailure, setVouchFailure] = useState<string | undefined>();
 
   useEffect(() => {
     let alive = true;
@@ -155,6 +162,17 @@ export function AppDetailScreen() {
 
         <Histogram hist={app.ratingHistogram} reviews={app.reviews} />
 
+        {/* A sibling, not a child: Histogram renders nothing below 5 reviews. */}
+        <VouchCard
+          app={app}
+          lastResult={lastVouch}
+          failedSentence={vouchFailure}
+          onVouch={() => {
+            setVouchFailure(undefined);
+            setSheetOpen(true);
+          }}
+        />
+
         {!!app.rankHistory && app.rankHistory.length >= 2 && (
           <View style={styles.trendCard}>
             <View style={{ flex: 1 }}>
@@ -190,6 +208,17 @@ export function AppDetailScreen() {
           <Text style={styles.storeBtnText}>Get it on the dApp Store</Text>
         </Pressable>
       </ScrollView>
+      <VouchSheet
+        app={app}
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        // The card takes the signed answer at once; the sheet closes itself after showing it.
+        onVouched={(r) => {
+          setVouchFailure(undefined);
+          setLastVouch(r);
+        }}
+        onFailed={setVouchFailure}
+      />
     </SafeAreaView>
   );
 }

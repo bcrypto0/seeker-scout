@@ -7,6 +7,37 @@ import { colors } from '../theme';
  * win over spinners (battle plan §4.4). Plain Animated opacity loop.
  */
 export function SkeletonList({ rows = 6 }: { rows?: number }) {
+  const pulse = usePulse();
+
+  return (
+    <View>
+      {Array.from({ length: rows }, (_, i) => (
+        <Animated.View key={i} style={[styles.card, { opacity: pulse }]}>
+          <View style={styles.icon} />
+          <View style={styles.body}>
+            <View style={[styles.line, { width: '55%' }]} />
+            <View style={[styles.line, { width: '85%', marginTop: 8 }]} />
+            <View style={[styles.line, { width: '40%', marginTop: 8 }]} />
+          </View>
+        </Animated.View>
+      ))}
+    </View>
+  );
+}
+
+/** The same pulsing lines for a card whose numbers are still loading (vouch card, top vouched). */
+export function SkeletonLines({ widths = ['55%', '85%'] }: { widths?: `${number}%`[] }) {
+  const pulse = usePulse();
+  return (
+    <Animated.View style={{ opacity: pulse }}>
+      {widths.map((w, i) => (
+        <View key={i} style={[styles.line, { width: w, marginTop: i ? 8 : 0 }]} />
+      ))}
+    </Animated.View>
+  );
+}
+
+function usePulse() {
   const pulse = useRef(new Animated.Value(0.35)).current;
 
   useEffect(() => {
@@ -24,20 +55,7 @@ export function SkeletonList({ rows = 6 }: { rows?: number }) {
     return () => loop.stop();
   }, [pulse]);
 
-  return (
-    <View>
-      {Array.from({ length: rows }, (_, i) => (
-        <Animated.View key={i} style={[styles.card, { opacity: pulse }]}>
-          <View style={styles.icon} />
-          <View style={styles.body}>
-            <View style={[styles.line, { width: '55%' }]} />
-            <View style={[styles.line, { width: '85%', marginTop: 8 }]} />
-            <View style={[styles.line, { width: '40%', marginTop: 8 }]} />
-          </View>
-        </Animated.View>
-      ))}
-    </View>
-  );
+  return pulse;
 }
 
 const styles = StyleSheet.create({
