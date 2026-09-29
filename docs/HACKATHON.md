@@ -27,6 +27,13 @@ This section is appended as work lands, in commit order. Dates are the commit da
 | Date | Area | What |
 |---|---|---|
 | 2026-09-10 | repo hygiene | RPC endpoint moved to environment only in the indexer and watcher (no default in code); history scrubbed of the old endpoint; README truth pass; version alignment; `x-ss` derived from the native build version instead of a hand-bumped constant. |
+| 2026-09-26 | ads | Audit of the live banner carousel: an expired promo removed, three false ad claims corrected, banners now drop off automatically after their `expires` date. |
+| 2026-09-26 | Scout Daily (worker) | Two daily games served by the worker: Guess the dApp and Higher or Lower. The day's answer is picked by an HMAC of the date from a public pool, so it is fixed and cannot be read ahead. Ranked play needs a Lounge seat, which is one claim per Seeker Genesis Token, so each Seeker gets one ranked run a day. Weekly public board (founding numbers, never wallets), chat reactions, unread count. Server-side fix for the store's September move from 11 to 18 categories, which had emptied 7 of v0.9's 11 category chips. |
+| 2026-09-26 | Scout Daily (app), v0.10.0 | Game screens, practice mode anyone can play, results shared into the Lounge chat as cards, unread badge on the Lounge tab, reactions. |
+| 2026-09-26 | hardening | A move made across UTC midnight is refused (409, nothing recorded) instead of landing on the next day's puzzle; the board counts only members who scored. |
+| 2026-09-27 | device fixes | Five fixes found on the Seeker: seat badge, streak wording, suggestions above the keyboard, Higher or Lower question wording, chip clipping. |
+| 2026-09-27 | retention, v0.10.1 | Once a day per install the open ping adds a days-since-install bucket and a first-launch flag, computed on the phone, no id; the worker counts them so drop-off can be measured. The privacy policy was rewritten to list what the app actually sends. `scripts/retention.mjs` reads it out. |
+| 2026-09-28 | data | Daily catalog snapshots Sep 10 to Sep 28, one batched commit. |
 
 ## Headline feature: Scout Vouch
 
