@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Privacy Policy | Seeker Scout</title><link rel="icon" href="/icon.png"/><link rel="stylesheet" href="/style-legal.css"/></head><body><main>
 <a class="top" href="/">← seekerscout.com</a>
-<h1>Privacy Policy</h1><div class="updated">Last updated: September 27, 2026</div>
+<h1>Privacy Policy</h1><div class="updated">Last updated: September 29, 2026</div>
 <p>Seeker Scout ("the app") works without an account, and most of it sends nothing about you. This policy lists exactly what the app sends to our server, what we keep, and why.</p>
 <h2>What we collect</h2>
 <p>We do not use advertising or analytics SDKs, and we do not sell or share the data below with third parties. Our server runs on Cloudflare (Workers and D1 database).</p>
@@ -11,7 +11,9 @@
 <li><strong>Members' chat (optional):</strong> messages you post are stored with your Lounge number and wallet address, and shown to other members with your Lounge number. Reactions are stored with your Lounge number. Reports are stored with the reporting wallet address.</li>
 <li><strong>Scout Daily games (optional):</strong> your guesses, picks and scores are stored with your Lounge number and wallet address. The public leaderboard shows Lounge numbers and scores, not wallet addresses.</li>
 <li><strong>Scout Alpha (optional, paid):</strong> subscribing sends your wallet address, a signed message and the payment's transaction signature. We store the wallet address, the paid-until date and the transaction signatures, to check each payment is used once.</li>
-<li><strong>App catalog, banners and rewards lists:</strong> the app downloads public files from our server. These requests contain no personal data.</li>
+<li><strong>Scout Vouch (optional):</strong> vouching for an app sends your wallet address, your Genesis Token's address, a message signed by your wallet, the app's package id, your verdict (works or broken), the tags you picked, your note and the time you signed. We store these with the signature, the time we received the vouch and the weight it counts with (1.00x for every vouch today). We also keep your wallet address with the time of your last vouch, to allow one vouch every 10 seconds. Notes cannot contain links. Your verdict counts in each app's public totals. A note is shown publicly on the app's page with your verdict, your tags, its weight and your Lounge number if you claimed one. Anyone who knows your Genesis Token's address can look up which apps it vouched for and its verdict on each. While your wallet is connected, opening an app page sends your Genesis Token's address to our server so the app can show your own vouch.</li>
+<li><strong>Blockchain checks:</strong> to share them fairly, our server counts them per minute: by Genesis Token for a wallet and token it has checked before, otherwise by your network address (an IPv6 address counts by its first half). Each counter is deleted at the first check that arrives more than two minutes after its minute.</li>
+<li><strong>App catalog, banners, rewards lists, vouch totals and feature switches:</strong> the app downloads public data from our server. These requests contain no personal data.</li>
 </ul>
 <p>Wallet addresses and transaction signatures are public on the Solana blockchain.</p>
 <h2>Your wallet</h2>
@@ -20,13 +22,13 @@
 <li><strong>Genesis Token verification (optional):</strong> the app asks a public Solana RPC endpoint which tokens your wallet address holds. This is a read-only blockchain lookup.</li>
 </ul>
 <h2>Data stored on your device</h2>
-<p>Your watchlist, preferences, the Lounge sign-in token (valid for about a day) and the date the open counter last sent its daily install range live only on your device, and are deleted when you uninstall the app.</p>
+<p>Your watchlist, preferences, the Lounge sign-in token (valid for about a day), the date the open counter last sent its daily install range, your last vouch for each app (the server's answer to it: verdict, tags, note, weight and Lounge number, stored with your Genesis Token's address so the app can show them back to you) and the last copy of the feature switches live only on your device, and are deleted when you uninstall the app.</p>
 <h2>Keeping and deleting data</h2>
-<p>We keep Lounge, chat, game and Alpha records while those features run. You can ask us to delete the records linked to your wallet address by writing to the contact address below from a channel where you can show you control that wallet.</p>
+<p>We keep Lounge, chat, game, vouch and Alpha records while those features run. You can ask us to delete the records linked to your wallet address by writing to the contact address below from a channel where you can show you control that wallet.</p>
 <h2>Third-party services</h2>
 <ul>
 <li>Cloudflare (website, catalog, Lounge server and database): standard server logs may include IP addresses, retained briefly for security.</li>
-<li>Public Solana RPC endpoints (blockchain reads).</li>
+<li>Solana RPC providers (blockchain reads by the app, and by our server to check that a wallet holds its Genesis Token).</li>
 <li>Your wallet app, through the Solana Mobile Wallet Adapter (signing only when you approve).</li>
 </ul>
 <h2>Children</h2><p>The app does not target children.</p>
