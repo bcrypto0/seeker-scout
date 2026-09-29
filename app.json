@@ -10,6 +10,7 @@
     "android": {
       "package": "com.bilal.seekerscout",
       "versionCode": 13,
+      "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A1712"
@@ -24,7 +25,8 @@
     "plugins": [
       "expo-dev-client",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      ["expo-notifications", { "color": "#14F195" }]
     ],
     "extra": {
       "eas": {
