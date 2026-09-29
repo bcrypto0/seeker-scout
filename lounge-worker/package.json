@@ -3,9 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --port 8787",
+    "schema:local": "wrangler d1 execute seeker-lounge --local --file=./schema.sql",
+    "migrate": "wrangler d1 execute seeker-lounge --remote --file=./migrations/001_vouches.sql",
+    "migrate:local": "wrangler d1 execute seeker-lounge --local --file=./migrations/001_vouches.sql",
+    "test": "node --test \"test/*.test.js\"",
+    "check:vouch": "node test/post-vouch.mjs",
+    "test:integration": "node test/integration.mjs"
+  },
   "dependencies": {
     "@noble/ed25519": "^2.1.0",
     "@noble/hashes": "^1.4.0",
     "@scure/base": "^1.1.6"
+  },
+  "devDependencies": {
+    "wrangler": "4.131.0"
   }
 }

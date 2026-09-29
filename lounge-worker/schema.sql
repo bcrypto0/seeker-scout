@@ -136,3 +136,6 @@ CREATE TABLE IF NOT EXISTS reactions (
   PRIMARY KEY (message_id, number, emoji)
 );
 CREATE INDEX IF NOT EXISTS idx_reactions_message ON reactions (message_id);
+
+-- Scout Vouch tables (vouches, vouch_reports, vouch_members, votes, rpc_budget,
+-- settings) live in migrations/001_vouches.sql; apply with `npm run migrate`.
