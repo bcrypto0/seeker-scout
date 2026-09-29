@@ -30,6 +30,29 @@ const MAX_CLOCK_SKEW_MS = 2 * 60 * 1000; // future-dated tolerance
 // Alpha buys a paid entitlement, so a captured body is worth more there than
 // on /claim: keep the replay window to a signature's realistic round-trip.
 const ALPHA_MESSAGE_AGE_MS = 2 * 60 * 1000;
+// Vouch reuses MAX_MESSAGE_AGE_MS (10 min, same retry window as /claim), not the alpha window.
+// Cap on chain checks: every verified signature costs two RPC calls
+// (verifyGenesisSig step 3) and rpc.js retries 429/5xx three times, so a keypair
+// farm could otherwise burn the paid endpoint without ever touching D1.
+// Two pools per UTC minute. A (wallet, mint) pair already in claims or vouches
+// is a member and spends the members' pool, at most RPC_BUDGET_PER_MINT of it
+// per Genesis mint, so a keypair farm cannot lock existing members out. Every
+// other pair (first-time owners, and alpha subscribers who never claimed or
+// vouched) shares the open pool, at most RPC_BUDGET_PER_IP of it per client
+// address (an IPv6 /64 counts as one). One address cannot drain the open pool
+// alone; many can (six at that cap, or the /64s of one IPv6 /56), and while
+// they do, first-time owners get 503 'busy'. The backstop is the Cloudflare
+// per-IP rule (spec 9, dashboard); it only raises the number of addresses a
+// drain needs if it is set below RPC_BUDGET_PER_IP a minute. 120 a minute per
+// pool is far above any honest peak; above it the caller gets 503 'busy'.
+const RPC_BUDGET_PER_MIN = 120;
+const RPC_BUDGET_PER_MINT = 10;
+const RPC_BUDGET_PER_IP = 20;
+// When D1 cannot count (overload, write quota, table not migrated yet) each
+// isolate counts for itself, every pool capped at ISOLATE_BUDGET_PER_MIN:
+// bounded, instead of letting every request through.
+const ISOLATE_BUDGET_PER_MIN = 30;
+const isolateBudget = { minute: '', n: new Map() }; // key suffix -> units this minute
 
 // Days-since-install buckets the app may send with /ping (src/lib/lounge.ts
 // ageBucket). Anything else is ignored, so the table can't be filled with junk.
@@ -85,6 +108,85 @@ function isGenuineSgt(mintInfo) {
   return metaOk && groupOk;
 }
 
+/** One unit from the rpc_budget row `key`: ensure-row + conditional UPDATE (chat.js:108-119 idiom). */
+async function takeBudgetUnit(env, key, cap) {
+  const ins = await env.DB.prepare('INSERT OR IGNORE INTO rpc_budget (minute, n) VALUES (?, 0)').bind(key).run();
+  if (ins.meta?.changes) {
+    await env.DB.prepare('DELETE FROM rpc_budget WHERE minute < ?')
+      .bind(new Date(Date.now() - 2 * 60_000).toISOString().slice(0, 16)).run();
+  }
+  const take = await env.DB.prepare('UPDATE rpc_budget SET n = n + 1 WHERE minute = ? AND n < ?')
+    .bind(key, cap).run();
+  return Boolean(take.meta?.changes);
+}
+
+/**
+ * Budget key for a client address (cf-connecting-ip): IPv4 as is, IPv6 cut to
+ * its /64, because one subscriber holds a whole /64. '' when there is none
+ * (Cloudflare always sets the header; a bare local run may not).
+ */
+function ipKey(ip) {
+  if (typeof ip !== 'string' || !ip || ip.length > 64) return '';
+  if (!ip.includes(':')) return ip;
+  if (ip.includes('.')) return ip.slice(ip.lastIndexOf(':') + 1); // IPv4-mapped IPv6
+  const [head, tail = ''] = ip.toLowerCase().split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail ? tail.split(':') : [];
+  const groups = ip.includes('::') ? [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t] : h;
+  return `${groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':')}::/64`;
+}
+
+/**
+ * Chain-check budget (verifyGenesisSig step 2b); false means 503 'busy'.
+ * A member, a (wallet, mint) pair that already passed the chain check once
+ * (a claims or vouches row), takes one unit from its mint's share and one from
+ * the members' pool; anyone else takes one from its address's share and one
+ * from the open pool, so a self-made keypair can only ever spend the open
+ * pool and one address only a sixth of it. Every rpc_budget key starts with
+ * the UTC minute ('<minute>' open pool, '<minute>k' members' pool,
+ * '<minute>m<mint>' and '<minute>i<address>' shares), so one range DELETE
+ * expires them all. When D1 cannot count, each isolate counts for itself.
+ * Never throws.
+ */
+async function takeRpcBudget(env, wallet, mint, ip) {
+  const minute = new Date().toISOString().slice(0, 16);
+  let member = false;
+  try {
+    member = Boolean(await env.DB.prepare(
+      `SELECT 1 AS hit FROM claims WHERE genesis_mint = ?1 AND wallet = ?2
+       UNION ALL SELECT 1 FROM vouches WHERE genesis_mint = ?1 AND wallet = ?2 LIMIT 1`,
+    ).bind(mint, wallet).first());
+  } catch {
+    // Unknown pair: the open pool.
+  }
+  const net = ipKey(ip);
+  // [key suffix, cap] pairs, taken in order: the caller's share, then its pool.
+  const takes = member
+    ? [[`m${mint}`, RPC_BUDGET_PER_MINT], ['k', RPC_BUDGET_PER_MIN]]
+    : [...(net ? [[`i${net}`, RPC_BUDGET_PER_IP]] : []), ['', RPC_BUDGET_PER_MIN]];
+  const [poolSuffix, poolCap] = takes[takes.length - 1];
+  try {
+    // A spent pool answers from one read, so a flood past it writes nothing.
+    const pool = await env.DB.prepare('SELECT n FROM rpc_budget WHERE minute = ?')
+      .bind(minute + poolSuffix).first();
+    if (pool && pool.n >= poolCap) return false;
+    for (const [suffix, cap] of takes) {
+      if (!(await takeBudgetUnit(env, minute + suffix, cap))) return false;
+    }
+    return true;
+  } catch {
+    if (isolateBudget.minute !== minute) {
+      isolateBudget.minute = minute;
+      isolateBudget.n.clear();
+    }
+    if (takes.some(([s, cap]) => (isolateBudget.n.get(s) ?? 0) >= Math.min(cap, ISOLATE_BUDGET_PER_MIN))) {
+      return false;
+    }
+    for (const [s] of takes) isolateBudget.n.set(s, (isolateBudget.n.get(s) ?? 0) + 1);
+    return true;
+  }
+}
+
 /**
  * Verify a fresh, wallet-signed message proving control of a genuine Seeker
  * Genesis Token that the wallet holds. Steps 1-3 of the claim flow, shared
@@ -93,11 +195,12 @@ function isGenuineSgt(mintInfo) {
  * `message` + `maxAgeMs` default to the Lounge claim's string and window —
  * changing either default would invalidate every signature already shipped
  * devices produce. /alpha/* overrides them for domain separation.
+ * `ip` is the caller's cf-connecting-ip; it only picks the budget share.
  */
 async function verifyGenesisSig(
   body,
   env,
-  { message = claimMessage, maxAgeMs = MAX_MESSAGE_AGE_MS } = {},
+  { message = claimMessage, maxAgeMs = MAX_MESSAGE_AGE_MS, ip = '' } = {},
 ) {
   const { wallet, mint, ts, signature } = body ?? {};
   if (
@@ -131,6 +234,11 @@ async function verifyGenesisSig(
     sigOk = false;
   }
   if (!sigOk) return { error: 'signature verification failed', status: 401 };
+  // 2b. Spend one unit of the per-minute chain budget (takeRpcBudget: the
+  //     members' pool or the open pool). Only a valid signature gets here.
+  if (!(await takeRpcBudget(env, wallet, mint, ip))) {
+    return { error: 'busy, try again in a minute', status: 503 };
+  }
   // 3. On-chain: genuine SGT held by this wallet.
   try {
     const [mintInfo, holdings] = await Promise.all([
@@ -160,8 +268,8 @@ async function verifyGenesisSig(
  * Chat auth: verify Genesis ownership AND that the wallet already claimed a
  * founding number (chat is members-only). Returns {number,tier} or {error,status}.
  */
-async function verifyMembership(body, env) {
-  const bad = await verifyGenesisSig(body, env);
+async function verifyMembership(body, env, ip) {
+  const bad = await verifyGenesisSig(body, env, { ip });
   if (bad) return bad;
   try {
     const row = await env.DB.prepare('SELECT id FROM claims WHERE genesis_mint = ?')
@@ -180,10 +288,11 @@ async function verifyMembership(body, env) {
  * Gating alpha on verifyMembership instead would 403 every owner who has not
  * claimed, blocking them from the free founder check AND from paying.
  */
-async function verifyAlphaOwner(body, env) {
+async function verifyAlphaOwner(body, env, ip) {
   const bad = await verifyGenesisSig(body, env, {
     message: alphaMessage,
     maxAgeMs: ALPHA_MESSAGE_AGE_MS,
+    ip,
   });
   if (bad) return bad;
   let number = null;
@@ -198,7 +307,7 @@ async function verifyAlphaOwner(body, env) {
   return { number, tier: number === null ? null : tierOf(number) };
 }
 
-async function handleClaim(request, env) {
+async function handleClaim(request, env, ip) {
   let body;
   try {
     body = await request.json();
@@ -220,7 +329,7 @@ async function handleClaim(request, env) {
   }
 
   // 1-3. Fresh signed message + genuine Genesis Token held by the wallet.
-  const bad = await verifyGenesisSig(body, env);
+  const bad = await verifyGenesisSig(body, env, { ip });
   if (bad) return json({ error: bad.error }, bad.status);
   const { wallet } = body;
 
@@ -253,20 +362,21 @@ async function handleClaim(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const ip = request.headers.get('cf-connecting-ip') || ''; // picks the RPC budget share only
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS });
     }
     if (request.method === 'POST' && url.pathname === '/claim') {
-      return handleClaim(request, env);
+      return handleClaim(request, env, ip);
     }
     if (url.pathname.startsWith('/chat/')) {
-      return handleChat(request, env, url, (body) => verifyMembership(body, env));
+      return handleChat(request, env, url, (body) => verifyMembership(body, env, ip));
     }
     if (url.pathname.startsWith('/game/')) {
       return handleGame(request, env, url);
     }
     if (url.pathname.startsWith('/alpha/')) {
-      return handleAlpha(request, env, url, (body) => verifyAlphaOwner(body, env));
+      return handleAlpha(request, env, url, (body) => verifyAlphaOwner(body, env, ip));
     }
     // Anonymous app-open ping (fire-and-forget from the app on launch).
     // Cheap spam gate: only count pings carrying the app's static header
