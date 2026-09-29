@@ -18,6 +18,8 @@ import { base58 } from '@scure/base';
 import { handleChat } from './chat.js';
 import { handleGame } from './game.js';
 import { handleAlpha } from './alpha.js';
+import { handleVouch } from './vouch.js';
+import { vouchMessage } from './vouch-lib.js';
 import { rpc } from './rpc.js';
 
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
@@ -307,6 +309,33 @@ async function verifyAlphaOwner(body, env, ip) {
   return { number, tier: number === null ? null : tierOf(number) };
 }
 
+/**
+ * Vouch auth: Genesis ownership is the gate (same reasoning as
+ * verifyAlphaOwner). The signed string carries the package, verdict, tags and
+ * note, so verifyGenesisSig gets a per-request builder that closes over the
+ * already-validated body. A founding number is resolved best-effort and only
+ * labels the voice; gating never depends on it. The vote commit adds a kind
+ * argument (after ip) that selects voteMessage.
+ */
+async function verifyVouchOwner(body, env, ip) {
+  const build = vouchMessage;
+  const bad = await verifyGenesisSig(body, env, {
+    message: (wallet, mint, ts) => build({ ...body, wallet, mint, ts }),
+    maxAgeMs: MAX_MESSAGE_AGE_MS,
+    ip,
+  });
+  if (bad) return bad;
+  let number = null;
+  try {
+    const row = await env.DB.prepare('SELECT id FROM claims WHERE genesis_mint = ?')
+      .bind(body.mint).first();
+    if (Number.isInteger(row?.id)) number = row.id;
+  } catch {
+    // Label lookup only; an unlabelled voice is the safe side.
+  }
+  return { number, tier: number === null ? null : tierOf(number) };
+}
+
 async function handleClaim(request, env, ip) {
   let body;
   try {
@@ -377,6 +406,10 @@ export default {
     }
     if (url.pathname.startsWith('/alpha/')) {
       return handleAlpha(request, env, url, (body) => verifyAlphaOwner(body, env, ip));
+    }
+    if (url.pathname === '/vouch' || url.pathname === '/flags' ||
+        url.pathname.startsWith('/vouch/') || url.pathname.startsWith('/vote')) {
+      return handleVouch(request, env, url, (body) => verifyVouchOwner(body, env, ip));
     }
     // Anonymous app-open ping (fire-and-forget from the app on launch).
     // Cheap spam gate: only count pings carrying the app's static header
