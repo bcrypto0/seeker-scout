@@ -13,15 +13,17 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../components/AppIcon';
 import { DeltaChip } from '../components/DeltaChip';
+import { NotForMeButton } from '../components/NotForMeButton';
 import { Sparkline } from '../components/Sparkline';
 import { TryButton } from '../components/TryButton';
 import { VouchCard } from '../components/VouchCard';
 import { VouchSheet } from '../components/VouchSheet';
 import { WatchButton } from '../components/WatchButton';
-import { fetchCatalog } from '../lib/catalog';
+import { fetchCatalog, onLiveCatalog } from '../lib/catalog';
 import { catOf } from '../lib/collections';
 import { DappEntry } from '../lib/types';
-import type { VouchResult } from '../lib/vouch';
+import type { AppVouchSummary, VouchResult } from '../lib/vouch';
+import { WORKS_CHIP_A11Y, WORKS_CHIP_LABEL, worksChipShown } from '../lib/vouchStamp';
 import { colors, fonts, freshness } from '../theme';
 
 const NEW_WINDOW_MS = 14 * 86_400_000;
@@ -40,10 +42,14 @@ export function AppDetailScreen() {
   // The last signed vouch from the sheet: the card shows its numbers without waiting on a read.
   const [lastVouch, setLastVouch] = useState<VouchResult | null>(null);
   const [vouchFailure, setVouchFailure] = useState<string | undefined>();
+  // The card's live read of this app: the header chip follows it once it is in (vouchStamp.worksChipShown).
+  const [liveVouch, setLiveVouch] = useState<AppVouchSummary | null>(null);
+  // Mirrors the Not for me pill, for the line under the pills.
+  const [notForMe, setNotForMe] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    fetchCatalog().then((list) => {
+    const rank = (list: DappEntry[]) => {
       if (!alive) return;
       const sorted = [...list].sort((a, b) => b.trendScore - a.trendScore);
       const live = sorted.find((x) => x.id === routeApp.id) ?? null;
@@ -57,9 +63,13 @@ export function AppDetailScreen() {
             .findIndex((x) => x.id === routeApp.id) + 1
         : 0;
       setRanks({ overall: overall || undefined, cat: cat || undefined });
-    });
+    };
+    fetchCatalog().then(rank);
+    // A live catalog that lands after the offline seed re-ranks against it.
+    const offLive = onLiveCatalog(rank);
     return () => {
       alive = false;
+      offLive();
     };
   }, [routeApp.id]);
 
@@ -133,6 +143,17 @@ export function AppDetailScreen() {
                   </Text>
                 </View>
               )}
+              {worksChipShown(app, liveVouch) && (
+                <View
+                  style={[styles.badge, { borderColor: colors.purple }]}
+                  accessible
+                  accessibilityLabel={WORKS_CHIP_A11Y}
+                >
+                  <Text style={[styles.badgeText, { color: colors.purple }]}>
+                    {WORKS_CHIP_LABEL}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -151,6 +172,7 @@ export function AppDetailScreen() {
 
         <View style={styles.tryRow}>
           <TryButton id={app.id} />
+          <NotForMeButton id={app.id} onChange={setNotForMe} />
           <Pressable
             onPress={share}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -159,6 +181,11 @@ export function AppDetailScreen() {
             <Text style={styles.sharePillText}>↗ Share</Text>
           </Pressable>
         </View>
+        {notForMe && (
+          <Text style={styles.notForMeNote}>
+            Hidden from your Discover feed. Search still finds it.
+          </Text>
+        )}
 
         <Histogram hist={app.ratingHistogram} reviews={app.reviews} />
 
@@ -167,6 +194,7 @@ export function AppDetailScreen() {
           app={app}
           lastResult={lastVouch}
           failedSentence={vouchFailure}
+          onSummary={setLiveVouch}
           onVouch={() => {
             setVouchFailure(undefined);
             setSheetOpen(true);
@@ -354,10 +382,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
     marginHorizontal: 16, marginTop: 18, padding: 14,
   },
+  // Wraps: with "On your try list" and Not for me beside Share, three pills
+  // do not fit one line on a narrow phone.
   tryRow: {
-    flexDirection: 'row', gap: 10, alignItems: 'center',
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'center',
     paddingHorizontal: 16, marginTop: 14,
   },
+  notForMeNote: { color: colors.textDim, fontSize: 12, paddingHorizontal: 16, marginTop: 8 },
   sharePill: {
     height: 34, justifyContent: 'center', paddingHorizontal: 14,
     borderRadius: 17, borderWidth: 1, borderColor: colors.border,
@@ -403,7 +434,9 @@ const styles = StyleSheet.create({
   trendLabel: { color: colors.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
   trendSub: { color: colors.text, fontSize: 15, fontFamily: fonts.semi, marginTop: 3 },
   publisher: { color: colors.textDim, fontSize: 13, marginTop: 2 },
-  badges: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  // Wraps: next to a 72px icon, five chips (NEW, freshness, Seed Vault, Works
+  // on Seeker and the rank delta) do not fit one line on a narrow phone.
+  badges: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 8 },
   badge: {
     borderWidth: 1, borderRadius: 8,
     paddingHorizontal: 6, paddingVertical: 2,

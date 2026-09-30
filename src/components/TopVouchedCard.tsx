@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { fetchCatalog, isSeedCatalog } from '../lib/catalog';
+import { fetchCatalog, isSeedCatalog, onLiveCatalog } from '../lib/catalog';
 import type { DappEntry } from '../lib/types';
 import { getTopVouched, knownTopRows, lastVouchStamp, topRowMeta } from '../lib/vouch';
 import type { TopWeek } from '../lib/vouch';
@@ -53,27 +53,35 @@ export function TopVouchedCard() {
   // The offline seed is a few dozen apps frozen at build time: ranking the week's
   // list through it would hide nearly every vouched app, so it counts as no catalog
   // (the card offers Retry and tries again on the next focus).
-  const loadCatalog = useCallback(() => {
-    fetchCatalog().then((list) => {
-      if (!mounted.current) return;
-      if (isSeedCatalog(list)) {
-        catalogDownRef.current = true;
-        setCatalogDown(true);
-        return;
-      }
-      catalogDownRef.current = false;
-      setCatalogDown(false);
-      setApps(new Map(list.map((a) => [a.id, a])));
-    });
+  const showCatalog = useCallback((list: DappEntry[]) => {
+    if (!mounted.current) return;
+    if (isSeedCatalog(list)) {
+      catalogDownRef.current = true;
+      setCatalogDown(true);
+      return;
+    }
+    catalogDownRef.current = false;
+    setCatalogDown(false);
+    setApps(new Map(list.map((a) => [a.id, a])));
   }, []);
+  // `force` (the Retry link) downloads now instead of waiting for the next background retry.
+  const loadCatalog = useCallback(
+    (force = false) => {
+      fetchCatalog(force).then(showCatalog);
+    },
+    [showCatalog],
+  );
 
   useEffect(() => {
     mounted.current = true;
     loadCatalog();
+    // A live catalog that lands later (slow link, background retry) clears catalogDown.
+    const offLive = onLiveCatalog(showCatalog);
     return () => {
       mounted.current = false;
+      offLive();
     };
-  }, [loadCatalog]);
+  }, [loadCatalog, showCatalog]);
 
   // Re-read when the Lounge tab comes back into view: at most once a minute
   // (the worker caches it for two), and at once after a vouch in this session.
@@ -129,7 +137,7 @@ export function TopVouchedCard() {
           <Text style={[styles.empty, { flex: 1, marginTop: 0 }]}>Couldn't load the app list.</Text>
           <Pressable
             onPress={() => {
-              loadCatalog();
+              loadCatalog(true);
               load();
             }}
             hitSlop={10}

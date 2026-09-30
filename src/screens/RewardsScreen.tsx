@@ -17,6 +17,7 @@ import {
   fetchPerks,
   fetchRewards,
   isCatalogCached,
+  onLiveCatalog,
 } from '../lib/catalog';
 import { AppPerk, DappEntry, RewardEntry } from '../lib/types';
 import { colors, fonts, heading } from '../theme';
@@ -52,16 +53,20 @@ export function RewardsScreen() {
   // (no await on the tap path — see PerkCard).
   const [byId, setById] = useState<Map<string, DappEntry>>(new Map());
 
-  const loadCatalog = useCallback(() => {
-    fetchCatalog().then((list) =>
-      setById(new Map(list.map((a) => [a.id, a] as const))),
-    );
+  const showCatalog = useCallback((list: DappEntry[]) => {
+    setById(new Map(list.map((a) => [a.id, a] as const)));
   }, []);
+  const loadCatalog = useCallback(() => {
+    fetchCatalog().then(showCatalog);
+  }, [showCatalog]);
 
   useEffect(() => {
     fetchRewards().then(setRewards);
     loadCatalog();
   }, [loadCatalog]);
+
+  // A live catalog that lands after the offline seed (slow link, background retry).
+  useEffect(() => onLiveCatalog(showCatalog), [showCatalog]);
 
   // Perks are the headline feature — a failed fetch must not hide it for
   // the whole session. Retry on every tab focus until we have data (and

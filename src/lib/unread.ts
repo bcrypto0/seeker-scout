@@ -39,6 +39,9 @@ async function loadSeen(): Promise<number | null> {
   return lastSeen;
 }
 
+/** The newest message id the chat has shown, or null before the first check (replies.ts seeds from it). */
+export const getChatSeen = (): Promise<number | null> => loadSeen();
+
 async function saveSeen(id: number) {
   lastSeen = id;
   await AsyncStorage.setItem(SEEN_KEY, String(id)).catch(() => {});

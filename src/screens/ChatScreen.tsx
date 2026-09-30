@@ -16,9 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../components/AppIcon';
-import { fetchCatalog } from '../lib/catalog';
+import { fetchCatalog, onLiveCatalog } from '../lib/catalog';
 import {
   ChatMessage,
+  claimFromToken,
   clearToken,
   fetchMessages,
   REACTIONS,
@@ -28,6 +29,18 @@ import {
 } from '../lib/chat';
 import { freshlyListed, scoutPick, topClimbers } from '../lib/collections';
 import { isShare, parseShare } from '../lib/game';
+import { useMyNumber } from '../lib/loungeNumber';
+import { latestKnownReplyId, markRepliesSeen } from '../lib/replies';
+import { ALERT_PREVIEW_CHARS, oneLine, quoteFor, repliesToMe } from '../lib/repliesCore';
+import type { Quote } from '../lib/repliesCore';
+import {
+  enableReplyAlerts,
+  REPLY_ALERTS_FAILED,
+  REPLY_ALERTS_NO_PERMISSION,
+  REPLY_ALERTS_OFFER_BODY,
+  REPLY_ALERTS_OFFER_TITLE,
+  takeReplyAlertsOffer,
+} from '../lib/replyAlerts';
 import { DappEntry } from '../lib/types';
 import { markSeen } from '../lib/unread';
 import { useLoungeToken } from '../lib/useLounge';
@@ -51,6 +64,9 @@ const PROMPTS = [
 
 const tierTag = (m: ChatMessage) =>
   m.tier === 'founding' ? `🏆 #${m.number}` : m.tier === 'early' ? `⭐ #${m.number}` : `#${m.number}`;
+
+/** The worker's answer when the message being replied to is hidden or gone. */
+const REPLY_GONE = "That message can't be replied to any more.";
 
 /** Union by id (keeps optimistic sends the poll hasn't caught yet), drop
  *  locally-reported ids, sort ascending. Newer copies win, so reaction
@@ -78,25 +94,43 @@ export function ChatScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [pickerFor, setPickerFor] = useState<number | null>(null);
+  // The message the composer is answering (long press, Reply), or null.
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const inputRef = useRef<TextInput>(null);
   const hiddenRef = useRef<Set<number>>(new Set());
   const nearBottomRef = useRef(true);
   const tokenRef = useRef<string | null>(null);
   tokenRef.current = token;
+  // Whose replies to highlight: the stored Lounge number, else the token's.
+  const stored = useMyNumber();
+  const me = stored ?? claimFromToken(token)?.number ?? null;
+  const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
 
   const poll = useCallback(async () => {
     const msgs = await fetchMessages(0, tokenRef.current);
     setMessages((prev) => mergeMessages(prev, msgs, hiddenRef.current));
-    // Reading the chat is what clears the Lounge tab's badge.
+    // Reading the chat is what clears the Lounge tab's badge, and the
+    // replies-to-you count with it.
     const newest = msgs.length ? msgs[msgs.length - 1].id : 0;
-    if (newest) markSeen(newest);
+    if (newest) {
+      markSeen(newest);
+      markRepliesSeen(newest);
+    }
   }, []);
 
   useEffect(() => {
+    // Opening the chat clears the replies count at once (the first poll
+    // then moves it up to the newest message).
+    markRepliesSeen(latestKnownReplyId());
     poll();
     fetchCatalog().then(setCatalog);
+    const offLive = onLiveCatalog(setCatalog); // a live catalog that lands after the offline seed
     const t = setInterval(poll, POLL_MS);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      offLive();
+    };
   }, [poll]);
 
   // Re-read with the token once it arrives so "your" reactions light up.
@@ -121,20 +155,70 @@ export function ChatScreen() {
     if (!t || !token || busy) return;
     setBusy(true);
     setError(undefined);
+    const parent = replyTo;
     try {
-      const msg = await sendMessage(token, t);
+      const msg = await sendMessage(token, t, parent?.id);
       setText('');
+      setReplyTo(null);
       setMessages((m) => mergeMessages(m, [msg], hiddenRef.current));
       markSeen(msg.id);
       nearBottomRef.current = true; // sending implies you're at the bottom
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      offerReplyAlerts();
     } catch (e: any) {
       const m = e?.message ? String(e.message) : 'Send failed.';
       if (m.includes('authenticated')) await clearToken(); // token expired
-      setError(m);
+      if (m === 'bad reply') {
+        setReplyTo(null); // the text stays, ready to send as a plain message
+        setError(REPLY_GONE);
+      } else {
+        setError(m);
+      }
     } finally {
       setBusy(false);
     }
+  }
+
+  /** Once per install, after a message goes through: offer reply alerts. */
+  async function offerReplyAlerts() {
+    if (!(await takeReplyAlertsOffer())) return;
+    Alert.alert(REPLY_ALERTS_OFFER_TITLE, REPLY_ALERTS_OFFER_BODY, [
+      { text: 'Not now', style: 'cancel' },
+      {
+        text: 'Turn on',
+        onPress: async () => {
+          const r = await enableReplyAlerts();
+          if (r === 'no-permission') setError(REPLY_ALERTS_NO_PERMISSION);
+          else if (r !== 'on') setError(REPLY_ALERTS_FAILED);
+        },
+      },
+    ]);
+  }
+
+  function startReply(msg: ChatMessage) {
+    setPickerFor(null);
+    setError(undefined);
+    setReplyTo(msg);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  /** Long press: Reply, or Report (which still asks before it hides anything). */
+  function onActions(msg: ChatMessage) {
+    if (!token) {
+      setError('Verify your seat to reply.');
+      return;
+    }
+    Haptics.selectionAsync().catch(() => {});
+    Alert.alert(
+      `#${msg.number}`,
+      oneLine(msg.text, ALERT_PREVIEW_CHARS),
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Report', style: 'destructive', onPress: () => onReport(msg) },
+        { text: 'Reply', onPress: () => startReply(msg) },
+      ],
+      { cancelable: true },
+    );
   }
 
   async function onReact(msg: ChatMessage, emoji: string) {
@@ -179,6 +263,7 @@ export function ChatScreen() {
           reportMessage(token, msg.id);
           hiddenRef.current.add(msg.id); // stay hidden across polls
           setMessages((m) => m.filter((x) => x.id !== msg.id));
+          setReplyTo((r) => (r?.id === msg.id ? null : r));
         },
       },
     ]);
@@ -243,23 +328,44 @@ export function ChatScreen() {
             No messages yet. Verified Seeker owners, say hello. 👋
           </Text>
         }
-        renderItem={({ item }) => (
-          <MessageBubble
-            msg={item}
-            pickerOpen={pickerFor === item.id}
-            onPress={() => setPickerFor((p) => (p === item.id ? null : item.id))}
-            onLongPress={() => onReport(item)}
-            onReact={(e) => onReact(item, e)}
-            onPlay={() => nav.navigate('Guess')}
-          />
-        )}
+        renderItem={({ item }) => {
+          const quote = quoteFor(item, (id) => byId.get(id), (id) => hiddenRef.current.has(id));
+          return (
+            <MessageBubble
+              msg={item}
+              quote={quote}
+              quoteIsMine={quote?.kind === 'shown' && quote.number === me}
+              toMe={repliesToMe(item.number, quote, me)}
+              pickerOpen={pickerFor === item.id}
+              onPress={() => setPickerFor((p) => (p === item.id ? null : item.id))}
+              onLongPress={() => onActions(item)}
+              onReact={(e) => onReact(item, e)}
+              onPlay={() => nav.navigate('Guess')}
+            />
+          );
+        }}
       />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {!!error && <Text style={styles.err}>{error}</Text>}
         {token ? (
           <>
-            {!text.trim() && (
+            {replyTo && (
+              <View style={styles.replyBar}>
+                <Text style={styles.replyBarText} numberOfLines={1}>
+                  Replying to <Text style={styles.replyBarNum}>#{replyTo.number}</Text>: {oneLine(replyTo.text)}
+                </Text>
+                <Pressable
+                  onPress={() => setReplyTo(null)}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel reply"
+                >
+                  <Text style={styles.replyBarX}>✕</Text>
+                </Pressable>
+              </View>
+            )}
+            {!text.trim() && !replyTo && (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -275,8 +381,9 @@ export function ChatScreen() {
             )}
             <View style={styles.inputRow}>
               <TextInput
+                ref={inputRef}
                 style={styles.input}
-                placeholder="Message the Lounge…"
+                placeholder={replyTo ? `Reply to #${replyTo.number}…` : 'Message the Lounge…'}
                 placeholderTextColor={colors.textDim}
                 value={text}
                 onChangeText={setText}
@@ -317,6 +424,9 @@ export function ChatScreen() {
 
 function MessageBubble({
   msg,
+  quote,
+  quoteIsMine,
+  toMe,
   pickerOpen,
   onPress,
   onLongPress,
@@ -324,6 +434,12 @@ function MessageBubble({
   onPlay,
 }: {
   msg: ChatMessage;
+  /** The message this one answers, if it is a reply. */
+  quote: Quote | null;
+  /** The quoted message is the viewer's. */
+  quoteIsMine: boolean;
+  /** A reply to the viewer by someone else: highlighted. */
+  toMe: boolean;
   pickerOpen: boolean;
   onPress: () => void;
   onLongPress: () => void;
@@ -335,8 +451,32 @@ function MessageBubble({
   const share = isShare(msg.text) ? parseShare(msg.text) : null;
   return (
     <View style={{ alignSelf: 'flex-start', maxWidth: '90%' }}>
-      <Pressable onPress={onPress} onLongPress={onLongPress} style={[styles.msg, share && styles.msgShare]}>
-        <Text style={styles.msgTag}>{tierTag(msg)}</Text>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        style={[styles.msg, share && styles.msgShare, toMe && styles.msgToMe]}
+      >
+        <Text style={styles.msgTag}>
+          {tierTag(msg)}
+          {toMe ? <Text style={styles.msgToMeTag}>  ·  replied to you</Text> : null}
+        </Text>
+        {quote && (
+          <View style={styles.quote}>
+            {quote.kind === 'hidden' ? (
+              <Text style={styles.quoteHidden} numberOfLines={1}>
+                Message hidden
+              </Text>
+            ) : (
+              <Text style={styles.quoteText} numberOfLines={1}>
+                <Text style={styles.quoteNum}>
+                  #{quote.number}
+                  {quoteIsMine ? ' (you)' : ''}
+                </Text>{' '}
+                {quote.preview}
+              </Text>
+            )}
+          </View>
+        )}
         {share ? (
           <>
             <Text style={styles.shareTitle}>{share.title}</Text>
@@ -409,6 +549,15 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   msgShare: { borderColor: colors.purple },
+  msgToMe: { borderColor: colors.green, backgroundColor: 'rgba(20,241,149,0.07)' },
+  msgToMeTag: { color: colors.green },
+  quote: {
+    borderLeftWidth: 3, borderLeftColor: colors.purple, backgroundColor: colors.cardNested,
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 6,
+  },
+  quoteText: { color: colors.textDim, fontSize: 12 },
+  quoteNum: { color: colors.text, fontWeight: '800' },
+  quoteHidden: { color: colors.textDim, fontSize: 12, fontStyle: 'italic' },
   msgTag: { color: colors.purple, fontSize: 11, fontWeight: '800', marginBottom: 3 },
   msgText: { color: colors.text, fontSize: 14, lineHeight: 19 },
   shareTitle: { color: colors.text, fontSize: 15, fontWeight: '800', marginBottom: 4 },
@@ -432,6 +581,14 @@ const styles = StyleSheet.create({
   pickerBtn: { paddingHorizontal: 4, paddingVertical: 2 },
   pickerEmoji: { fontSize: 22 },
   err: { color: colors.red, fontSize: 12, paddingHorizontal: 16, marginBottom: 6 },
+  replyBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginTop: 6,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.card,
+    borderLeftWidth: 3, borderLeftColor: colors.purple,
+  },
+  replyBarText: { flex: 1, color: colors.textDim, fontSize: 12 },
+  replyBarNum: { color: colors.text, fontWeight: '800' },
+  replyBarX: { color: colors.textDim, fontSize: 16, fontWeight: '700' },
   prompts: { gap: 8, paddingHorizontal: 12, paddingTop: 6 },
   prompt: {
     borderWidth: 1, borderColor: colors.border, borderRadius: 14,

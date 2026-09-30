@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../components/AppIcon';
 import { BackHeader } from '../components/BackHeader';
-import { fetchCatalog } from '../lib/catalog';
+import { fetchCatalog, onLiveCatalog } from '../lib/catalog';
 import { clearToken, sendMessage } from '../lib/chat';
 import { catOf } from '../lib/collections';
 import {
@@ -90,6 +90,8 @@ export function HigherLowerScreen() {
     AsyncStorage.getItem(PRACTICE_BEST_KEY)
       .then((v) => setPracticeBest(Number(v) || 0))
       .catch(() => {});
+    // A live catalog that lands after the offline seed widens the practice pool.
+    return onLiveCatalog(setCatalog);
   }, []);
 
   const load = useCallback(async (token: string) => {

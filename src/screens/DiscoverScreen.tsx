@@ -14,7 +14,7 @@ import { AppCard } from '../components/AppCard';
 import { DiscoverHeader } from '../components/DiscoverHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { Ticker } from '../components/Ticker';
-import { fetchCatalog, isCatalogCached, isSeedCatalog } from '../lib/catalog';
+import { fetchCatalog, isCatalogCached, isSeedCatalog, onLiveCatalog } from '../lib/catalog';
 import {
   bayesRating,
   catOf,
@@ -23,6 +23,8 @@ import {
   isHighlyRated,
   RATING_HIGH,
 } from '../lib/collections';
+import { getNotForMe, isNotForMe, onNotForMeChange, toggleNotForMe } from '../lib/notForMe';
+import { hiddenInCatalog, withoutHidden } from '../lib/notForMeFilter';
 import { checkWatchlist } from '../lib/notify';
 import { maybeAskAfterSessions } from '../lib/reviewPrompt';
 import { getTryList, onTryListChange } from '../lib/trylist';
@@ -32,6 +34,11 @@ import { colors, heading } from '../theme';
 
 const WATCHING = '★ Watching';
 const TO_TRY = '📌 To try';
+/**
+ * The Not for me list (notForMe.ts). Its chip reads "✕ Hidden (n)" and shows
+ * only while the catalog lists an app on it, or while it is the open view.
+ */
+const HIDDEN = '✕ Hidden';
 
 /**
  * The chips that aren't store categories. Store categories themselves are
@@ -71,22 +78,30 @@ export function DiscoverScreen() {
   const [hideStale, setHideStale] = useState(false);
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [toTry, setToTry] = useState<Set<string>>(new Set());
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  // The feed waits for the Not for me list, so a hidden app never flashes up as the hero.
+  const [hiddenLoaded, setHiddenLoaded] = useState(false);
   const listRef = useRef<FlatList<DappEntry>>(null);
   const checkedRef = useRef(false);
 
   useEffect(() => {
-    fetchCatalog().then((a) => {
+    const show = (a: DappEntry[]) => {
       setApps(a);
       setLoading(false);
       // One-time watchlist change check + local notifications per session.
       // NOTE: permission is NOT requested here — it's asked on the first ☆
       // tap, where the user has just expressed intent to track something.
-      if (!checkedRef.current) {
+      // Live data only: the offline seed's frozen ranks would overwrite the
+      // snapshot the next live check diffs against.
+      if (!checkedRef.current && !isSeedCatalog(a)) {
         checkedRef.current = true;
         const ranked = [...a].sort((x, y) => y.trendScore - x.trendScore);
         checkWatchlist(ranked);
       }
-    });
+    };
+    fetchCatalog().then(show);
+    // A live catalog that lands after the seed was shown (slow link, background retry) replaces it.
+    const offLive = onLiveCatalog(show);
     getWatchlist().then((ids) => setWatched(new Set(ids)));
     // Let the feed settle before asking anything — a dialog on top of a
     // still-loading screen reads as an ad, not a request.
@@ -100,10 +115,20 @@ export function DiscoverScreen() {
     const offTry = onTryListChange(() =>
       getTryList().then((ids) => setToTry(new Set(ids))),
     );
+    const readHidden = () => {
+      getNotForMe().then((ids) => {
+        setHidden(new Set(ids));
+        setHiddenLoaded(true);
+      });
+    };
+    readHidden();
+    const offHidden = onNotForMeChange(readHidden);
     return () => {
       clearTimeout(askTimer);
       off();
       offTry();
+      offHidden();
+      offLive();
     };
   }, []);
 
@@ -124,16 +149,23 @@ export function DiscoverScreen() {
     });
   };
 
-  // Store categories straight from the catalog, biggest first.
+  // The feed without the apps on the Not for me list, and those apps (the
+  // ones this catalog lists) for the Hidden chip.
+  const visibleApps = useMemo(() => withoutHidden(apps, hidden), [apps, hidden]);
+  const hiddenApps = useMemo(() => hiddenInCatalog(apps, hidden), [apps, hidden]);
+  const showHiddenChip = hiddenApps.length > 0 || cat === HIDDEN;
+
+  // Store categories straight from the catalog, biggest first. Counted over
+  // the visible apps, so a category whose apps are all hidden has no chip.
   const chips = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const a of apps) {
+    for (const a of visibleApps) {
       const c = catOf(a);
       if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
     }
     const cats = [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([c]) => c);
-    return [...FIXED_CHIPS, ...cats];
-  }, [apps]);
+    return [...FIXED_CHIPS, ...(showHiddenChip ? [HIDDEN] : []), ...cats];
+  }, [visibleApps, showHiddenChip]);
 
   // A refresh can drop the category a user had selected (the store renames
   // them); don't strand them on an empty list with no chip to tap.
@@ -146,9 +178,11 @@ export function DiscoverScreen() {
 
   const filtered = useMemo(
     () =>
-      apps
+      // Not for me apps leave All and the store categories. Watching and To
+      // try keep their own apps, hidden or not: the lists are independent.
+      (cat === HIDDEN ? hiddenApps : cat === WATCHING || cat === TO_TRY ? apps : visibleApps)
         .filter((a) =>
-          cat === 'All'
+          cat === 'All' || cat === HIDDEN
             ? true
             : cat === WATCHING
               ? watched.has(a.id)
@@ -156,13 +190,15 @@ export function DiscoverScreen() {
                 ? toTry.has(a.id)
                 : catOf(a) === cat,
         )
-        .filter((a) => !topRatedOnly || isHighlyRated(a))
+        // The quality filters leave the Hidden view alone: it is where an app
+        // comes back from, so it lists every app its chip counts.
+        .filter((a) => cat === HIDDEN || !topRatedOnly || isHighlyRated(a))
         // isAbandoned, not isStale: hide old-AND-quiet, never merely old.
         // Age alone flags Phantom (#9, releases via Play Store) the same as
         // dead shovelware. The offline seed is never judged at all — its
         // dates AND review counts are frozen at build time. Ratings don't
         // decay, so topRatedOnly needs no such guard.
-        .filter((a) => !hideStale || offlineSeed || !isAbandoned(a))
+        .filter((a) => cat === HIDDEN || !hideStale || offlineSeed || !isAbandoned(a))
         .sort((a, b) =>
           sort === 'newest'
             ? newestKey(b).localeCompare(newestKey(a)) ||
@@ -171,18 +207,19 @@ export function DiscoverScreen() {
               ? bayesRating(b) - bayesRating(a) || b.trendScore - a.trendScore
               : b.trendScore - a.trendScore,
         ),
-    [apps, cat, sort, watched, toTry, topRatedOnly, hideStale, offlineSeed],
+    [apps, visibleApps, hiddenApps, cat, sort, watched, toTry, topRatedOnly, hideStale, offlineSeed],
   );
 
   const tickerItems = useMemo(() => {
     if (!apps.length) return [];
     const items: string[] = [];
-    [...apps]
+    // The apps it names skip the Not for me list; the counts cover the whole store.
+    [...visibleApps]
       .filter((a) => (a.rankDelta ?? 0) > 0)
       .sort((a, b) => (b.rankDelta ?? 0) - (a.rankDelta ?? 0))
       .slice(0, 3)
       .forEach((a) => items.push(`${a.name} ▲${a.rankDelta}`));
-    [...apps]
+    [...visibleApps]
       .filter((a) => a.firstSeen)
       .sort((a, b) => (b.firstSeen ?? '').localeCompare(a.firstSeen ?? ''))
       .slice(0, 2)
@@ -192,7 +229,7 @@ export function DiscoverScreen() {
     const newThisWeek = apps.filter((a) => (a.firstSeen ?? '') >= weekAgo).length;
     if (newThisWeek) items.push(`${newThisWeek} new this week`);
     return items;
-  }, [apps]);
+  }, [apps, visibleApps]);
 
   const showHeader =
     cat === 'All' && sort === 'trending' && !topRatedOnly && !hideStale;
@@ -210,7 +247,9 @@ export function DiscoverScreen() {
   // ★4.5+ (which leaves 3% of the store, so nobody browses with it on), but
   // "hide stale" leaves 70% — a comfortable permanent browse mode.
   const emptySavedList =
-    (cat === WATCHING && watched.size === 0) || (cat === TO_TRY && toTry.size === 0);
+    (cat === WATCHING && watched.size === 0) ||
+    (cat === TO_TRY && toTry.size === 0) ||
+    (cat === HIDDEN && hiddenApps.length === 0);
   const emptyFiltered =
     (topRatedOnly || hideStale) && filtered.length === 0 && !emptySavedList;
   const emptyReason =
@@ -221,6 +260,16 @@ export function DiscoverScreen() {
         : `Every app here looks abandoned — no release in ${FRESH_STALE_DAYS}+ days and no recent review activity.`;
   const emptyWatching = !emptyFiltered && cat === WATCHING && filtered.length === 0;
   const emptyToTry = !emptyFiltered && cat === TO_TRY && filtered.length === 0;
+  const emptyHidden = !emptyFiltered && cat === HIDDEN && filtered.length === 0;
+
+  // Undo in the Hidden view. Takes the app off the list only while it is on
+  // it, so a second tap before the row leaves cannot hide it again.
+  const unhide = (id: string) => {
+    Haptics.selectionAsync().catch(() => {});
+    isNotForMe(id).then((on) => {
+      if (on) toggleNotForMe(id);
+    });
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -238,9 +287,14 @@ export function DiscoverScreen() {
             onPress={() => setCat(c)}
             hitSlop={{ top: 8, bottom: 8 }}
             style={[styles.chip, cat === c && styles.chipActive]}
+            accessibilityLabel={
+              c === HIDDEN
+                ? `Hidden: ${hiddenApps.length} ${hiddenApps.length === 1 ? 'app' : 'apps'} marked Not for me`
+                : undefined
+            }
           >
             <Text style={[styles.chipText, cat === c && styles.chipTextActive]}>
-              {c}
+              {c === HIDDEN ? `${HIDDEN} (${hiddenApps.length})` : c}
             </Text>
           </Pressable>
         ))}
@@ -297,7 +351,7 @@ export function DiscoverScreen() {
         </Pressable>
         )}
       </ScrollView>
-      {loading ? (
+      {loading || !hiddenLoaded ? (
         <SkeletonList />
       ) : emptyFiltered ? (
         <View style={styles.empty}>
@@ -322,13 +376,42 @@ export function DiscoverScreen() {
             “📌 Try later” — it lands here so you don't lose it.
           </Text>
         </View>
+      ) : emptyHidden ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyStar}>✕</Text>
+          <Text style={styles.emptyText}>
+            Nothing hidden. Tap “✕ Not for me” on an app's page to keep it out
+            of your Discover feed.
+          </Text>
+        </View>
       ) : (
         <FlatList
           ref={listRef}
           data={filtered}
+          // The mark and the Undo on each row follow the list.
+          extraData={hidden}
           keyExtractor={(a) => a.id}
-          ListHeaderComponent={<DiscoverHeader apps={apps} show={showHeader} />}
-          renderItem={({ item }) => <AppCard app={item} />}
+          ListHeaderComponent={
+            <DiscoverHeader apps={apps} show={showHeader} hidden={hidden} />
+          }
+          // Only when every app in view is on the Not for me list.
+          ListEmptyComponent={
+            hiddenApps.length > 0 ? (
+              <View style={styles.emptyInline}>
+                <Text style={styles.emptyText}>
+                  Every app here is on your Not for me list. Tap “{HIDDEN}” to
+                  bring one back.
+                </Text>
+              </View>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <AppCard
+              app={item}
+              notForMe={hidden.has(item.id)}
+              onUndo={cat === HIDDEN ? () => unhide(item.id) : undefined}
+            />
+          )}
           contentContainerStyle={{ paddingBottom: 24 }}
           refreshControl={
             <RefreshControl
@@ -381,4 +464,5 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingHorizontal: 40, paddingTop: 60 },
   emptyStar: { color: colors.textDim, fontSize: 48, marginBottom: 12 },
   emptyText: { color: colors.textDim, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  emptyInline: { paddingHorizontal: 40, paddingTop: 24 },
 });

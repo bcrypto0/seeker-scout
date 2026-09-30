@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
@@ -13,6 +15,19 @@ import * as Haptics from 'expo-haptics';
 import { TopVouchedCard } from '../components/TopVouchedCard';
 import { claimFromToken, clearToken } from '../lib/chat';
 import { GameError, getToday, streakLabel, Today, untilNext } from '../lib/game';
+import { rememberMyNumber, useMyNumber } from '../lib/loungeNumber';
+import { hasNotifPermission } from '../lib/notify';
+import { onRepliesChange } from '../lib/replies';
+import { repliesLabel } from '../lib/repliesCore';
+import {
+  disableReplyAlerts,
+  enableReplyAlerts,
+  REPLY_ALERTS_FAILED,
+  REPLY_ALERTS_NO_PERMISSION,
+  REPLY_CHECK_MINUTES,
+  replyAlertsSupported,
+  useReplyAlerts,
+} from '../lib/replyAlerts';
 import { setSession as setWalletSession } from '../lib/session';
 import { onUnreadChange } from '../lib/unread';
 import { useLoungeToken } from '../lib/useLounge';
@@ -52,12 +67,19 @@ export function LoungeScreen() {
   const lounge = useLoungeToken();
   const [today, setToday] = useState<Today | null>(null);
   const [unread, setUnread] = useState(0);
+  const [replies, setReplies] = useState(0);
+  const myNumber = useMyNumber();
 
   useEffect(() => {
     getLoungeStats().then((s) => {
       if (s) setStats(s);
     });
-    return onUnreadChange(setUnread);
+    const offReplies = onRepliesChange(setReplies);
+    const offUnread = onUnreadChange(setUnread);
+    return () => {
+      offReplies();
+      offUnread();
+    };
   }, []);
 
   // Refresh the game status every time the tab is shown, so coming back
@@ -148,6 +170,11 @@ export function LoungeScreen() {
   // Signed in already means claimed (the worker refuses a token to anyone
   // without a number), so show the badge instead of asking them to verify.
   const seat = claim ?? claimFromToken(lounge.token);
+  const seatNumber = seat?.number;
+  // Kept on the phone so the reply badge and reply alerts know whose replies to ask for.
+  useEffect(() => {
+    if (seatNumber) rememberMyNumber(seatNumber);
+  }, [seatNumber]);
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -222,7 +249,14 @@ export function LoungeScreen() {
           <Text style={styles.chatBtnText}>
             💬  Members' chat{unread > 0 ? `  ·  ${unread > 9 ? '9+' : unread} new` : ''}
           </Text>
+          {replies > 0 && (
+            <Text style={styles.replyPill}>{repliesLabel(replies)}</Text>
+          )}
         </Pressable>
+
+        {/* Only with a Lounge number (whose replies to check) and on a build
+            with the background modules; otherwise the badge above is all. */}
+        {replyAlertsSupported && (!!seat || myNumber !== null) && <ReplyAlertsRow />}
 
         {/* Where the "Member votes" SOON card stood: the weekly vote was cut (plan C),
             so the Lounge shows what owners vouched for this week instead of promising it. */}
@@ -243,6 +277,80 @@ export function LoungeScreen() {
         ))}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/**
+ * The Reply alerts switch. On asks for notification permission first (the
+ * watchlist's helper) and registers the background check; off unregisters
+ * it. The sentence under it holds whether the switch is on or off. With the
+ * switch on but notifications no longer allowed (taken back in Android
+ * settings), the permission note shows under it.
+ */
+function ReplyAlertsRow() {
+  const on = useReplyAlerts();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string>();
+  const [allowed, setAllowed] = useState(true);
+
+  // Read whenever the Lounge is shown and whenever the app comes back to
+  // the front (for example from Android settings).
+  useFocusEffect(
+    React.useCallback(() => {
+      let live = true;
+      const read = () => {
+        hasNotifPermission().then((ok) => live && setAllowed(ok));
+      };
+      read();
+      const sub = AppState.addEventListener('change', (s) => {
+        if (s === 'active') read();
+      });
+      return () => {
+        live = false;
+        sub.remove();
+      };
+    }, []),
+  );
+
+  async function onToggle(next: boolean) {
+    if (busy) return;
+    setBusy(true);
+    setNote(undefined);
+    try {
+      if (!next) {
+        await disableReplyAlerts();
+        return;
+      }
+      const r = await enableReplyAlerts();
+      setAllowed(r !== 'no-permission');
+      if (r === 'no-permission') setNote(REPLY_ALERTS_NO_PERMISSION);
+      else if (r !== 'on') setNote(REPLY_ALERTS_FAILED);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const shown = on && !allowed ? REPLY_ALERTS_NO_PERMISSION : note;
+
+  return (
+    <View style={styles.alertsCard}>
+      <View style={styles.alertsTop}>
+        <Text style={styles.alertsTitle}>Reply alerts</Text>
+        <Switch
+          value={on}
+          onValueChange={onToggle}
+          disabled={busy}
+          trackColor={{ false: colors.cardNested, true: colors.green }}
+          thumbColor={colors.text}
+          accessibilityLabel="Reply alerts"
+        />
+      </View>
+      <Text style={styles.alertsSub}>
+        A notification when a member replies to you. When on, the app checks in the background, at
+        most once every {REPLY_CHECK_MINUTES} minutes.
+      </Text>
+      {!!shown && <Text style={styles.err}>{shown}</Text>}
+    </View>
   );
 }
 
@@ -395,6 +503,17 @@ const styles = StyleSheet.create({
     paddingVertical: 15, alignItems: 'center', minHeight: 48, justifyContent: 'center',
   },
   chatBtnText: { color: colors.text, fontWeight: '800', fontSize: 15 },
+  replyPill: {
+    marginTop: 6, backgroundColor: colors.green, color: '#00140B', fontSize: 12, fontWeight: '800',
+    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, overflow: 'hidden',
+  },
+  alertsCard: {
+    backgroundColor: colors.card, borderRadius: 14, padding: 14,
+    marginHorizontal: 16, marginTop: 10, borderWidth: 1, borderColor: colors.border,
+  },
+  alertsTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  alertsTitle: { color: colors.text, fontSize: 15, fontFamily: fonts.semi },
+  alertsSub: { color: colors.textDim, fontSize: 12, lineHeight: 17, marginTop: 4 },
   section: {
     color: colors.textDim, fontSize: 11, fontWeight: '800', letterSpacing: 1,
     paddingHorizontal: 16, marginTop: 22, marginBottom: 8,

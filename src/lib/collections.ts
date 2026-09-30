@@ -1,8 +1,10 @@
-import { DappEntry } from './types';
+import type { DappEntry } from './types';
 
 /**
  * Auto-generated Discover rails from data we already have — no editorial
  * cost (battle plan §7/§8). All pure functions over the catalog.
+ * A type-only import, so Node's type stripping loads this file in
+ * `npm run test:app` (src/lib/notForMeFilter.test.ts).
  */
 
 // Same prior the indexer uses, so in-app rating rank agrees with the catalog.

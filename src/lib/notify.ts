@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { DappEntry } from './types';
 import { getWatchlist } from './watchlist';
@@ -30,6 +31,50 @@ export async function requestNotifPermission(): Promise<boolean> {
     if (status === 'granted') return true;
     const req = await Notifications.requestPermissionsAsync();
     return req.status === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+/** Whether notification permission is granted now, without asking. */
+export async function hasNotifPermission(): Promise<boolean> {
+  try {
+    return (await Notifications.getPermissionsAsync()).status === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reply alerts (replyAlerts.ts) post on their own Android channel, so they
+ * can be muted in system settings without muting watchlist alerts.
+ */
+export const REPLY_CHANNEL_ID = 'lounge-replies';
+/** The `data.kind` a reply alert carries; App.tsx opens the chat on a tap. */
+export const REPLY_ALERT_KIND = 'lounge-reply';
+
+export async function ensureReplyChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    await Notifications.setNotificationChannelAsync(REPLY_CHANNEL_ID, {
+      name: 'Lounge replies',
+      description: 'Replies to your messages in the Lounge chat',
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  } catch {
+    /* best-effort: Android then posts on the default channel */
+  }
+}
+
+/** Post one reply alert now. Never throws; false when it could not be posted. */
+export async function fireReplyAlert(title: string, body: string): Promise<boolean> {
+  try {
+    await ensureReplyChannel();
+    await Notifications.scheduleNotificationAsync({
+      content: { title, body, data: { kind: REPLY_ALERT_KIND } },
+      trigger: Platform.OS === 'android' ? { channelId: REPLY_CHANNEL_ID } : null,
+    });
+    return true;
   } catch {
     return false;
   }

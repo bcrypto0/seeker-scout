@@ -453,7 +453,7 @@ function memPending(): v.PendingStore & { value: v.PendingSigned | null } {
 function harness(
   steps: Step[],
   signedBytes?: (message: string) => Uint8Array,
-  opts: { pending?: v.PendingStore; now?: () => Date; note?: string } = {},
+  opts: { pending?: v.PendingStore; now?: () => Date; note?: string; input?: Partial<v.VouchInput> } = {},
 ) {
   const net = scripted(steps);
   const slept: number[] = [];
@@ -463,7 +463,7 @@ function harness(
   const deps = { base: 'http://w', fetch: net.fetch, sleep: async (ms: number) => { slept.push(ms); }, now: opts.now ?? (() => new Date(TS)) };
   const run = () => v.postVouch(deps, {
     wallet: W, mint: M,
-    input: { package: 'x.place', verdict: 'works', tags: ['crashes', 'wallet_ok', 'crashes'], note: opts.note ?? ' see  https://x.io ' },
+    input: { package: 'x.place', verdict: 'works', tags: ['crashes', 'wallet_ok', 'crashes'], note: opts.note ?? ' see  https://x.io ', ...opts.input },
     sign: async (message) => {
       signed.push(message);
       return signedBytes ? signedBytes(message) : new Uint8Array(64).fill(7);
@@ -606,6 +606,109 @@ test('a reused payload the server calls stale is signed afresh once (a phone clo
   await h.run();
   assert.equal(h.signed.length, 1);
   assert.deepEqual(h.stages, ['sending', 'signing', 'sending']);
+});
+
+test('pendingChoice: the sheet reopened after a failure gets the kept choices, and sending them costs no prompt', async () => {
+  const pending = memPending();
+  const failed = harness([BUSY, BUSY], undefined, { pending });
+  await assert.rejects(failed.run());
+  const now = Date.parse(TS);
+  const kept = v.pendingChoice(pending.value, W, M, 'x.place', now);
+  // The choices as signed: tags in bit order, the note after prepareNote.
+  assert.deepEqual(kept, { verdict: 'works', tags: ['wallet_ok', 'crashes'], note: 'see [link removed]' });
+  // What the prefilled sheet submits: the same payload, ts included, and no Seed Vault prompt.
+  const again = harness([{ status: 200, body: okBody() }], undefined, { pending, input: kept! });
+  await again.run();
+  assert.equal(again.signed.length, 0);
+  assert.deepEqual(again.stages, ['sending']);
+  assert.deepEqual(again.net.posts[0], failed.net.posts[0]);
+  assert.equal(pending.value, null);
+  assert.equal(v.pendingChoice(pending.value, W, M, 'x.place', now), null); // landed: nothing to fill in
+});
+
+test('pendingChoice: a changed choice after the prefill signs afresh (the normal path)', async () => {
+  const pending = memPending();
+  await assert.rejects(harness(['network', 'network', 'network'], undefined, { pending }).run());
+  const kept = v.pendingChoice(pending.value, W, M, 'x.place', Date.parse(TS));
+  assert.ok(kept);
+  for (const change of [
+    { verdict: 'broken' as const },
+    { tags: ['wallet_ok' as const] },
+    { note: 'see [link removed] now' },
+  ]) {
+    const saved = pending.value;
+    const h = harness([{ status: 200, body: okBody() }], undefined, { pending, input: { ...kept, ...change } });
+    await h.run();
+    assert.equal(h.signed.length, 1, JSON.stringify(change));
+    pending.set(saved); // put the failed try back for the next change
+  }
+});
+
+test('pendingChoice: a later, different choice for the same app replaces the kept one even when its prompt is declined', async () => {
+  const pending = memPending();
+  await assert.rejects(harness([BUSY, BUSY], undefined, { pending }).run()); // works: signed, then busy twice
+  const now = Date.parse(TS);
+  assert.equal(v.pendingChoice(pending.value, W, M, 'x.place', now)?.verdict, 'works');
+  const declined = harness([], () => {
+    throw new Error('User declined');
+  }, { pending, input: { verdict: 'broken' } });
+  await assert.rejects(declined.run(), /User declined/);
+  assert.equal(declined.signed.length, 1);
+  assert.equal(declined.net.posts.length, 0);
+  // Reopened a minute later: nothing to fill in, so the sheet cannot re-send the works the owner moved away from.
+  assert.equal(v.pendingChoice(pending.value, W, M, 'x.place', now + 60_000), null);
+  const again = harness([{ status: 200, body: okBody() }], undefined, { pending });
+  await again.run();
+  assert.equal(again.signed.length, 1); // works again: a fresh prompt
+  // A declined try for another app leaves this app's kept payload alone.
+  await assert.rejects(harness([BUSY, BUSY], undefined, { pending }).run());
+  const kept = pending.value;
+  assert.ok(kept);
+  const otherApp = harness([], () => {
+    throw new Error('User declined');
+  }, { pending, input: { package: 'other.app', verdict: 'broken' } });
+  await assert.rejects(otherApp.run(), /User declined/);
+  assert.equal(pending.value, kept);
+  assert.equal(v.pendingChoice(pending.value, W, M, 'x.place', now + 60_000)?.verdict, 'works');
+});
+
+test('pendingChoice: null for another wallet, mint or app, once too old, with no signature left, or a key that does not round-trip', async () => {
+  const pending = memPending();
+  await assert.rejects(harness(['network', 'network', 'network'], undefined, { pending }).run());
+  const p = pending.value!;
+  const now = Date.parse(TS);
+  assert.ok(v.pendingChoice(p, W, M, 'x.place', now));
+  assert.equal(v.pendingChoice(null, W, M, 'x.place', now), null);
+  assert.equal(v.pendingChoice(p, M, M, 'x.place', now), null);
+  assert.equal(v.pendingChoice(p, W, W, 'x.place', now), null);
+  assert.equal(v.pendingChoice(p, W, M, 'other.app', now), null);
+  // Exactly postVouch's window: reused below REUSE_SIGNED_MS, not at it, not from a clock that ran backwards.
+  assert.ok(v.pendingChoice(p, W, M, 'x.place', now + v.REUSE_SIGNED_MS - 1));
+  assert.equal(v.pendingChoice(p, W, M, 'x.place', now + v.REUSE_SIGNED_MS), null);
+  assert.equal(v.pendingChoice(p, W, M, 'x.place', now - 1), null);
+  assert.equal(v.pendingChoice({ ...p, signatures: [] }, W, M, 'x.place', now), null);
+  assert.equal(v.pendingChoice({ ...p, ts: 'not a date' }, W, M, 'x.place', now), null);
+  const key = (parts: unknown[]) => ({ ...p, key: JSON.stringify(parts) });
+  assert.equal(v.pendingChoice({ ...p, key: 'not json' }, W, M, 'x.place', now), null);
+  assert.equal(v.pendingChoice(key([W, M, 'x.place', 'meh', '-', '']), W, M, 'x.place', now), null);
+  // Not canonical (tag order, an unknown tag, an unprepared note): these choices would sign another key.
+  assert.equal(v.pendingChoice(key([W, M, 'x.place', 'works', 'crashes,wallet_ok', '']), W, M, 'x.place', now), null);
+  assert.equal(v.pendingChoice(key([W, M, 'x.place', 'works', 'bogus', '']), W, M, 'x.place', now), null);
+  assert.equal(v.pendingChoice(key([W, M, 'x.place', 'works', '-', ' two  spaces ']), W, M, 'x.place', now), null);
+  assert.equal(v.pendingChoice(key([W, M, 'x.place', 'works', '-', '', 'extra']), W, M, 'x.place', now), null);
+});
+
+test('pendingChoice: no tags and no note come back empty and still re-send without a prompt', async () => {
+  const pending = memPending();
+  const input = { verdict: 'broken' as const, tags: [], note: '  -  ' };
+  const failed = harness(['network', 'network', 'network'], undefined, { pending, input });
+  await assert.rejects(failed.run());
+  const kept = v.pendingChoice(pending.value, W, M, 'x.place', Date.parse(TS));
+  assert.deepEqual(kept, { verdict: 'broken', tags: [], note: '' });
+  const again = harness([{ status: 200, body: okBody() }], undefined, { pending, input: kept! });
+  await again.run();
+  assert.equal(again.signed.length, 0);
+  assert.deepEqual(again.net.posts[0], failed.net.posts[0]);
 });
 
 test('409 after a try whose answer was lost: one re-post of the same payload, answered from D1', async () => {

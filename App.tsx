@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { AppState, Text } from 'react-native';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DarkTheme,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -35,12 +39,37 @@ import { GuessScreen } from './src/screens/GuessScreen';
 import { HigherLowerScreen } from './src/screens/HigherLowerScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { checkUnread, onUnreadChange } from './src/lib/unread';
+import { checkReplies, onRepliesChange } from './src/lib/replies';
+import { getMyNumber, onMyNumberChange, rememberMyNumber } from './src/lib/loungeNumber';
+import { lastTokenClaim } from './src/lib/chat';
+import { REPLY_ALERT_KIND } from './src/lib/notify';
+import { syncReplyAlerts } from './src/lib/replyAlerts';
 import { colors } from './src/theme';
 import { pingOpen } from './src/lib/lounge';
 import { bumpSession } from './src/lib/reviewPrompt';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const navRef = createNavigationContainerRef<any>();
+
+/**
+ * A tap on a reply alert opens the chat. A tap that cold-starts the app
+ * arrives before navigation is ready, so it waits for onReady. Any other
+ * notification (watchlist) just opens the app, as before.
+ */
+let chatPending = false;
+function onNotificationTap(r: Notifications.NotificationResponse | null) {
+  try {
+    if (!r || r.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+    if (r.notification.request.content.data?.kind !== REPLY_ALERT_KIND) return;
+    // Handled once: a later launch must not reopen the chat for the same tap.
+    Notifications.clearLastNotificationResponseAsync().catch(() => {});
+    if (navRef.isReady()) navRef.navigate('Chat');
+    else chatPending = true;
+  } catch {
+    /* the app still opens */
+  }
+}
 
 const ICONS: Record<string, string> = {
   Discover: '✦',
@@ -67,19 +96,29 @@ const theme = {
 // The request returns two numbers, so this is cheap on data and on the worker.
 const UNREAD_POLL_MS = 60_000;
 
+/** The unread count, and the replies-to-you count (none without a Lounge number). */
+function checkLounge() {
+  checkUnread();
+  checkReplies();
+}
+
 function Tabs() {
   const [unread, setUnread] = useState(0);
+  const [replies, setReplies] = useState(0);
 
   useEffect(() => {
     const off = onUnreadChange(setUnread);
-    checkUnread();
-    let timer: ReturnType<typeof setInterval> | null = setInterval(checkUnread, UNREAD_POLL_MS);
+    const offReplies = onRepliesChange(setReplies);
+    // Learning the number (a claim, a sign-in) starts the replies count at once.
+    const offNumber = onMyNumberChange(() => checkReplies());
+    checkLounge();
+    let timer: ReturnType<typeof setInterval> | null = setInterval(checkLounge, UNREAD_POLL_MS);
     // Pause while backgrounded; re-check the moment the app comes back,
     // which is exactly when someone would want to see what they missed.
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') {
-        checkUnread();
-        if (!timer) timer = setInterval(checkUnread, UNREAD_POLL_MS);
+        checkLounge();
+        if (!timer) timer = setInterval(checkLounge, UNREAD_POLL_MS);
       } else if (timer) {
         clearInterval(timer);
         timer = null;
@@ -87,10 +126,17 @@ function Tabs() {
     });
     return () => {
       off();
+      offReplies();
+      offNumber();
       sub.remove();
       if (timer) clearInterval(timer);
     };
   }, []);
+
+  // A reply to you turns the Lounge badge green (the Lounge tab says how
+  // many); otherwise it is the purple unread count.
+  const badgeCount = unread > 0 ? unread : replies;
+  const replyBadge = replies > 0;
 
   return (
     <Tab.Navigator
@@ -114,8 +160,10 @@ function Tabs() {
         name="Lounge"
         component={LoungeScreen}
         options={{
-          tabBarBadge: unread > 0 ? (unread > 9 ? '9+' : unread) : undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.purple, color: colors.text, fontSize: 10 },
+          tabBarBadge: badgeCount > 0 ? (badgeCount > 9 ? '9+' : badgeCount) : undefined,
+          tabBarBadgeStyle: replyBadge
+            ? { backgroundColor: colors.green, color: '#00140B', fontSize: 10 }
+            : { backgroundColor: colors.purple, color: colors.text, fontSize: 10 },
         }}
       />
       <Tab.Screen name="Profile" component={ProfileScreen} />
@@ -141,9 +189,35 @@ export default function App() {
     bumpSession();
   }, []);
 
+  // Replies: fill the Lounge number from the last sign-in token if this
+  // phone has none stored yet (installs from before replies), and make the
+  // background task's registration match the Reply alerts switch.
+  useEffect(() => {
+    getMyNumber().then(async (n) => {
+      if (n === null) await rememberMyNumber((await lastTokenClaim())?.number);
+    });
+    syncReplyAlerts();
+  }, []);
+
+  // A tap on a reply alert: the one that launched the app, then any later one.
+  useEffect(() => {
+    Notifications.getLastNotificationResponseAsync().then(onNotificationTap).catch(() => {});
+    const sub = Notifications.addNotificationResponseReceivedListener(onNotificationTap);
+    return () => sub.remove();
+  }, []);
+
   return (
     <SafeAreaProvider>
-      <NavigationContainer theme={theme}>
+      <NavigationContainer
+        theme={theme}
+        ref={navRef}
+        onReady={() => {
+          if (chatPending) {
+            chatPending = false;
+            navRef.navigate('Chat');
+          }
+        }}
+      >
         <StatusBar style="light" />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Tabs" component={Tabs} />

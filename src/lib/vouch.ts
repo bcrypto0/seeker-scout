@@ -8,12 +8,14 @@ import {
   fetchMyVouches,
   fetchTopVouched,
   latestCachedResult,
+  pendingChoice,
   postVouch,
   rememberResult,
 } from './vouchCore';
 import type {
   AppVouches,
   MyVouch,
+  PendingChoice,
   PendingSigned,
   PendingStore,
   SubmitStage,
@@ -78,6 +80,14 @@ const pending: PendingStore = {
     pendingSigned = p;
   },
 };
+
+/**
+ * The choices of the kept payload for this app while tapping Sign with them
+ * again re-posts it with no new prompt (vouchCore.pendingChoice); the sheet
+ * fills them in when it reopens after a failure.
+ */
+export const getPendingChoice = (wallet: string, mint: string, pkg: string): PendingChoice | null =>
+  pendingChoice(pendingSigned, wallet, mint, pkg, Date.now());
 
 export const getCachedResult = (mint: string, pkg: string): Promise<VouchResult | null> =>
   cachedResult(AsyncStorage, mint, pkg);

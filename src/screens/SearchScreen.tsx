@@ -3,8 +3,9 @@ import { FlatList, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppCard } from '../components/AppCard';
 import { SkeletonList } from '../components/Skeleton';
-import { fetchCatalog, isCatalogCached } from '../lib/catalog';
+import { fetchCatalog, isCatalogCached, onLiveCatalog } from '../lib/catalog';
 import { catOf } from '../lib/collections';
+import { getNotForMe, onNotForMeChange } from '../lib/notForMe';
 import { DappEntry } from '../lib/types';
 import { colors, heading } from '../theme';
 
@@ -12,12 +13,27 @@ export function SearchScreen() {
   const [apps, setApps] = useState<DappEntry[]>([]);
   const [loading, setLoading] = useState(() => !isCatalogCached());
   const [q, setQ] = useState('');
+  // Search skips nothing: an app on the Not for me list is found like any
+  // other and carries the mark, since a search for it is deliberate.
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchCatalog().then((a) => {
+    const show = (a: DappEntry[]) => {
       setApps(a);
       setLoading(false);
-    });
+    };
+    fetchCatalog().then(show);
+    // A live catalog that lands after the offline seed was shown replaces it.
+    const offLive = onLiveCatalog(show);
+    const readHidden = () => {
+      getNotForMe().then((ids) => setHidden(new Set(ids)));
+    };
+    readHidden();
+    const offHidden = onNotForMeChange(readHidden);
+    return () => {
+      offLive();
+      offHidden();
+    };
   }, []);
 
   const results = useMemo(() => {
@@ -49,8 +65,10 @@ export function SearchScreen() {
       ) : (
         <FlatList
           data={results}
+          // The mark on each row follows the list.
+          extraData={hidden}
           keyExtractor={(a) => a.id}
-          renderItem={({ item }) => <AppCard app={item} />}
+          renderItem={({ item }) => <AppCard app={item} notForMe={hidden.has(item.id)} />}
           contentContainerStyle={{ paddingBottom: 24 }}
         />
       )}

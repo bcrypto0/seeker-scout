@@ -1,4 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { rememberMyNumber } from './loungeNumber';
+import { withReplyFields } from './repliesCore';
+import type { ReplyRef } from './repliesCore';
 import { signMessageBytes } from './wallet';
 
 /**
@@ -8,6 +11,8 @@ import { signMessageBytes } from './wallet';
  */
 const BASE = 'https://seeker-lounge.bcrypto-eth.workers.dev';
 const TOKEN_KEY = 'seekerscout.chat.token.v1';
+/** The Lounge worker (replies.ts and the background reply check read it too). */
+export const CHAT_BASE = BASE;
 
 export type ChatMessage = {
   id: number;
@@ -19,6 +24,10 @@ export type ChatMessage = {
   reactions?: Record<string, number>;
   /** The emojis the signed-in viewer added (only when a token was sent). */
   mine?: string[];
+  /** The id of the message this one answers, or null (absent on an older server). */
+  reply_to?: number | null;
+  /** That message's number and a quote of it, or {id, hidden} once it is hidden. */
+  reply?: ReplyRef | null;
 };
 
 /**
@@ -115,6 +124,20 @@ export async function cachedToken(): Promise<string | null> {
   }
 }
 
+/**
+ * The seat of the last token this phone was given, expired or not. A
+ * Lounge number never changes for a Genesis Token, so an expired token
+ * still names it (App.tsx fills loungeNumber.ts from this on launch).
+ */
+export async function lastTokenClaim(): Promise<ReturnType<typeof claimFromToken>> {
+  try {
+    const raw = await AsyncStorage.getItem(TOKEN_KEY);
+    return raw ? claimFromToken(JSON.parse(raw)?.token ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Sign once → get + cache a posting token. */
 export async function authChat(
   address: string,
@@ -139,6 +162,7 @@ export async function authChat(
         TOKEN_KEY,
         JSON.stringify({ token: body.token, exp: Date.now() + 23 * 60 * 60 * 1000 }),
       );
+      await rememberMyNumber(claimFromToken(body.token)?.number ?? body.number);
       emitToken(body.token);
       return body.token;
     }
@@ -161,21 +185,32 @@ export async function fetchMessages(since = 0, token?: string | null): Promise<C
     );
     if (!res.ok) return [];
     const body = await res.json();
-    return Array.isArray(body.messages) ? body.messages : [];
+    return Array.isArray(body.messages)
+      ? body.messages.filter((m: unknown) => m && typeof m === 'object').map(withReplyFields)
+      : [];
   } catch {
     return [];
   }
 }
 
-export async function sendMessage(token: string, text: string): Promise<ChatMessage> {
+/**
+ * Post a message; `replyTo` (a message id) makes it a reply. The worker
+ * answers 400 "bad reply" when that message is gone or hidden; an older
+ * worker ignores the field and posts a plain message.
+ */
+export async function sendMessage(
+  token: string,
+  text: string,
+  replyTo?: number | null,
+): Promise<ChatMessage> {
   const res = await withTimeout(`${BASE}/chat/send`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(replyTo ? { text, reply_to: replyTo } : { text }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `send failed (${res.status})`);
-  return body.message;
+  return body.message && typeof body.message === 'object' ? withReplyFields(body.message) : body.message;
 }
 
 /** Toggle a reaction; resolves with the message's fresh counts and yours. */

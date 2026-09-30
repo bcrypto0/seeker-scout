@@ -1,15 +1,19 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { StakedSkrCard } from '../components/StakedSkrCard';
 import { setSession } from '../lib/session';
+import { useStakeRead } from '../lib/useStakeRead';
 import {
   connectWallet,
   findGenesisToken,
@@ -29,6 +33,15 @@ export function ProfileScreen() {
   // Session sequence: bumped on connect/disconnect so a late-resolving verify
   // from an older session can't clobber current state.
   const sessionRef = useRef(0);
+  // Staked SKR for the connected wallet: read on connect, on focus (at most
+  // once a minute) and on pull or tap. Public chain read, nothing signed.
+  const stake = useStakeRead(address);
+  const refreshStake = stake.refresh;
+  useFocusEffect(
+    useCallback(() => {
+      refreshStake('focus');
+    }, [refreshStake]),
+  );
 
   async function onConnect() {
     setError(undefined);
@@ -78,73 +91,99 @@ export function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <Text style={styles.h1}>Profile</Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          address ? (
+            <RefreshControl
+              refreshing={stake.pulling}
+              onRefresh={() => refreshStake('pull')}
+              tintColor={colors.purple}
+              colors={[colors.purple]}
+              progressBackgroundColor={colors.card}
+            />
+          ) : undefined
+        }
+      >
+        <Text style={styles.h1}>Profile</Text>
 
-      {!address ? (
-        <>
-          <Text style={styles.sub}>
-            Connect your Seeker wallet to verify Genesis Token ownership and
-            claim your founding number in the Owners' Lounge.
-          </Text>
-          <Pressable
-            style={[styles.btn, busy && styles.btnDim]}
-            onPress={onConnect}
-            disabled={busy}
-          >
-            {busy ? (
-              <ActivityIndicator color={colors.text} />
-            ) : (
-              <Text style={styles.btnText}>Connect Wallet</Text>
+        {!address ? (
+          <>
+            <Text style={styles.sub}>
+              Connect your Seeker wallet to verify Genesis Token ownership, see
+              your staked SKR and vouch weight, and claim your founding number in
+              the Owners' Lounge.
+            </Text>
+            <Pressable
+              style={[styles.btn, busy && styles.btnDim]}
+              onPress={onConnect}
+              disabled={busy}
+            >
+              {busy ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <Text style={styles.btnText}>Connect Wallet</Text>
+              )}
+            </Pressable>
+            {error && <Text style={styles.err}>{error}</Text>}
+          </>
+        ) : (
+          <View style={styles.card}>
+            <Text style={styles.label}>CONNECTED</Text>
+            <Text style={styles.addr}>{short}</Text>
+
+            {verify === 'checking' && (
+              <View style={styles.row}>
+                <ActivityIndicator size="small" color={colors.textDim} />
+                <Text style={styles.checking}>Checking Genesis Token…</Text>
+              </View>
             )}
-          </Pressable>
-          {error && <Text style={styles.err}>{error}</Text>}
-        </>
-      ) : (
-        <View style={styles.card}>
-          <Text style={styles.label}>CONNECTED</Text>
-          <Text style={styles.addr}>{short}</Text>
+            {verify === 'verified' && (
+              <Text style={styles.ok}>
+                ✓ Verified Seeker owner — Genesis Token found
+              </Text>
+            )}
+            {verify === 'not-found' && (
+              <Text style={styles.warn}>
+                No Genesis Token in this wallet — reviews stay locked
+              </Text>
+            )}
+            {verify === 'error' && (
+              <Text style={styles.warn}>
+                Couldn't reach the network to verify — try again
+              </Text>
+            )}
 
-          {verify === 'checking' && (
-            <View style={styles.row}>
-              <ActivityIndicator size="small" color={colors.textDim} />
-              <Text style={styles.checking}>Checking Genesis Token…</Text>
-            </View>
-          )}
-          {verify === 'verified' && (
-            <Text style={styles.ok}>
-              ✓ Verified Seeker owner — Genesis Token found
-            </Text>
-          )}
-          {verify === 'not-found' && (
-            <Text style={styles.warn}>
-              No Genesis Token in this wallet — reviews stay locked
-            </Text>
-          )}
-          {verify === 'error' && (
-            <Text style={styles.warn}>
-              Couldn't reach the network to verify — try again
-            </Text>
-          )}
+            <Pressable style={styles.disconnect} onPress={onDisconnect}>
+              <Text style={styles.disconnectText}>Disconnect</Text>
+            </Pressable>
+          </View>
+        )}
 
-          <Pressable style={styles.disconnect} onPress={onDisconnect}>
-            <Text style={styles.disconnectText}>Disconnect</Text>
-          </Pressable>
-        </View>
-      )}
+        {!!address && (
+          <StakedSkrCard
+            state={stake.state}
+            busy={stake.busy}
+            noGenesis={verify === 'not-found'}
+            onRefresh={() => refreshStake('tap')}
+          />
+        )}
 
-      <Pressable style={styles.loungeLink} onPress={() => nav.navigate('Lounge')}>
-        <Text style={styles.loungeTitle}>THE OWNERS' LOUNGE 🔒</Text>
-        <Text style={styles.loungeSub}>
-          Founding numbers, member badges, and the members' chat live in the
-          Lounge tab →
-        </Text>
-      </Pressable>
+        <Pressable style={styles.loungeLink} onPress={() => nav.navigate('Lounge')}>
+          <Text style={styles.loungeTitle}>THE OWNERS' LOUNGE 🔒</Text>
+          <Text style={styles.loungeSub}>
+            Founding numbers, member badges, and the members' chat live in the
+            Lounge tab →
+          </Text>
+        </Pressable>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
+  scroll: { paddingBottom: 24 },
   h1: { ...heading, paddingHorizontal: 16, marginBottom: 8 },
   sub: { color: colors.textDim, fontSize: 13, paddingHorizontal: 16 },
   btn: {

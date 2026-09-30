@@ -21,6 +21,7 @@ import {
   busyRetryLabel,
   getCachedResult,
   getLatestResult,
+  getPendingChoice,
   MAX_NOTE,
   notePreview,
   PAUSED_SENTENCE,
@@ -66,7 +67,10 @@ const WRONG_WALLET = new Set(['wallet does not hold this token', 'not a Seeker G
  *
  * The sheet can always be closed. A vouch in flight keeps going when it is:
  * its answer still reaches the card (onVouched), and reopening the sheet
- * shows the stage it is at instead of an idle form.
+ * shows the stage it is at instead of an idle form. Reopened after a failed
+ * try whose signature is still good (vouch.ts pendingSigned), it shows that
+ * try's choices, so Sign re-sends the same payload without a second prompt.
+ * A later try with other choices for the app drops it, even a declined one.
  */
 export function VouchSheet({
   app,
@@ -132,9 +136,20 @@ export function VouchSheet({
 
   // Prefill from this device's last signed answer for this app (the worker serves no tags or note by mint).
   const mint = session?.mint;
+  const wallet = session?.address;
   useEffect(() => {
     if (!open || !mint) return;
     const flow = flowRef.current;
+    // After a failed try whose signature is still good: its exact choices, so
+    // Sign re-sends that payload with no second Seed Vault prompt. It is newer
+    // than any cached answer; changing a choice signs afresh as usual.
+    const kept = wallet && !touchedRef.current ? getPendingChoice(wallet, mint, app.id) : null;
+    if (kept) {
+      touchedRef.current = true; // the cached answer below must not replace it
+      setVerdict(kept.verdict);
+      setTags(kept.tags);
+      setNote(kept.note);
+    }
     Promise.all([getCachedResult(mint, app.id), getLatestResult(mint)]).then(([here, latest]) => {
       if (flowRef.current !== flow) return;
       setLastWeight(latest);
@@ -144,7 +159,7 @@ export function VouchSheet({
         setNote(here.vouch.note);
       }
     });
-  }, [open, mint, app.id]);
+  }, [open, mint, wallet, app.id]);
 
   const inFlight = SUBMIT_BUSY.has(busy);
 

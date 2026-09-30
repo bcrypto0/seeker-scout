@@ -26,7 +26,8 @@
       "expo-dev-client",
       "expo-asset",
       "expo-font",
-      ["expo-notifications", { "color": "#14F195" }]
+      ["expo-notifications", { "color": "#14F195" }],
+      "expo-background-task"
     ],
     "extra": {
       "eas": {

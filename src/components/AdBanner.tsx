@@ -9,8 +9,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { AppIcon } from './AppIcon';
-import { fetchBanners, fetchCatalog } from '../lib/catalog';
-import { PromoBanner } from '../lib/types';
+import { fetchBanners, fetchCatalog, onLiveCatalog } from '../lib/catalog';
+import { DappEntry, PromoBanner } from '../lib/types';
 import { colors } from '../theme';
 
 const ROTATE_MS = 4500;
@@ -31,14 +31,16 @@ export function AdBanner() {
 
   useEffect(() => {
     fetchBanners().then(setBanners);
-    // Session-cached; Discover has usually already paid for this fetch.
-    fetchCatalog().then((list) =>
+    const showIcons = (list: DappEntry[]) =>
       setIcons(
         new Map(
           list.filter((a) => a.iconUrl).map((a) => [a.id, a.iconUrl!] as const),
         ),
-      ),
-    );
+      );
+    // Session-cached; Discover has usually already paid for this fetch.
+    fetchCatalog().then(showIcons);
+    // A live catalog that lands after the offline seed.
+    return onLiveCatalog(showIcons);
   }, []);
 
   const imageFor = (b: PromoBanner): string | undefined =>

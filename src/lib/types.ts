@@ -74,6 +74,24 @@ export interface DappEntry {
   ratingHistogram?: number[];
   /** Publisher's changelog for the current release (word-clipped ~240 chars) */
   whatsNew?: string;
+  /*
+   * Scout Vouch, stamped daily by indexer/enrich-vouches.mjs from the Lounge
+   * worker's public GET /vouch/aggregate (head counts only, no weights), on
+   * catalog apps only. ABSENT = nobody vouched or that day's stamp was
+   * skipped: never read missing as zero. Read them through
+   * src/lib/vouchStamp.ts, which guards each type.
+   */
+  /** Distinct Genesis Tokens that vouched, works or broken (one voice each). */
+  vouchVoices?: number;
+  /** Head-count share of those voices that said it works, 0..100. */
+  vouchWorksPct?: number;
+  /** 1-based place among vouched catalog apps, in the worker's order. */
+  vouchRank?: number;
+  /**
+   * The worker's Works on Seeker verdict, stamped only when true. Never
+   * computed in the app, and unrelated to seedVaultNative.
+   */
+  worksOnSeeker?: boolean;
 }
 
 /**

@@ -7,7 +7,7 @@
     "android": "expo run:android",
     "index-catalog": "node indexer/fetch-catalog.mjs",
     "ios": "expo run:ios",
-    "test:app": "node --test src/lib/vouchCore.test.ts src/lib/vouchCore.parity.test.ts"
+    "test:app": "node --test src/lib/catalogLoad.test.ts src/lib/vouchCore.test.ts src/lib/vouchCore.parity.test.ts src/lib/vouchStamp.test.ts src/lib/notForMeFilter.test.ts src/lib/skr.test.ts src/lib/skr.parity.test.ts src/lib/repliesCore.test.ts indexer/test/enrich-vouches.test.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -23,6 +23,7 @@
     "expo": "~53.0.0",
     "expo-application": "~6.1.5",
     "expo-asset": "~11.1.7",
+    "expo-background-task": "~0.2.8",
     "expo-constants": "~17.1.8",
     "expo-dev-client": "~5.1.0",
     "expo-file-system": "~18.1.11",
@@ -32,6 +33,7 @@
     "expo-keep-awake": "~14.1.4",
     "expo-notifications": "~0.31.5",
     "expo-status-bar": "~2.2.0",
+    "expo-task-manager": "~13.1.6",
     "react": "19.0.0",
     "react-native": "0.79.2",
     "react-native-get-random-values": "^1.11.0",

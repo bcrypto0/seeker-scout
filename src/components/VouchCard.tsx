@@ -48,12 +48,15 @@ export function VouchCard({
   lastResult,
   onVouch,
   failedSentence,
+  onSummary,
 }: {
   app: DappEntry;
   lastResult: VouchResult | null;
   onVouch: () => void;
   /** Set when the last vouch failed after its sheet was closed. */
   failedSentence?: string;
+  /** The live numbers whenever they change (null until a read succeeds), for the page header's chip. */
+  onSummary?: (s: AppVouchSummary | null) => void;
 }) {
   const session = useWalletSession();
   const mint = session?.mint;
@@ -150,6 +153,9 @@ export function VouchCard({
   }, [lastResult, app.id]);
 
   const summary = data?.app ?? null;
+  useEffect(() => {
+    onSummary?.(summary);
+  }, [summary, onSummary]);
   const recent = (data?.recent ?? []).slice(0, RECENT_SHOWN);
   const state = mint ? ownState(mine, cached, app.id) : { kind: 'none' as const };
 

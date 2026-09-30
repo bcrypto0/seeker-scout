@@ -16,7 +16,7 @@ import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { AppIcon } from '../components/AppIcon';
 import { BackHeader } from '../components/BackHeader';
-import { fetchCatalog } from '../lib/catalog';
+import { fetchCatalog, onLiveCatalog } from '../lib/catalog';
 import { clearToken, sendMessage } from '../lib/chat';
 import {
   Dir,
@@ -60,6 +60,7 @@ export function GuessScreen() {
 
   useEffect(() => {
     fetchCatalog().then(setCatalog);
+    return onLiveCatalog(setCatalog); // a live catalog that lands after the offline seed
   }, []);
 
   const load = useCallback(async (token: string) => {

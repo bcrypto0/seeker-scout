@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
+import { createCatalogLoader } from './catalogLoad';
 import { AppPerk, DappEntry, PromoBanner, RewardEntry } from './types';
 import { VOUCH_BASE } from './vouch';
 import { loadRemoteFlags } from './vouchCore';
@@ -198,63 +200,73 @@ export async function fetchPerks(): Promise<AppPerk[]> {
   }
 }
 
-// One session-scoped catalog fetch shared by Discover, Search, and the
-// detail screen (rank lookups) — the hosted file is ~1MB, don't re-pull it.
-let catalogCache: DappEntry[] | null = null;
-// In-flight dedup: concurrent callers (Discover mount + Rewards prefetch)
-// share ONE download instead of racing two ~1MB fetches.
-let catalogInflight: Promise<DappEntry[]> | null = null;
+// One session-scoped catalog shared by Discover, Search, and the detail
+// screen (rank lookups): the hosted file is ~1.2MB (~470KB gzipped), so it is
+// pulled once, one download at a time, and concurrent callers (Discover mount
+// + Rewards prefetch) share it. The schedule lives in catalogLoad.ts: a
+// caller waits at most 15 s and then gets the offline seed, but the download
+// is not aborted there; it runs on (90 s cap), failed ones are retried in the
+// background with growing waits while the seed is on screen, and a live list
+// that lands late reaches every screen through onLiveCatalog.
+const loader = createCatalogLoader<DappEntry>({
+  seed: SEED_CATALOG,
+  download: downloadCatalog,
+  now: () => Date.now(),
+  setTimer: (fn, ms) => setTimeout(fn, ms),
+  clearTimer: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
+  // No catalog downloads while the app is in the background.
+  foreground: () => AppState.currentState !== 'background',
+});
 
-/** True when the live catalog is already in memory (skip skeletons). */
+// Coming back to the app with the seed still on screen: a retry that came due
+// meanwhile runs now, and a round that ran out starts again.
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') loader.resume();
+});
+
+async function downloadCatalog(signal: AbortSignal): Promise<DappEntry[] | null> {
+  const res = await fetch(CATALOG_URL, { signal });
+  if (!res.ok) throw new Error(`catalog ${res.status}`);
+  const data = (await res.json()) as DappEntry[];
+  // Guard against a hosted file that's empty or not an array.
+  return Array.isArray(data) && data.length > 0 ? data : null;
+}
+
 /**
  * True when this array IS the build-frozen offline seed rather than live data.
  *
  * Matters for anything time-relative: SEED_CATALOG's lastUpdated values are
  * hardcoded in source and can never advance, so they drift further into the
  * past every day the shipped binary lives. Age-based judgements ("stale")
- * must not be applied to them — 23 of the 44 seed entries already read as
+ * must not be applied to them: 23 of the 44 seed entries already read as
  * stale, and every one of them will within six months of a release, which
  * would let a failed network fetch present the entire store as abandoned.
- * Identity check, not a heuristic: doFetchCatalog returns this exact array.
+ * Identity check, not a heuristic: the loader hands out this exact array.
  */
 export function isSeedCatalog(apps: DappEntry[]): boolean {
   return apps === SEED_CATALOG;
 }
 
+/** True when the live catalog is already in memory (skip skeletons). */
 export function isCatalogCached(): boolean {
-  return catalogCache !== null;
+  return loader.cached() !== null;
 }
 
-export async function fetchCatalog(force = false): Promise<DappEntry[]> {
-  if (catalogCache && !force) return catalogCache;
-  if (catalogInflight && !force) return catalogInflight;
-  const attempt = doFetchCatalog();
-  catalogInflight = attempt;
-  try {
-    return await attempt;
-  } finally {
-    if (catalogInflight === attempt) catalogInflight = null;
-  }
+/**
+ * The live catalog, or the offline seed when it is not in within 15 s (or the
+ * network says no). `force` (pull to refresh, a Retry link) downloads again
+ * even with a live copy in memory, and starts at once instead of waiting for
+ * the next background retry; a failed refresh keeps the live copy.
+ */
+export function fetchCatalog(force = false): Promise<DappEntry[]> {
+  return loader.get(force);
 }
 
-async function doFetchCatalog(): Promise<DappEntry[]> {
-  try {
-    const controller = new AbortController();
-    // 15s, not 8: the catalog grew ~21% (histograms + changelogs, ~1.24MB)
-    // and a slow-but-alive connection that aborts here silently falls back
-    // to the 43-app seed — a much worse outcome than a longer spinner.
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    const res = await fetch(CATALOG_URL, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!res.ok) throw new Error(`catalog ${res.status}`);
-    const data = (await res.json()) as DappEntry[];
-    // Guard against a hosted file that's empty or not an array.
-    if (!Array.isArray(data) || data.length === 0) {
-      throw new Error('empty catalog');
-    }
-    catalogCache = data;
-    return data;
-  } catch {
-    return SEED_CATALOG; // not cached — retry live on next screen mount
-  }
+/**
+ * Calls `fn` with every live catalog that lands, including one that arrives
+ * after this screen already got the seed. Returns the unsubscribe, so a
+ * screen can write `useEffect(() => onLiveCatalog(setApps), [])`.
+ */
+export function onLiveCatalog(fn: (apps: DappEntry[]) => void): () => void {
+  return loader.subscribe(fn);
 }

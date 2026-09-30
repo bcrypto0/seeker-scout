@@ -967,6 +967,65 @@ function pendingKey(wallet: string, mint: string, pkg: string, verdict: string, 
   return JSON.stringify([wallet, mint, pkg, verdict, canonicalTags(tags), note]);
 }
 
+/** True when a pending key was made for this wallet, Genesis mint and app. */
+function sameApp(k: string, wallet: string, mint: string, pkg: string): boolean {
+  try {
+    const parts: unknown = JSON.parse(k);
+    return Array.isArray(parts) && parts[0] === wallet && parts[1] === mint && parts[2] === pkg;
+  } catch {
+    return false;
+  }
+}
+
+/** True when postVouch would re-post `p` for `key` instead of asking the wallet again. */
+function reusableFor(p: PendingSigned | null, key: string, nowMs: number): p is PendingSigned {
+  if (!p || p.key !== key || p.signatures.length === 0) return false;
+  const age = nowMs - Date.parse(p.ts);
+  return age >= 0 && age < REUSE_SIGNED_MS;
+}
+
+/** The sheet's choices a kept signed payload was made from. */
+export interface PendingChoice {
+  verdict: VouchVerdict;
+  tags: VouchTag[];
+  /** The note as signed (prepareNote already applied), so sending it again gives the same key. */
+  note: string;
+}
+
+/**
+ * What the vouch sheet fills in after a failed try: the verdict, tags and
+ * note of the kept signed payload (pendingKey read back), when it belongs to
+ * this wallet, mint and app and postVouch would still re-post it (a signature
+ * left, younger than REUSE_SIGNED_MS). Submitting exactly these choices costs
+ * no Seed Vault prompt; changing any of them gives another key, so the next
+ * submit signs afresh as usual and drops the kept payload for this app, even
+ * when that prompt is declined. Null in every other case, including a key
+ * these choices would not rebuild byte for byte.
+ */
+export function pendingChoice(
+  p: PendingSigned | null,
+  wallet: string,
+  mint: string,
+  pkg: string,
+  nowMs: number,
+): PendingChoice | null {
+  if (!p || typeof p.key !== 'string') return null;
+  let parts: unknown;
+  try {
+    parts = JSON.parse(p.key);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parts) || parts.length !== 6) return null;
+  const [w, m, k, verdict, tagLine, note] = parts as unknown[];
+  if (w !== wallet || m !== mint || k !== pkg || !isVerdict(verdict)) return null;
+  if (typeof tagLine !== 'string' || typeof note !== 'string') return null;
+  const tags = tagLine === NOTE_PLACEHOLDER ? [] : orderedTags(tagLine.split(','));
+  // The same derivation postVouch makes from the sheet's input: only a round trip counts.
+  if (pendingKey(wallet, mint, pkg, verdict, tags, prepareNote(note)) !== p.key) return null;
+  return reusableFor(p, p.key, nowMs) ? { verdict, tags, note } : null;
+}
+
 /**
  * Keep the signed payload after this status? Yes when a later try can pass
  * with the same signature: no answer (0), 429, any 5xx, or a 200 we could not
@@ -1088,8 +1147,7 @@ export async function postVouch(deps: VouchDeps, args: SubmitArgs): Promise<Vouc
   };
 
   const prior = store?.get() ?? null;
-  const age = prior ? now().getTime() - Date.parse(prior.ts) : NaN;
-  if (prior && prior.key === key && prior.signatures.length > 0 && age >= 0 && age < REUSE_SIGNED_MS) {
+  if (reusableFor(prior, key, now().getTime())) {
     args.onStage?.('sending');
     try {
       return await send(prior.ts, prior.signatures, true);
@@ -1098,6 +1156,12 @@ export async function postVouch(deps: VouchDeps, args: SubmitArgs): Promise<Vouc
       if (vouchErrorCode(e) !== 'stale message') throw e;
     }
   }
+
+  // Another choice for this same app replaces a kept payload even if this
+  // prompt is declined or fails: the sheet must not fill in, and one tap
+  // re-send, a verdict the owner has since moved away from.
+  const kept = store?.get() ?? null;
+  if (kept && kept.key !== key && sameApp(kept.key, wallet, mint, input.package)) store?.set(null);
 
   const ts = now().toISOString(); // generated once per signature, reused by every retry
   const message = vouchMessage({ wallet, mint, ts, package: input.package, verdict: input.verdict, tags, note });
