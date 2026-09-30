@@ -23,9 +23,14 @@ CREATE TABLE IF NOT EXISTS messages (
   text TEXT NOT NULL,
   created_at TEXT NOT NULL,
   reports INTEGER NOT NULL DEFAULT 0,
-  hidden INTEGER NOT NULL DEFAULT 0
+  hidden INTEGER NOT NULL DEFAULT 0,
+  reply_to INTEGER                -- id of the message this one answers, NULL for a plain message
 );
 CREATE INDEX IF NOT EXISTS idx_messages_id ON messages(id);
+-- reply_to and its index (idx_messages_reply_to, the last statement of this
+-- file) came with migrations/003_chat_replies.sql. CREATE TABLE IF NOT EXISTS
+-- leaves an existing messages table as it is, so a database created before
+-- that column gets it from 003 (run once), not from re-running this file.
 
 -- One row per wallet: last post time (rate limit) + block flag (moderation).
 CREATE TABLE IF NOT EXISTS chat_members (
@@ -70,7 +75,9 @@ CREATE TABLE IF NOT EXISTS opens_age (
 -- Scout Alpha (docs/SCOUT_ALPHA_SPEC.md §2).
 -- APPLY BY HAND — there is no migration runner in this worker:
 --   wrangler d1 execute seeker-lounge --remote --file=./schema.sql
--- Every statement here is CREATE ... IF NOT EXISTS, so re-running is safe.
+-- Every statement here is CREATE ... IF NOT EXISTS, so re-running is safe,
+-- with one order rule: the last one, the reply_to index, needs 003 applied
+-- first on a database created before that column.
 -- ---------------------------------------------------------------------------
 
 -- Ingested digests. id = 'latest' (the live feed) or 'YYYY-MM-DD' (the dated
@@ -137,7 +144,16 @@ CREATE TABLE IF NOT EXISTS reactions (
 );
 CREATE INDEX IF NOT EXISTS idx_reactions_message ON reactions (message_id);
 
+-- Chat replies (migrations/003_chat_replies.sql). On a database created
+-- before messages.reply_to this statement fails with "no such column:
+-- reply_to" until 003 has run there, so it comes after every other statement
+-- of this file. Re-running this file on such a database: run 003 first.
+CREATE INDEX IF NOT EXISTS idx_messages_reply_to ON messages(reply_to);
+
 -- Scout Vouch tables (vouches, vouch_reports, vouch_members, votes, rpc_budget,
 -- settings) live in migrations/001_vouches.sql; apply with `npm run migrate`.
 -- The SKR stake reader's tables (skr_cache, wallet_pdas) live in
 -- migrations/002_skr_cache.sql; apply with `npm run migrate:skr` after 001.
+-- migrations/003_chat_replies.sql adds messages.reply_to to a database created
+-- before it (`npm run migrate:chat`, once, after checking PRAGMA
+-- table_info(messages)); a database created from this file already has it.

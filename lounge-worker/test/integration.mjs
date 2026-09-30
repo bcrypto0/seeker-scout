@@ -15,6 +15,20 @@
 // is exact on a re-run, and one scenario drops rpc_budget and re-creates it
 // with the DDL of migrations/001.
 // Each owner posts with its own cf-connecting-ip (wrangler dev keeps it).
+// D16: the last scenarios trigger the hourly re-weight cron (skr.js reweightVouches)
+// through miniflare's own scheduled route, GET /cdn-cgi/local/scheduled?cron=...&time=<ms>
+// (wrangler dev serves it without --test-scheduled; `time` sets controller.scheduledTime),
+// against this local D1 and the fake RPC, and read the rows back.
+// D1_PERSIST_TO (optional): the --persist-to folder the worker was started with, passed to
+// every `wrangler d1 execute --local` here, so a run can use a local D1 of its own.
+// Chat replies (migrations/003_chat_replies.sql), last: three new owners claim numbers through
+// POST /claim and take chat tokens from POST /chat/auth against the fake RPC, so the harness
+// never needs the token secret. It needs 003 on the local D1, once, after checking that
+// PRAGMA table_info(messages) has no reply_to yet:
+//   npm run migrate:chat:local
+// and a throwaway chat secret for the local worker (never the real one; unset, chat.js falls
+// back to its dev value): add `--var CHAT_SECRET:<any throwaway string>` to wrangler dev.
+// CHAT_ONLY=1 runs the chat scenarios alone (no vouch reset, no vouch, SKR or cron scenario).
 // Chain calls per accepted POST /vouch since D6: the SGT pair (getAccountInfo +
 // getTokenAccountsByOwner) plus one getMultipleAccounts stake read, or none
 // when skr_cache holds a read of that wallet younger than 60 s
@@ -26,7 +40,8 @@ import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha512';
 import { base58 } from '@scure/base';
 import { startFakeRpc, stakePdaOf } from './fake-rpc.mjs';
-import { sharedStakeWeight, vouchMessage, weekBounds } from '../src/vouch-lib.js';
+import { hasLoneSurrogate, isoWeek, sanitizeNote, sharedStakeWeight, vouchMessage, weekBounds } from '../src/vouch-lib.js';
+import { issueToken } from '../src/token.js';
 
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
 
@@ -37,6 +52,8 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const WRANGLER = fileURLToPath(new URL('../node_modules/wrangler/bin/wrangler.js', import.meta.url));
 const RATE_MS = 10_000; // vouch.js RATE_MS
 const D1_TIMEOUT_MS = 90_000;
+const PERSIST = process.env.D1_PERSIST_TO || '';
+const CHAT_ONLY = process.env.CHAT_ONLY === '1';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---- local D1 through wrangler (never --remote) ---------------------------
@@ -53,7 +70,7 @@ function killTree(pid) {
 }
 function d1(sql) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [WRANGLER, 'd1', 'execute', 'seeker-lounge', '--local', '--json', '--command', sql], {
+    const child = spawn(process.execPath, [WRANGLER, 'd1', 'execute', 'seeker-lounge', '--local', ...(PERSIST ? ['--persist-to', PERSIST] : []), '--json', '--command', sql], {
       cwd: ROOT, env: { ...process.env, WRANGLER_SEND_METRICS: 'false' }, stdio: ['ignore', 'pipe', 'pipe'],
     });
     let out = '';
@@ -241,10 +258,14 @@ try {
   if (pre.status !== 200) {
     console.log(`FAIL preflight: GET ${WORKER}/flags -> ${pre.status} ${pre.text}. Is wrangler dev running on the local D1?`);
     failed += 1;
+  } else if (CHAT_ONLY) {
+    console.log(`worker ${WORKER}, fake RPC ${fake.url}; CHAT_ONLY=1: the chat scenarios alone, no vouch reset`);
+    await runChat();
   } else {
     console.log(`worker ${WORKER}, fake RPC ${fake.url}; resetting the vouch and SKR cache tables of the LOCAL D1`);
     await d1("DELETE FROM vouches; DELETE FROM votes; DELETE FROM vouch_reports; DELETE FROM vouch_members; DELETE FROM rpc_budget; DELETE FROM skr_cache; DELETE FROM wallet_pdas; UPDATE settings SET value='1' WHERE key='vouch_enabled'");
     await run();
+    await runChat();
   }
 } catch (e) {
   failed += 1;
@@ -381,6 +402,14 @@ async function run() {
   await scenario('141-character note -> 400', async () => {
     expectStatus(await post(vouch(A, 'x.place', { note: 'a'.repeat(141) })), 400,
       'note must be one line of at most 140 characters');
+  });
+
+  await scenario('note the 140 cut leaves holding half an emoji (a fixed point of sanitizeNote) -> 400 before any chain call', async () => {
+    const note = sanitizeNote('see x.io ' + 'a'.repeat(120) + String.fromCodePoint(0x1f680).repeat(5));
+    check(note.length === 140 && sanitizeNote(note) === note && hasLoneSurrogate(note), 'the generator did not reach the cut');
+    const h0 = hits();
+    expectStatus(await post(vouch(A, 'x.place', { note })), 400, 'note contains a link or is not normalised');
+    check(hits() === h0, 'a refused note reached the chain');
   });
 
   await scenario('newer ts with verdict broken -> 200 and broken_voices 1', async () => {
@@ -786,5 +815,357 @@ async function run() {
     check(weekOf('s3.place') === 1 && weekOf('b.place') === 1 && weekOf('zz.real') === 1, `voices_week ${JSON.stringify(top.body.apps.map((x) => [x.package, x.voices_week]))}`);
     check(tk.indexOf('s3.place') >= 0 && tk.indexOf('s3.place') < tk.indexOf('b.place') && tk.indexOf('s3.place') < tk.indexOf('zz.real'),
       `s3.place does not rank by weight on /vouch/top: ${JSON.stringify(tk)}`);
+  });
+
+  // ---- D16: the hourly re-weight cron through the runtime's scheduled route -------------------
+  // Fixed instants of NEXT UTC week, so the week keys are known and every write of this run comes
+  // before the tick (a tick leaves rows stamped or written after its scheduled time alone, skr.js
+  // VOUCH_RESTAMP): Wednesday 12:07Z (no drift check, no closed-week grace) and the Monday after it,
+  // 03:07Z (drift check; that week closed 3 hours before).
+  const wk = weekBounds(new Date(Date.parse(weekBounds(new Date()).end) + 86_400_000));
+  const WED_MS = Date.parse(wk.start) + 2 * 86_400_000 + (12 * 60 + 7) * 60_000;
+  const MON_MS = Date.parse(wk.end) + (3 * 60 + 7) * 60_000;
+  const WEEK = isoWeek(new Date(WED_MS));
+  const SHARE_PRICE = 1147028992n;     // the fixture StakeConfig the fake serves
+  const skrOfShares = (shares) => Number((BigInt(shares) * SHARE_PRICE) / 1_000_000_000n) / 1e6;
+  const V = newOwner();                // votes this week at 3.66, nothing staked at the tick
+  const U = newOwner();                // votes this week at 3.66, unstakes before the week closes
+  const P = newOwner();                // votes this week at 3.66, unstakes after the week closes
+  const tsNow = isoAt();
+  const voteRow = (week, o, weight, staked) =>
+    `('${week}', '${o.mint}', '${o.wallet}', 'x.place', ${weight}, ${staked}, 'sig', '${tsNow}', '${tsNow}', '${tsNow}')`;
+  const insertVotes = (rows) => d1('INSERT INTO votes (week, genesis_mint, wallet, package, weight, staked_skr, signature, ' +
+    `signed_ts, created_at, updated_at) VALUES ${rows.join(', ')}`);
+  const trigger = (ms) => call('GET', `/cdn-cgi/local/scheduled?cron=${encodeURIComponent('7 * * * *')}&time=${ms}&format=json`);
+  const snapshot = async () => JSON.stringify([
+    await d1Rows('SELECT id, weight, staked_skr, weight_checked_at FROM vouches ORDER BY id'),
+    await d1Rows('SELECT week, genesis_mint, weight, staked_skr FROM votes ORDER BY week, genesis_mint'),
+    await d1Rows('SELECT wallet, status, staked_raw, checked_at FROM skr_cache ORDER BY wallet'),
+  ]);
+  /** Rows once `ok(rows)` holds: work under ctx.waitUntil may still run when the route answers. */
+  async function rowsWhen(sql, ok, tries = 5) {
+    let rows;
+    for (let i = 0; i < tries; i++) {
+      rows = await d1Rows(sql);
+      if (ok(rows)) return rows;
+      await sleep(1000);
+    }
+    return rows;
+  }
+  /** Fake RPC calls per method since c0, once at least `min` getMultipleAccounts calls have landed. */
+  async function callsSince(c0, min) {
+    for (let i = 0; i < 20; i++) {
+      const c1 = fake.counts();
+      if ((c1.byMethod.getMultipleAccounts || 0) - (c0.byMethod.getMultipleAccounts || 0) >= min) break;
+      await sleep(250);
+    }
+    const c1 = fake.counts();
+    return (m) => (c1.byMethod[m] || 0) - (c0.byMethod[m] || 0);
+  }
+  const triggered = (r) => {
+    expectStatus(r, 200);
+    check(r.body?.outcome === 'ok', `scheduled outcome ${r.text}`);
+  };
+
+  await scenario('cron tick, Wednesday 12:07Z: a short getMultipleAccounts reply (MS is still in the call) changes no row and caches nothing; one stake read, no drift check', async () => {
+    const before = await snapshot();
+    const c0 = fake.counts();
+    triggered(await trigger(WED_MS));
+    const d = await callsSince(c0, 1);
+    check(d('getMultipleAccounts') === 1 && d('getAccountInfo') === 0, `calls +${d('getMultipleAccounts')} getMultipleAccounts, +${d('getAccountInfo')} getAccountInfo`);
+    await sleep(1000);
+    check((await snapshot()) === before, 'a tick with a short reply changed a row');
+  });
+
+  await scenario("cron tick, Wednesday 12:07Z: S's stake doubles, so all five of its rows (the two its failed reads stamped 1.00x included) rise to sharedStakeWeight(22,711.76, 3); V's 3.66 vote with nothing staked falls to 1.00; S's 1.00 vote is not raised; ML's failed read leaves its rows as they were", async () => {
+    const s2Shares = String(BigInt(S_SHARES) * 2n);
+    const s2Skr = skrOfShares(s2Shares);
+    const want = sharedStakeWeight(s2Skr, 3);
+    check(Math.abs(s2Skr - 22711.76) < 0.01 && want === 2.88, `stake ${s2Skr}, weight ${want}`);
+    fake.register({ stakes: [[S.wallet, { shares: s2Shares }], [MS.wallet, { shares: '0' }]] }); // MS: no position now, no short reply
+    await insertVotes([voteRow(WEEK, V, 3.66, 45881.15968), voteRow(WEEK, S, 1, 0)]);
+    const mlSql = `SELECT id, weight, staked_skr, weight_checked_at FROM vouches WHERE wallet = '${ML.wallet}' ORDER BY id`;
+    const mlBefore = JSON.stringify(await d1Rows(mlSql));
+    const c0 = fake.counts();
+    triggered(await trigger(WED_MS));
+    const d = await callsSince(c0, 1);
+    check(d('getMultipleAccounts') === 1 && d('getAccountInfo') === 0, `calls +${d('getMultipleAccounts')}/+${d('getAccountInfo')}`);
+    const wedIso = new Date(WED_MS).toISOString();
+    const rows = await rowsWhen(`SELECT package, weight, staked_skr, weight_checked_at FROM vouches WHERE wallet = '${S.wallet}' ORDER BY package`,
+      (x) => x.length === 5 && x.every((y) => y.weight === want));
+    check(rows.length === 5 && rows.every((x) => x.weight === want && x.staked_skr === s2Skr && x.weight_checked_at === wedIso), JSON.stringify(rows));
+    const votes = await d1Rows(`SELECT wallet, weight, staked_skr FROM votes WHERE week = '${WEEK}'`);
+    const vote = (o) => votes.find((x) => x.wallet === o.wallet);
+    check(vote(V)?.weight === 1 && vote(V)?.staked_skr === 0, `V ${JSON.stringify(vote(V))}`);
+    check(vote(S)?.weight === 1, `S ${JSON.stringify(vote(S))}`);
+    check(JSON.stringify(await d1Rows(mlSql)) === mlBefore, "ML's rows moved on a failed read");
+    const ms = await d1Rows(`SELECT weight, staked_skr FROM vouches WHERE wallet = '${MS.wallet}'`);
+    check(ms.length === 1 && ms[0].weight === 1 && ms[0].staked_skr === 0, `MS ${JSON.stringify(ms)}`);
+    const qNull = await d1Rows(`SELECT COUNT(*) AS n FROM vouches WHERE wallet = '${Q.wallet}' AND staked_skr IS NULL`);
+    check(qNull[0].n === 0, `Q rows with no stake stamped: ${qNull[0].n}`);
+    const cache = await d1Rows(`SELECT wallet, status, staked_raw, checked_at FROM skr_cache WHERE wallet IN ('${S.wallet}', '${V.wallet}', '${ML.wallet}')`);
+    const cs = cache.find((x) => x.wallet === S.wallet);
+    check(cs?.status === 'ok' && cs.staked_raw === String((BigInt(s2Shares) * SHARE_PRICE) / 1_000_000_000n) && cs.checked_at === wedIso, JSON.stringify(cache));
+    check(cache.find((x) => x.wallet === V.wallet)?.status === 'none' && !cache.some((x) => x.wallet === ML.wallet), JSON.stringify(cache));
+  });
+
+  await scenario("cron tick, next Monday 03:07Z: the drift check reads the pinned deploy slot and pool; this week, now closed, demotes U (unstake begun before the close) and spares P (begun after it); S's stake is gone, so its vouches fall to 1.00", async () => {
+    const closeMs = Date.parse(wk.end);
+    const unstake = (o, atMs) => [o.wallet, { shares: '0', unstaking: '45881159680', unstakeTs: String(Math.floor(atMs / 1000)) }];
+    fake.register({ stakes: [unstake(U, closeMs - 30 * 60_000), unstake(P, closeMs + 60 * 60_000), [S.wallet, { shares: '0' }]] });
+    await insertVotes([voteRow(WEEK, U, 3.66, 45881.15968), voteRow(WEEK, P, 3.66, 45881.15968)]);
+    const c0 = fake.counts();
+    triggered(await trigger(MON_MS));
+    const d = await callsSince(c0, 2);
+    check(d('getAccountInfo') === 1 && d('getMultipleAccounts') === 2, `calls +${d('getAccountInfo')} getAccountInfo (ProgramData), +${d('getMultipleAccounts')} getMultipleAccounts (stakes, pools)`);
+    const votes = await rowsWhen(`SELECT wallet, weight FROM votes WHERE week = '${WEEK}'`,
+      (x) => x.find((y) => y.wallet === U.wallet)?.weight === 1);
+    const w = (o) => votes.find((x) => x.wallet === o.wallet)?.weight;
+    check(w(U) === 1 && w(P) === 3.66 && w(V) === 1 && w(S) === 1, `votes U ${w(U)}, P ${w(P)}, V ${w(V)}, S ${w(S)}`);
+    const rows = await rowsWhen(`SELECT weight, staked_skr FROM vouches WHERE wallet = '${S.wallet}'`, (x) => x.every((y) => y.weight === 1));
+    check(rows.length === 5 && rows.every((x) => x.weight === 1 && x.staked_skr === 0), JSON.stringify(rows));
+  });
+}
+
+// ---- Lounge chat replies (migrations/003_chat_replies.sql) -------------------------------------
+// Three new owners (CX, CY, CZ) claim numbers and sign in to chat the way the app does. Every
+// count below is exact on a re-run: new owners get new numbers, and every read starts after S0,
+// the highest message id before this section. The helpers live inside runChat: the module's
+// top-level code runs (and exits) before any const declared down here would be initialised.
+async function runChat() {
+  const DASH = String.fromCharCode(0x2014);
+  const NL = String.fromCharCode(10);
+  /** index.js claimMessage: POST /claim and POST /chat/auth verify the same string. */
+  const claimMessage = (w, m, ts) => `Seeker Scout ${DASH} Owners' Lounge claim${NL}wallet: ${w}${NL}mint: ${m}${NL}ts: ${ts}`;
+  const claimBody = (o) => {
+    const ts = isoAt();
+    return { wallet: o.wallet, mint: o.mint, ts, signature: base58.encode(ed.sign(new TextEncoder().encode(claimMessage(o.wallet, o.mint, ts)), o.priv)) };
+  };
+  const CHAT_RATE_MS = 4000; // chat.js RATE_MS
+  const lastChat = new Map();
+  const bearer = (o) => ({ authorization: `Bearer ${o.token}` });
+  /** POST /chat/send, after this wallet's 4 s slot has passed. */
+  const chatSend = async (o, body) => {
+    const wait = (lastChat.get(o.wallet) ?? 0) + CHAT_RATE_MS + 300 - Date.now();
+    if (wait > 0) await sleep(wait);
+    const r = await call('POST', '/chat/send', body, bearer(o));
+    if (r.status === 200) lastChat.set(o.wallet, Date.now());
+    return r;
+  };
+  const idsOf = (list) => JSON.stringify(list.map((x) => x.id));
+  const maxMessageId = async () => (await d1Rows('SELECT COALESCE(MAX(id), 0) AS mx FROM messages'))[0].mx;
+
+  const CX = newOwner();
+  const CY = newOwner();
+  const CZ = newOwner();
+  const chatters = [CX, CY, CZ];
+  fake.register({ sgt: chatters.map((o) => o.mint), holders: chatters.map((o) => [o.wallet, o.mint]) });
+  const FIRE = String.fromCodePoint(0x1f525); // one of chat.js REACTIONS
+  const ids = {};
+  let S0 = 0;
+
+  await scenario('chat setup: messages.reply_to is on the local D1; three owners claim numbers (POST /claim) and get chat tokens (POST /chat/auth); /stats counts the claims', async () => {
+    const cols = (await d1Rows('PRAGMA table_info(messages)')).map((c) => c.name);
+    check(cols.includes('reply_to'), `messages has no reply_to (${cols.join(',')}): run npm run migrate:chat:local once`);
+    const idx = await d1Rows("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_messages_reply_to'");
+    check(idx.length === 1, 'idx_messages_reply_to is missing');
+    const before = await get('/stats');
+    expectStatus(before, 200);
+    for (const o of chatters) {
+      const ip = { 'cf-connecting-ip': ipOf.get(o.wallet) };
+      const c = await call('POST', '/claim', claimBody(o), ip);
+      expectStatus(c, 200);
+      check(Number.isInteger(c.body.number) && c.body.number >= 1, `claim ${c.text}`);
+      o.number = c.body.number;
+      const a = await call('POST', '/chat/auth', claimBody(o), ip);
+      expectStatus(a, 200);
+      check(typeof a.body.token === 'string' && a.body.number === o.number && a.body.tier === c.body.tier, `auth ${a.text}`);
+      o.token = a.body.token;
+    }
+    const s = await get('/stats');
+    expectStatus(s, 200);
+    check(s.body.total === before.body.total + 3 && s.body.founding === Math.min(s.body.total, 100),
+      `stats ${s.text}, before ${before.text}`);
+    S0 = await maxMessageId();
+  });
+
+  await scenario('chat: a plain message -> 200, reply_to null and reply null; a token signed with another secret -> 401', async () => {
+    const forged = await issueToken(`not-the-worker-secret-${Math.random()}`,
+      { number: CX.number, wallet: CX.wallet, tier: 'member', exp: Date.now() + 60_000 });
+    expectStatus(await call('POST', '/chat/send', { text: 'forged' }, { authorization: `Bearer ${forged}` }), 401, 'not authenticated');
+    const r = await chatSend(CX, { text: 'gm from X' });
+    expectStatus(r, 200);
+    const m = r.body.message;
+    check(Object.keys(m).join() === 'id,number,tier,text,created_at,reply_to,reply', Object.keys(m).join());
+    check(m.number === CX.number && m.text === 'gm from X' && m.reply_to === null && m.reply === null, r.text);
+    ids.x1 = m.id;
+  });
+
+  await scenario('chat: Y replies to X -> 200 with reply_to and reply {id, number, text}; /chat/messages carries both on every row', async () => {
+    const r = await chatSend(CY, { text: 'gm X, from Y', reply_to: ids.x1 });
+    expectStatus(r, 200);
+    const m = r.body.message;
+    check(m.reply_to === ids.x1 && JSON.stringify(m.reply) === JSON.stringify({ id: ids.x1, number: CX.number, text: 'gm from X' }), r.text);
+    ids.y1 = m.id;
+    const list = await get(`/chat/messages?since=${S0}`);
+    expectStatus(list, 200);
+    check(idsOf(list.body.messages) === JSON.stringify([ids.x1, ids.y1]), `ids ${idsOf(list.body.messages)}`);
+    for (const x of list.body.messages) {
+      check(Object.keys(x).join() === 'id,number,tier,text,created_at,reply_to,reply,reactions', Object.keys(x).join());
+    }
+    const [x1, y1] = list.body.messages;
+    check(x1.reply_to === null && x1.reply === null, JSON.stringify(x1));
+    check(y1.reply_to === ids.x1 && JSON.stringify(y1.reply) === JSON.stringify(m.reply), JSON.stringify(y1));
+  });
+
+  await scenario("chat: reply_to 0, -1, 1.5, a numeric string, true, or an id past the last message -> 400 'bad reply', no row written, no slot spent", async () => {
+    const mx = await maxMessageId();
+    for (const bad of [0, -1, 1.5, String(ids.x1), true, mx + 1000]) {
+      expectStatus(await call('POST', '/chat/send', { text: 'bad', reply_to: bad }, bearer(CZ)), 400, 'bad reply');
+    }
+    const after = await maxMessageId();
+    check(after === mx, `rows written: max id ${mx} -> ${after}`);
+    const r = await call('POST', '/chat/send', { text: 'Z on X, straight after six refusals', reply_to: ids.x1 }, bearer(CZ));
+    expectStatus(r, 200); // no wait: a refused reply took no slot
+    lastChat.set(CZ.wallet, Date.now());
+    ids.z1 = r.body.message.id;
+  });
+
+  await scenario('chat: a reply quotes its parent cut to 100 UTF-16 units, never half an emoji; the parent row stays whole', async () => {
+    const long = 'a'.repeat(99) + String.fromCodePoint(0x1f680) + ' and the rest of a long message';
+    const p = await chatSend(CX, { text: long });
+    expectStatus(p, 200);
+    ids.x2 = p.body.message.id;
+    const r = await chatSend(CY, { text: 'long one', reply_to: ids.x2 });
+    expectStatus(r, 200);
+    ids.y2 = r.body.message.id;
+    check(JSON.stringify(r.body.message.reply) === JSON.stringify({ id: ids.x2, number: CX.number, text: 'a'.repeat(99) }), r.text);
+    const list = await get(`/chat/messages?since=${ids.x2 - 1}`);
+    const byId = new Map(list.body.messages.map((x) => [x.id, x]));
+    check(byId.get(ids.x2)?.text === long, 'the parent row was cut');
+    check(byId.get(ids.y2)?.reply?.text === 'a'.repeat(99), JSON.stringify(byId.get(ids.y2)));
+  });
+
+  await scenario('chat: a parent hidden by three reports -> its reply shows reply {id, hidden: true}, no number, no text; a new reply to it -> 400', async () => {
+    const p = await chatSend(CX, { text: 'this one gets reported' });
+    expectStatus(p, 200);
+    ids.x3 = p.body.message.id;
+    const r = await chatSend(CZ, { text: 'reply before the reports', reply_to: ids.x3 });
+    expectStatus(r, 200);
+    ids.z3 = r.body.message.id;
+    for (const o of chatters) {
+      expectStatus(await call('POST', '/chat/report', { messageId: ids.x3 }, bearer(o)), 200);
+    }
+    const list = await get(`/chat/messages?since=${ids.x3 - 1}`);
+    expectStatus(list, 200);
+    check(!list.body.messages.some((x) => x.id === ids.x3), 'the reported parent is still listed');
+    const z3 = list.body.messages.find((x) => x.id === ids.z3);
+    check(z3?.reply_to === ids.x3 && JSON.stringify(z3.reply) === JSON.stringify({ id: ids.x3, hidden: true }), JSON.stringify(z3));
+    check(!list.text.includes('this one gets reported'), 'the hidden text left through a reply');
+    expectStatus(await chatSend(CY, { text: 'too late', reply_to: ids.x3 }), 400, 'bad reply');
+  });
+
+  await scenario("/chat/replies: X's number lists only others' replies to X's visible messages, newest first, count 3 (X's self-reply, the reply to its hidden message and replies to Y are left out); public, Cache-Control public, max-age=30", async () => {
+    let r = await chatSend(CX, { text: 'adding to my own', reply_to: ids.x1 });
+    expectStatus(r, 200);
+    r = await chatSend(CZ, { text: 'Z on Y', reply_to: ids.y1 });
+    expectStatus(r, 200);
+    ids.zy = r.body.message.id;
+    r = await chatSend(CX, { text: 'X on Y', reply_to: ids.y1 });
+    expectStatus(r, 200);
+    ids.xy = r.body.message.id;
+    const rx = await get(`/chat/replies?to=${CX.number}&since=${S0}`);
+    expectStatus(rx, 200);
+    check(rx.headers.get('cache-control') === 'public, max-age=30', `cache-control ${rx.headers.get('cache-control')}`);
+    check(Object.keys(rx.body).join() === 'latestId,count,replies', Object.keys(rx.body).join());
+    check(idsOf(rx.body.replies) === JSON.stringify([ids.y2, ids.z1, ids.y1]) && rx.body.count === 3 && rx.body.latestId === ids.y2, rx.text);
+    for (const x of rx.body.replies) check(Object.keys(x).join() === 'id,number,text,created_at,reply_to', Object.keys(x).join());
+    const y1 = rx.body.replies[2];
+    check(y1.number === CY.number && y1.reply_to === ids.x1 && y1.text === 'gm X, from Y' && typeof y1.created_at === 'string', JSON.stringify(y1));
+    check(chatters.every((o) => !rx.text.includes(o.wallet)), 'a wallet left through /chat/replies');
+    const ry = await get(`/chat/replies?to=${CY.number}&since=${S0}`);
+    check(idsOf(ry.body.replies) === JSON.stringify([ids.xy, ids.zy]) && ry.body.count === 2 && ry.body.latestId === ids.xy, ry.text);
+    const rz = await get(`/chat/replies?to=${CZ.number}&since=${S0}`);
+    check(JSON.stringify(rz.body) === JSON.stringify({ latestId: S0, count: 0, replies: [] }), rz.text);
+  });
+
+  await scenario('/chat/replies since: only replies newer than since; at the newest one, count 0 and latestId = since; a reply hidden by reports leaves the list', async () => {
+    let r = await get(`/chat/replies?to=${CX.number}&since=${ids.y1}`);
+    check(idsOf(r.body.replies) === JSON.stringify([ids.y2, ids.z1]) && r.body.count === 2 && r.body.latestId === ids.y2, r.text);
+    r = await get(`/chat/replies?to=${CX.number}&since=${ids.y2}`);
+    check(JSON.stringify(r.body) === JSON.stringify({ latestId: ids.y2, count: 0, replies: [] }), r.text);
+    for (const o of chatters) expectStatus(await call('POST', '/chat/report', { messageId: ids.y2 }, bearer(o)), 200);
+    r = await get(`/chat/replies?to=${CX.number}&since=${S0}`);
+    check(idsOf(r.body.replies) === JSON.stringify([ids.z1, ids.y1]) && r.body.count === 2 && r.body.latestId === ids.z1, r.text);
+  });
+
+  await scenario('/chat/replies count cap: 120 more replies to X (seeded, d1 --local) -> count 99, the 20 newest listed newest first, latestId the newest', async () => {
+    await d1('WITH RECURSIVE s(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM s WHERE i < 120) ' +
+      'INSERT INTO messages (number, wallet, tier, text, created_at, reply_to) ' +
+      `SELECT ${CZ.number}, '${CZ.wallet}', 'member', 'seeded reply ' || i, '${isoAt()}', ${ids.x1} FROM s`);
+    const seeded = (await d1Rows(`SELECT id FROM messages WHERE wallet = '${CZ.wallet}' AND text LIKE 'seeded reply %' ORDER BY id DESC`)).map((x) => x.id);
+    check(seeded.length === 120, `seeded ${seeded.length}`);
+    let r = await get(`/chat/replies?to=${CX.number}&since=${S0}`);
+    expectStatus(r, 200);
+    check(r.body.count === 99 && r.body.replies.length === 20 && r.body.latestId === seeded[0], `count ${r.body.count}, listed ${r.body.replies.length}, latestId ${r.body.latestId}`);
+    check(idsOf(r.body.replies) === JSON.stringify(seeded.slice(0, 20)), idsOf(r.body.replies));
+    r = await get(`/chat/replies?to=${CX.number}&since=${seeded[30]}`);
+    check(r.body.count === 30 && r.body.replies.length === 20 && r.body.latestId === seeded[0], `since ${seeded[30]}: count ${r.body.count}`);
+  });
+
+  await scenario("/chat/replies bad params -> 400 'bad to' (missing, 0, 1000001, abc, 1.5, -3) and 'bad since' (missing, empty, -1, abc, 2.5)", async () => {
+    for (const qs of ['', 'since=0', 'to=0', 'to=1000001', 'to=abc', 'to=1.5', 'to=-3']) {
+      expectStatus(await get(`/chat/replies?${qs}`), 400, 'bad to');
+    }
+    expectStatus(await get(`/chat/replies?to=${CX.number}`), 400, 'bad since');
+    for (const qs of ['since=', 'since=-1', 'since=abc', 'since=2.5']) {
+      expectStatus(await get(`/chat/replies?to=${CX.number}&${qs}`), 400, 'bad since');
+    }
+  });
+
+  await scenario('regression: /chat/latest, /chat/react on a reply (toggle), /chat/messages paging, /stats, /flags and /vouch/top keep their shapes', async () => {
+    const latest = await get(`/chat/latest?since=${S0}`);
+    expectStatus(latest, 200);
+    const visible = (await d1Rows(`SELECT COALESCE(MAX(id), 0) AS mx, COUNT(*) AS n FROM messages WHERE hidden = 0 AND id > ${S0}`))[0];
+    check(latest.body.latestId === visible.mx && latest.body.newCount === visible.n, `latest ${latest.text}, want ${JSON.stringify(visible)}`);
+    const react = await call('POST', '/chat/react', { messageId: ids.z1, emoji: FIRE }, bearer(CX));
+    expectStatus(react, 200);
+    check(react.body.messageId === ids.z1 && react.body.reactions[FIRE] === 1 && react.body.mine.join() === FIRE, react.text);
+    const undo = await call('POST', '/chat/react', { messageId: ids.z1, emoji: FIRE }, bearer(CX));
+    check(undo.status === 200 && Object.keys(undo.body.reactions).length === 0 && undo.body.mine.length === 0, undo.text);
+    const page = await get('/chat/messages?since=0');
+    expectStatus(page, 200);
+    check(page.body.messages.length === 50 && page.body.messages.every((x) => 'reply_to' in x && 'reply' in x && 'reactions' in x && !('mine' in x)),
+      `page of ${page.body.messages.length}`);
+    const mine = await call('GET', `/chat/messages?since=${ids.z1 - 1}`, undefined, bearer(CX));
+    check(mine.status === 200 && mine.body.messages.every((x) => Array.isArray(x.mine)), 'a signed-in read lost mine');
+    const s = await get('/stats');
+    expectStatus(s, 200);
+    check(Object.keys(s.body).join() === 'total,founding' && s.body.total >= 3, s.text);
+    const f = await get('/flags');
+    expectStatus(f, 200);
+    check(f.body.vouch === true && f.body.vote === true && f.body.withdraw === false, f.text);
+    const t = await get('/vouch/top');
+    expectStatus(t, 200);
+    check(Array.isArray(t.body.apps) && typeof t.body.week === 'string' && typeof t.body.start === 'string', t.text.slice(0, 200));
+    checkNoWeights(t.text, '/vouch/top');
+    const nope = await call('GET', '/chat/nope', undefined, bearer(CX));
+    check(nope.status === 404 && nope.body?.error === 'not found', nope.text);
+  });
+
+  // Last, since it pushes every earlier reply out of /chat/replies (chat.js REPLIES_WINDOW).
+  await scenario('/chat/replies window: 1,000 newer messages (seeded, d1 --local) push every reply to X out (count 0, latestId = the since asked); a new reply counts again, also from since=0', async () => {
+    await d1('WITH RECURSIVE s(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM s WHERE i < 1000) ' +
+      'INSERT INTO messages (number, wallet, tier, text, created_at) ' +
+      `SELECT ${CZ.number}, '${CZ.wallet}', 'member', 'window filler ' || i, '${isoAt()}' FROM s`);
+    let r = await get(`/chat/replies?to=${CX.number}&since=${S0}`);
+    check(JSON.stringify(r.body) === JSON.stringify({ latestId: S0, count: 0, replies: [] }), r.text);
+    const fresh = await chatSend(CY, { text: 'Y on X, after the filler', reply_to: ids.x1 });
+    expectStatus(fresh, 200);
+    for (const since of [S0, 0]) {
+      r = await get(`/chat/replies?to=${CX.number}&since=${since}`);
+      check(r.body.count === 1 && r.body.latestId === fresh.body.message.id && idsOf(r.body.replies) === JSON.stringify([fresh.body.message.id]),
+        `since ${since}: ${r.text}`);
+    }
   });
 }

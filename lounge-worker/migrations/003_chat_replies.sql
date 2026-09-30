@@ -1,0 +1,38 @@
+-- ---------------------------------------------------------------------------
+-- Lounge chat replies: messages.reply_to (src/chat.js, POST /chat/send
+-- reply_to, the `reply` field of every message read, GET /chat/replies).
+--
+-- NOT IDEMPOTENT. SQLite has no ADD COLUMN IF NOT EXISTS, so running this file
+-- a second time fails with "duplicate column name: reply_to". Unlike 001 and
+-- 002 it must run exactly once per database, and never on a database that
+-- schema.sql created after reply_to was added to it (schema.sql already
+-- creates the column and the index there).
+--
+-- Before running it, list the columns:
+--   wrangler d1 execute seeker-lounge --remote --command "PRAGMA table_info(messages)"
+-- reply_to listed: skip this file. Not listed: run it once, then list again.
+--   npm run migrate:chat          (remote, production D1)
+--   npm run migrate:chat:local    (wrangler dev's local D1)
+--
+-- Order: apply it BEFORE deploying the worker that reads reply_to. That
+-- worker's GET /chat/messages, POST /chat/send and GET /chat/replies fail on a
+-- messages table without the column. The worker already running ignores the
+-- new column (every query it makes names its columns), so migrating first is
+-- safe.
+--
+-- The ALTER is the first statement, so a second run stops before anything
+-- else. The index is IF NOT EXISTS: if the ALTER went through and the index
+-- did not, run the CREATE INDEX line on its own.
+--
+-- reply_to: the id of the message this one answers, or NULL for a plain
+-- message. No foreign key (ALTER TABLE cannot add one): POST /chat/send checks
+-- that the parent exists and is not hidden when the reply is written, and a
+-- parent hidden later reads as {id, hidden: true}. Existing rows get NULL.
+--
+-- idx_messages_reply_to is part of the contract, but no query uses it today:
+-- GET /chat/replies walks messages newest first by primary key (at most the
+-- newest 1,000 ids, chat.js REPLIES_WINDOW), so its cost follows the messages
+-- walked, not the replies found.
+-- ---------------------------------------------------------------------------
+ALTER TABLE messages ADD COLUMN reply_to INTEGER;
+CREATE INDEX IF NOT EXISTS idx_messages_reply_to ON messages(reply_to);
