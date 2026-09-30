@@ -9,7 +9,7 @@
  * the live catalog. Wrangler auth: OAuth session in ~/.wrangler (no API token).
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -153,6 +153,42 @@ try {
     writeFileSync(join(stage, 'catalog.json'), readFileSync(CATALOG));
   } catch (e) {
     log(`WARN: on-chain enrichment skipped (${e.message})`);
+  }
+
+  // 2c. Scout Vouch stamps (worksOnSeeker, owner counts, owners' rank) from
+  // the Lounge worker's public GET /vouch/aggregate, onto the STAGED copy.
+  // Non-fatal like 2b, and stricter: the file that deploys is either the
+  // stamper's output, re-checked here, or byte for byte the file staged
+  // before it. A worker outage is handled inside the stamper (last good copy
+  // up to 3 days old, else no stamps); this catch is for the stamper itself.
+  const stagedCatalog = join(stage, 'catalog.json');
+  const unstamped = readFileSync(stagedCatalog);
+  try {
+    execFileSync(NODE, [join(ROOT, 'indexer', 'enrich-vouches.mjs'), stagedCatalog], {
+      cwd: ROOT, stdio: 'inherit', timeout: 60_000,
+    });
+    const stamped = JSON.parse(readFileSync(stagedCatalog, 'utf8'));
+    const before = JSON.parse(unstamped.toString('utf8'));
+    if (
+      !Array.isArray(stamped) ||
+      stamped.length !== before.length ||
+      stamped.some((a, i) => a?.id !== before[i]?.id)
+    ) {
+      throw new Error('stamped catalog is not the same app list');
+    }
+  } catch (e) {
+    writeFileSync(stagedCatalog, unstamped);
+    log(`WARN: vouch stamps skipped (${e.message}); catalog ships without them`);
+  } finally {
+    // A stamper killed mid-write leaves its temp file (catalog.json.tmp-<pid>)
+    // in the stage, and the whole stage deploys: drop any, this run's or older.
+    try {
+      for (const name of readdirSync(stage)) {
+        if (name.startsWith('catalog.json.tmp-')) rmSync(join(stage, name), { force: true });
+      }
+    } catch (e) {
+      log(`WARN: could not clear stamper temp files (${e.message})`);
+    }
   }
 
   if (DRY_RUN) {

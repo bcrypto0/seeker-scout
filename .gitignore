@@ -21,3 +21,5 @@ release/
 # release APKs are build artifacts (EAS holds the canonical copies)
 store-assets/*.apk
 indexer/game-pool.last.json
+# last good GET /vouch/aggregate, written by indexer/enrich-vouches.mjs
+indexer/vouch-aggregate.last.json
