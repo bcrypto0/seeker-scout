@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { fetchRemoteFlags } from '../lib/catalog';
 import { useWalletSession } from '../lib/session';
 import type { DappEntry } from '../lib/types';
@@ -8,7 +9,9 @@ import {
   chipHint,
   getAppVouches,
   getCachedResult,
+  getCachedWeight,
   getMyVouches,
+  lastVouchStamp,
   LIMIT_SENTENCE,
   ownState,
   tagLabels,
@@ -16,7 +19,7 @@ import {
   verdictLabel,
   vouchErrorMessage,
   walletChip,
-  weightCaption,
+  WEIGHT_CAPTION,
 } from '../lib/vouch';
 import type { AppVouches, AppVouchSummary, MyVouch, RemoteFlags, VouchResult } from '../lib/vouch';
 import { colors, fonts } from '../theme';
@@ -33,10 +36,12 @@ const MAYBE_LANDED = vouchErrorMessage(200, 'unexpected response');
  *
  * Numbers and notes are live from the worker (GET /vouch/app). The owner's
  * own verdict comes from GET /vouch/mine; its tags, note and weight only
- * from this device's last signed answer, because the worker serves none of
- * them by mint. After a vouch the sheet hands its answer over (`lastResult`)
- * so the numbers move at once: the public read is cached on the phone for a
- * minute, so the follow-up read of the notes goes past that cache.
+ * from this device's signed answers, because the worker serves none of
+ * them by mint. The weight is cachedWeight's: a vouch on another app can
+ * re-stamp this one, so this app's own answer alone goes stale. After a
+ * vouch the sheet hands its answer over (`lastResult`) so the numbers move
+ * at once: the public read is cached on the phone for a minute, so the
+ * follow-up read of the notes goes past that cache.
  */
 export function VouchCard({
   app,
@@ -58,10 +63,13 @@ export function VouchCard({
   const [flags, setFlags] = useState<RemoteFlags | null>(null);
   const [mine, setMine] = useState<MyVouch[] | null>(null);
   const [cached, setCached] = useState<VouchResult | null>(null);
+  const [weight, setWeight] = useState<number | null>(null);
   const [ownReady, setOwnReady] = useState(false);
   // Newest request wins: a slow read started before a vouch must not paint over the vouch's numbers.
   const readSeq = useRef(0);
   const ownSeq = useRef(0);
+  // The session's vouch stamp the weight was read after: a vouch since then (on another app) re-reads it on focus.
+  const weightStamp = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const seq = ++readSeq.current;
@@ -86,17 +94,35 @@ export function VouchCard({
     if (!mint) {
       setMine(null);
       setCached(null);
+      setWeight(null);
       setOwnReady(true);
       return;
     }
     setOwnReady(false);
-    Promise.all([getMyVouches(mint), getCachedResult(mint, app.id)]).then(([m, c]) => {
-      if (ownSeq.current !== seq) return;
-      setMine(m);
-      setCached(c);
-      setOwnReady(true);
-    });
+    weightStamp.current = lastVouchStamp();
+    Promise.all([getMyVouches(mint), getCachedResult(mint, app.id), getCachedWeight(mint, app.id)]).then(
+      ([m, c, w]) => {
+        if (ownSeq.current !== seq) return;
+        setMine(m);
+        setCached(c);
+        setWeight(w);
+        setOwnReady(true);
+      },
+    );
   }, [mint, app.id]);
+
+  // Back on this page after a vouch on another app page: that vouch may have
+  // re-stamped this one's weight, so read it again (the sheet does on open).
+  useFocusEffect(
+    useCallback(() => {
+      if (!mint || lastVouchStamp() === weightStamp.current) return;
+      weightStamp.current = lastVouchStamp();
+      const seq = ownSeq.current;
+      getCachedWeight(mint, app.id).then((w) => {
+        if (ownSeq.current === seq) setWeight(w);
+      });
+    }, [mint, app.id]),
+  );
 
   // A vouch just landed on this app: its signed answer carries the fresh numbers and the owner's state.
   useEffect(() => {
@@ -115,6 +141,8 @@ export function VouchCard({
       },
     ]);
     setCached(lastResult);
+    setWeight(lastResult.weight);
+    weightStamp.current = lastVouchStamp();
     setOwnReady(true);
     getAppVouches(app.id, lastResult.vouch.updatedAt || String(Date.now())).then((r) => {
       if (readSeq.current === seq && r) setData(r);
@@ -155,7 +183,7 @@ export function VouchCard({
             <Text style={{ color: state.verdict === 'works' ? colors.green : colors.red }}>
               {verdictLabel(state.verdict)}
             </Text>
-            {d ? ` · counts ${d.result.weight.toFixed(2)}x` : ''}
+            {d ? ` · counts ${(weight ?? d.result.weight).toFixed(2)}x` : ''}
           </Text>
           {!!d && d.tags.length > 0 && <Text style={styles.ownMeta}>{tagLabels(d.tags)}</Text>}
           {!!d && !!d.note && !state.noteHidden && <Text style={styles.ownNote}>“{d.note}”</Text>}
@@ -223,8 +251,8 @@ export function VouchCard({
               </Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.noteText}>{n.note}</Text>
-                {/* No weight here: once the SKR reader ships, a weight next to a Lounge
-                    number would tell every reader roughly what that owner stakes. */}
+                {/* No weight here: a weight next to a Lounge number would tell every
+                    reader roughly what that owner stakes (VouchNote carries none). */}
                 <Text style={styles.noteMeta}>
                   {[tierLabel(n.number, n.tier), n.tags.length ? tagLabels(n.tags) : null]
                     .filter(Boolean)
@@ -276,7 +304,7 @@ function Numbers({ s }: { s: AppVouchSummary }) {
         </View>
       )}
       {!!hint && <Text style={styles.dim}>{hint}</Text>}
-      <Text style={styles.dim}>{weightCaption(s)}</Text>
+      <Text style={styles.dim}>{WEIGHT_CAPTION}</Text>
     </>
   );
 }

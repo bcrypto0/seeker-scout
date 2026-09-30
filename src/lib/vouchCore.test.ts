@@ -105,8 +105,9 @@ function okBody(over: Record<string, unknown> = {}, vouch: Record<string, unknow
 
 test('parsers keep good rows, drop bad ones, and read /vouch/mine as four fields', () => {
   const s = v.parseSummary(APP)!;
+  // weight_works / weight_broken in the body are not kept: head counts only.
   assert.deepEqual(s, {
-    package: 'x.place', voices: 3, worksVoices: 3, brokenVoices: 0, weightWorks: 3, weightBroken: 0,
+    package: 'x.place', voices: 3, worksVoices: 3, brokenVoices: 0,
     worksPct: 100, walletOkVoices: 2, worksOnSeeker: true, lastVouchAt: TS,
   });
   assert.equal(v.parseSummary({ voices: 3 }), null);
@@ -115,15 +116,17 @@ test('parsers keep good rows, drop bad ones, and read /vouch/mine as four fields
     recent: [
       { id: 1, verdict: 'works', tags: ['crashes', 'x'], note: 'ok', weight: 1, number: 3, tier: 'founding', updated_at: TS },
       { id: 'two', verdict: 'works' }, { id: 3, verdict: 'meh' }, null,
-      { id: 4, verdict: 'broken', tags: 5, note: 9, weight: 'x', number: null, tier: 'boss', updated_at: TS },
+      { id: 4, verdict: 'broken', tags: 5, note: 9, number: null, tier: 'boss', updated_at: TS },
     ],
   })!;
   assert.equal(a.recent.length, 2);
   assert.deepEqual(a.recent[0].tags, ['crashes']);
   assert.deepEqual(
-    [a.recent[1].note, a.recent[1].weight, a.recent[1].number, a.recent[1].tier, a.recent[1].tags],
-    ['', 1, null, null, []],
+    [a.recent[1].note, a.recent[1].number, a.recent[1].tier, a.recent[1].tags],
+    ['', null, null, []],
   );
+  // The worker drops weight from public notes; an older worker still sends it. Neither is kept.
+  assert.deepEqual(a.recent.map((n) => 'weight' in n), [false, false]);
   assert.equal(v.parseAppVouches({ recent: [] }), null);
 
   assert.deepEqual(
@@ -144,7 +147,8 @@ test('parsers keep good rows, drop bad ones, and read /vouch/mine as four fields
     { ...APP, voices_week: 3, weight_works_week: 3 }, { ...APP, package: 'y.z', voices_week: 0 }, { voices_week: 2 },
   ] })!;
   assert.equal(top.week, '2026-W40');
-  assert.deepEqual(top.apps.map((r) => [r.package, r.voicesWeek, r.weightWorksWeek]), [['x.place', 3, 3]]);
+  assert.deepEqual(top.apps.map((r) => [r.package, r.voicesWeek]), [['x.place', 3]]);
+  assert.ok(top.apps.every((r) => !Object.keys(r).some((k) => /weight/i.test(k))), 'a weighted total was kept');
   assert.equal(v.parseTop({ apps: 'no' }), null);
 
   const r = v.parseResult(okBody())!;
@@ -203,22 +207,49 @@ function result(over: Partial<VouchResult> = {}): VouchResult {
   return { ...v.parseResult(okBody())!, ...over };
 }
 
-test('weight copy is honest: 1.00x until the SKR stake reader ships, real numbers after', () => {
-  assert.equal(v.weightLine(null), 'Your voice counts 1.00x until the SKR stake reader ships.');
-  assert.equal(v.weightLine(result()), 'Your voice counts 1.00x until the SKR stake reader ships.');
-  assert.equal(v.weightLine(result({ weightSource: 'chain', weight: 3.06, stakedSkr: 11355.88 })),
-    'Your voice counts 3.06x on 11,355.88 SKR staked.');
-  assert.equal(v.weightLine(result({ weightSource: 'cache', weight: 3.7, stakedSkr: 99900, mintsInWallet: 2 })),
-    'Your voice counts 3.70x on 99,900.00 SKR staked, shared by 2 Seekers.');
-  assert.equal(v.weightLine(result({ weightSource: 'error' })), "Your voice counts 1.00x this time: your SKR stake couldn't be read.");
-  assert.equal(v.weightLine(result({ weightSource: 'stored', weight: 2.04 })), 'Your voice counts 2.04x.');
-  // A replay of a row the stub wrote keeps the honest line (it is cached and reused before the next vouch).
-  assert.equal(v.weightLine(result({ weightSource: 'stored', weight: 1, stakedSkr: null })),
-    'Your voice counts 1.00x until the SKR stake reader ships.');
-  assert.equal(v.weightLine(result({ weightSource: 'stored', weight: 1, stakedSkr: 0 })), 'Your voice counts 1.00x.');
-  const s = v.parseSummary(APP)!;
-  assert.equal(v.weightCaption(s), 'Every owner counts 1.00x until the SKR stake reader ships.');
-  assert.match(v.weightCaption({ ...s, weightWorks: 5.06 }), /up to 4x/);
+test('weight copy is honest in every state the worker answers', () => {
+  const UNREAD = 'Your voice counts 1.00x because your SKR stake was not read.';
+  const lines: [string, string][] = [
+    // Before any signed answer: how weight works, no number of its own.
+    [v.weightLine(null), 'Staked SKR can raise your voice up to 4x. Your stake is read when you sign.'],
+    // 'stub': only a worker without the reader answers it.
+    [v.weightLine(result()), UNREAD],
+    [v.weightLine(result({ weightSource: 'chain', weight: 3.06, stakedSkr: 11355.88 })),
+      'Your voice counts 3.06x on 11,355.88 SKR staked.'],
+    [v.weightLine(result({ weightSource: 'cache', weight: 3.7, stakedSkr: 99900, mintsInWallet: 2 })),
+      'Your voice counts 3.70x on 99,900.00 SKR staked, shared by 2 Seekers.'],
+    [v.weightLine(result({ weightSource: 'chain', weight: 1, stakedSkr: 5 })), 'Your voice counts 1.00x on 5.00 SKR staked.'],
+    // Nothing staked (SKR in an unstake cooldown reads as 0 too).
+    [v.weightLine(result({ weightSource: 'chain', weight: 1, stakedSkr: 0 })), 'Your voice counts 1.00x with no SKR staked.'],
+    [v.weightLine(result({ weightSource: 'cache', weight: 1, stakedSkr: 0, mintsInWallet: 3 })),
+      'Your voice counts 1.00x with no SKR staked.'],
+    [v.weightLine(result({ weightSource: 'chain', weight: 1, stakedSkr: null })), 'Your voice counts 1.00x.'],
+    // About the vouch it served, never a forecast: the sheet shows it again above the next signature.
+    [v.weightLine(result({ weightSource: 'error' })),
+      "Your last vouch counts 1.00x: your SKR stake couldn't be read. Vouching again retries the read."],
+    // A replay from D1 of a row no stake was read for (written before the reader, or a failed read).
+    [v.weightLine(result({ weightSource: 'stored', weight: 1, stakedSkr: null })), `${UNREAD} Vouching again reads it.`],
+    [v.weightLine(result({ weightSource: 'stored', weight: 2.04, stakedSkr: 1000 })), 'Your voice counts 2.04x.'],
+    [v.weightLine(result({ weightSource: 'stored', weight: 2.04 })), 'Your voice counts 2.04x.'],
+    [v.weightLine(result({ weightSource: 'stored', weight: 1, stakedSkr: 0 })), 'Your voice counts 1.00x.'],
+    [v.weightLine(result({ weightSource: 'unknown', weight: 1.5, stakedSkr: 300 })), 'Your voice counts 1.50x.'],
+  ];
+  for (const [got, want] of lines) assert.equal(got, want);
+
+  // One caption for every app: one that changed with the app's weights would say, on an
+  // app with one voice, whether that owner stakes SKR.
+  const captions: [string, string][] = [
+    [v.WEIGHT_CAPTION,
+      'Staked SKR, read when an owner vouches, can weigh a voice up to 4x in rankings. The numbers above count each Genesis Token once.'],
+  ];
+  for (const [got, want] of captions) assert.equal(got, want);
+  assert.equal('weightCaption' in v || 'isFlatWeight' in v, false);
+
+  // Plain copy: no em dash, no forward promise.
+  for (const [got] of [...lines, ...captions]) {
+    assert.equal(got.includes(String.fromCharCode(0x2014)), false, got);
+    assert.doesNotMatch(got, /until|ships|never|guarantee|soon/i);
+  }
 });
 
 test('chip hint, labels and the owner state merge', () => {
@@ -234,8 +265,8 @@ test('chip hint, labels and the owner state merge', () => {
   assert.equal(v.tierLabel(null, null), 'Seeker owner');
   assert.deepEqual(v.walletChip(1), { text: 'Wallet connect worked · 1', a11y: 'Wallet connect worked for 1 owner' });
   // works_pct is all-time on /vouch/top, so the row names its base.
-  assert.equal(v.topRowMeta({ ...s, voicesWeek: 1, weightWorksWeek: 1 }), '1 owner this week · 100% of 3 owners say it works');
-  assert.equal(v.topRowMeta({ ...s, voices: 2, worksPct: 50, voicesWeek: 2, weightWorksWeek: 1 }),
+  assert.equal(v.topRowMeta({ ...s, voicesWeek: 1 }), '1 owner this week · 100% of 3 owners say it works');
+  assert.equal(v.topRowMeta({ ...s, voices: 2, worksPct: 50, voicesWeek: 2 }),
     '2 owners this week · 50% say it works'); // every vouch is this week's: the base is the same
   assert.equal(v.busyRetryLabel(10_500, 1_000), 'Busy right now. Retrying in 10 s…');
   assert.equal(v.busyRetryLabel(1_000, 1_000), 'Retrying…');
@@ -259,7 +290,7 @@ test('chip hint, labels and the owner state merge', () => {
 
 test('Lounge rows are catalog apps only, ranked after the filter; the 50-app check; the done copy', () => {
   const s = v.parseSummary(APP)!;
-  const row = (pkg: string) => ({ ...s, package: pkg, voicesWeek: 1, weightWorksWeek: 1 });
+  const row = (pkg: string) => ({ ...s, package: pkg, voicesWeek: 1 });
   const catalog = new Map([['x.place', 'XPlace'], ['ag.jup.jupiter.android', 'Jupiter'], ['a.b', 'AB']]);
   const top = [row('www.claimseeker.com'), row('x.place'), row('jup.ag'), row('ag.jup.jupiter.android'), row('a.b')];
   assert.deepEqual(v.knownTopRows(top, (id) => catalog.get(id), 2).map((r) => [r.row.package, r.entry]),
@@ -340,6 +371,51 @@ test('answer cache: per (mint, package), newest across apps, survives junk', asy
   assert.ok(!kept.includes(`${M}|x.place`)); // the oldest go first
   kv.data.set(v.MY_VOUCH_KEY, 'garbage');
   assert.equal(await v.cachedResult(kv, M, 'x.place'), null);
+});
+
+test("the card's weight follows the worker's re-stamp, and agrees with the sheet's line", async () => {
+  const base = result();
+  const on = (pkg: string, over: Partial<VouchResult>) =>
+    result({ ...over, vouch: { ...base.vouch, package: pkg, weight: over.weight ?? 1 } });
+  const A = 'x.place';
+  const B = 'a.b';
+  const staked = { weightSource: 'chain' as const, weight: 3.06, stakedSkr: 11355.88 };
+  const sheetNumber = async (kv: KV) => /(\d+\.\d\d)x/.exec(v.weightLine(await v.latestCachedResult(kv, M)))?.[1];
+
+  // A under the stub (1.00x), then B with 11,355.88 SKR staked: the read re-stamps A too.
+  let kv = memKV();
+  await v.rememberResult(kv, M, on(A, { weightSource: 'stub', weight: 1 }), 1000);
+  await v.rememberResult(kv, M, on(B, staked), 2000);
+  assert.equal(await v.cachedWeight(kv, M, A), 3.06);
+  assert.equal((await v.cachedWeight(kv, M, A))?.toFixed(2), await sheetNumber(kv));
+  assert.equal(await v.cachedWeight(kv, M, B), 3.06);
+
+  // A at 3.06x, the owner unstakes, then B reads 0 staked: A drops to 1.00x with it.
+  kv = memKV();
+  await v.rememberResult(kv, M, on(A, staked), 1000);
+  await v.rememberResult(kv, M, on(B, { weightSource: 'cache', weight: 1, stakedSkr: 0 }), 2000);
+  assert.equal(await v.cachedWeight(kv, M, A), 1);
+  assert.equal((await v.cachedWeight(kv, M, A))?.toFixed(2), await sheetNumber(kv));
+
+  // A failed read on B stamps only B; a replay of B writes nothing: A keeps 3.06x.
+  for (const other of [{ weightSource: 'error' as const, weight: 1, stakedSkr: null },
+    { weightSource: 'stored' as const, weight: 1, stakedSkr: null }]) {
+    kv = memKV();
+    await v.rememberResult(kv, M, on(A, staked), 1000);
+    await v.rememberResult(kv, M, on(B, other), 2000);
+    assert.equal(await v.cachedWeight(kv, M, A), 3.06, other.weightSource);
+    assert.equal(await v.cachedWeight(kv, M, B), 1, other.weightSource);
+  }
+
+  // This app's own answer wins when it is the newer one, whatever its source.
+  kv = memKV();
+  await v.rememberResult(kv, M, on(B, staked), 1000);
+  await v.rememberResult(kv, M, on(A, { weightSource: 'error', weight: 1, stakedSkr: null }), 2000);
+  assert.equal(await v.cachedWeight(kv, M, A), 1);
+
+  // Another Genesis Token on the same phone, or no answer at all: nothing to print.
+  assert.equal(await v.cachedWeight(kv, W, A), null);
+  assert.equal(await v.cachedWeight(memKV(), M, A), null);
 });
 
 /* ------------------------ the sign-once retry loop ------------------------ */

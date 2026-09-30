@@ -62,27 +62,34 @@ export interface VouchInput {
   note: string;
 }
 
-/** One app's public aggregate (vouch-lib.js finishAggregate). */
+/**
+ * One app's public aggregate (vouch-lib.js finishAggregate), head counts
+ * only. The weighted totals (weight_works, weight_broken, weight_works_week)
+ * are neither read nor kept, whether the worker sends them or not: on an app
+ * with one voice the total is that voice's weight, which gives away roughly
+ * what its owner stakes.
+ */
 export interface AppVouchSummary {
   package: string;
   voices: number;
   worksVoices: number;
   brokenVoices: number;
-  weightWorks: number;
-  weightBroken: number;
   worksPct: number;
   walletOkVoices: number;
   worksOnSeeker: boolean;
   lastVouchAt: string | null;
 }
 
-/** A public recent note. No wallet, no mint, no stake: the worker never sends them here. */
+/**
+ * A public recent note. No wallet, no mint, no stake, no weight: a weight next
+ * to a Lounge number would tell every reader roughly what that owner stakes,
+ * so the app neither reads nor keeps one here, whether the worker sends it or not.
+ */
 export interface VouchNote {
   id: number;
   verdict: VouchVerdict;
   tags: VouchTag[];
   note: string;
-  weight: number;
   number: number | null;
   tier: VouchTier | null;
   updatedAt: string;
@@ -135,7 +142,6 @@ export interface VouchResult {
 
 export interface TopRow extends AppVouchSummary {
   voicesWeek: number;
-  weightWorksWeek: number;
 }
 
 /** GET /vouch/top: the current UTC week (Monday 00:00Z to the next Monday), top 10, never a zero row. */
@@ -338,8 +344,6 @@ export function parseSummary(v: unknown): AppVouchSummary | null {
     voices,
     worksVoices,
     brokenVoices: num(r.broken_voices) ?? Math.max(0, voices - worksVoices),
-    weightWorks: num(r.weight_works) ?? 0,
-    weightBroken: num(r.weight_broken) ?? 0,
     worksPct: num(r.works_pct) ?? 0,
     walletOkVoices: num(r.wallet_ok_voices) ?? 0,
     worksOnSeeker: r.works_on_seeker === true,
@@ -364,7 +368,6 @@ export function parseAppVouches(v: unknown): AppVouches | null {
       verdict: r.verdict,
       tags: parseTags(r.tags),
       note: typeof r.note === 'string' ? r.note : '',
-      weight: num(r.weight) ?? 1,
       number: number !== null && Number.isInteger(number) ? number : null,
       tier: tierOf(r.tier),
       updatedAt: str(r.updated_at) ?? '',
@@ -397,7 +400,7 @@ export function parseTop(v: unknown): TopWeek | null {
     if (!s || !r) continue;
     const voicesWeek = num(r.voices_week) ?? 0;
     if (voicesWeek <= 0) continue; // the worker's HAVING already guarantees this
-    apps.push({ ...s, voicesWeek, weightWorksWeek: num(r.weight_works_week) ?? 0 });
+    apps.push({ ...s, voicesWeek });
   }
   return { week: str(body.week) ?? '', start: str(body.start) ?? '', end: str(body.end) ?? '', apps };
 }
@@ -593,36 +596,57 @@ export function formatSkr(n: number): string {
 }
 
 /**
- * The owner's weight, honestly. The worker's SKR reader is still the stub
- * (skr.js source 'stub', every weight 1.00x), so until the stake is really
- * read the app says exactly that and never prints a multiplier it did not
- * get from the worker. `r` is the last signed answer, or null before any.
+ * The owner's weight, honestly. The worker reads the wallet's staked SKR
+ * (not SKR in an unstake cooldown) on every signed vouch and answers where
+ * it came from: 'chain' or 'cache' with a number, 'error' with null (1.00x),
+ * 'stub' only from a worker without the reader, 'stored' on a replay from
+ * D1, which can be a row written before the reader (null, 1.00x) and stays
+ * so until that owner vouches again. The app never prints a multiplier it
+ * did not get from the worker: `r` is the last signed answer, or null before
+ * any, and then the line says how weight works instead of a number.
+ *
+ * The sheet also prints this line above "Sign with Seed Vault", from the
+ * last answer, so every line is about a vouch already made, never a forecast
+ * of the one being signed (that one reads the stake afresh). A failed read
+ * puts only the vouch it served at 1.00x (worker vouch.js step 9), hence
+ * "your last vouch" rather than "your voice".
+ *
+ * Release order: the null line, like WEIGHT_CAPTION, says the stake is read
+ * when an owner signs, which only the worker with the D6 reader (skr.js
+ * readStakeWeight, migrations/002_skr_cache.sql) does. That worker goes live
+ * before any build carrying this copy, and a rollback to the stub reader
+ * reverts this copy with it.
  */
 export function weightLine(r: VouchResult | null): string {
-  const until = 'Your voice counts 1.00x until the SKR stake reader ships.';
-  if (!r || r.weightSource === 'stub') return until;
-  // A replay answered from D1 ('stored') of a row the stub wrote: no stake was read, same honest line.
-  if (r.weightSource === 'stored' && r.stakedSkr === null && Math.abs(r.weight - 1) < 0.005) return until;
+  if (!r) return 'Staked SKR can raise your voice up to 4x. Your stake is read when you sign.';
+  const unread = 'Your voice counts 1.00x because your SKR stake was not read.';
+  if (r.weightSource === 'stub') return unread;
+  // A replay ('stored') of a row no stake was read for: a pre-reader row or a failed read. The next vouch reads it.
+  if (r.weightSource === 'stored' && r.stakedSkr === null && Math.abs(r.weight - 1) < 0.005) {
+    return `${unread} Vouching again reads it.`;
+  }
   const w = `${r.weight.toFixed(2)}x`;
-  if (r.weightSource === 'error') return "Your voice counts 1.00x this time: your SKR stake couldn't be read.";
+  if (r.weightSource === 'error') {
+    return "Your last vouch counts 1.00x: your SKR stake couldn't be read. Vouching again retries the read.";
+  }
   if ((r.weightSource === 'chain' || r.weightSource === 'cache') && r.stakedSkr !== null) {
+    if (r.stakedSkr <= 0) return `Your voice counts ${w} with no SKR staked.`;
     const shared = r.mintsInWallet > 1 ? `, shared by ${r.mintsInWallet} Seekers` : '';
     return `Your voice counts ${w} on ${formatSkr(r.stakedSkr)} SKR staked${shared}.`;
   }
   return `Your voice counts ${w}.`;
 }
 
-/** True when every voice on this app weighs 1.00x, as all do while the SKR reader is the stub. */
-export function isFlatWeight(s: AppVouchSummary): boolean {
-  return Math.abs(s.weightWorks - s.worksVoices) < 0.005 && Math.abs(s.weightBroken - s.brokenVoices) < 0.005;
-}
-
-/** The caption under the numbers: says 1.00x while it is 1.00x, and only then. */
-export function weightCaption(s: AppVouchSummary): string {
-  return isFlatWeight(s)
-    ? 'Every owner counts 1.00x until the SKR stake reader ships.'
-    : 'Owners who stake SKR count up to 4x, so the weighted total can differ from the head count.';
-}
+/**
+ * The caption under an app's numbers. One sentence for every app: a caption
+ * that switched between "every voice counts 1.00x" and "weighted" would tell
+ * readers, on an app with one voice, whether that owner (named by a Lounge
+ * number in the notes) stakes SKR. Every number on the card is a head count;
+ * the weight only orders apps (the Lounge list breaks ties on it). "Read when
+ * an owner vouches" needs the D6 worker live: see weightLine's release order.
+ */
+export const WEIGHT_CAPTION =
+  'Staked SKR, read when an owner vouches, can weigh a voice up to 4x in rankings. The numbers above count each Genesis Token once.';
 
 /**
  * Why the Works on Seeker chip is missing, or null when it shows. The worker
@@ -1140,7 +1164,7 @@ export async function cachedResult(kv: KV, mint: string, pkg: string): Promise<V
   return validEntry(all[cacheKey(mint, pkg)], mint, pkg);
 }
 
-/** The newest cached answer for this mint on any app: the weight is per wallet, so it speaks for the next vouch too. */
+/** The newest cached answer for this mint on any app: the sheet's weight line (weightLine) is about it. */
 export async function latestCachedResult(kv: KV, mint: string): Promise<VouchResult | null> {
   const all = await readCache(kv);
   let best: { at: number; r: VouchResult } | null = null;
@@ -1150,4 +1174,31 @@ export async function latestCachedResult(kv: KV, mint: string): Promise<VouchRes
     if (r && (!best || at > best.at)) best = { at, r };
   }
   return best ? best.r : null;
+}
+
+/**
+ * Answers whose weight the worker stamps on EVERY vouch of the wallet (vouch.js
+ * step 9: a clean stake read re-stamps them all; the stub worker stamps 1.00x on
+ * all). A failed read ('error') sets only the vouch it served, and a replay
+ * ('stored') writes nothing, so those two speak for their own app only.
+ */
+const WALLET_WIDE: ReadonlySet<WeightSource> = new Set<WeightSource>(['chain', 'cache', 'stub']);
+
+/**
+ * The weight this mint's vouch on `pkg` carries, as far as this device knows:
+ * from the newest of this app's own cached answer and any later answer that
+ * re-stamped every vouch of the wallet. The app's own answer alone goes stale
+ * as soon as the owner vouches on another app. Null without any answer.
+ */
+export async function cachedWeight(kv: KV, mint: string, pkg: string): Promise<number | null> {
+  const all = await readCache(kv);
+  let best: { at: number; w: number } | null = null;
+  for (const e of Object.values(all)) {
+    const r = validEntry(e, mint);
+    if (!r || (r.vouch.package !== pkg && !WALLET_WIDE.has(r.weightSource))) continue;
+    const at = Number(obj(e)?.savedAt) || 0;
+    const w = num(r.weight);
+    if (w !== null && (!best || at > best.at)) best = { at, w };
+  }
+  return best ? best.w : null;
 }

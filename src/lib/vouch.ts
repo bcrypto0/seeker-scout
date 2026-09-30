@@ -3,6 +3,7 @@ import { BASE as PROD_BASE } from './alpha';
 import { signMessageBytes } from './wallet';
 import {
   cachedResult,
+  cachedWeight,
   fetchAppVouches,
   fetchMyVouches,
   fetchTopVouched,
@@ -83,6 +84,9 @@ export const getCachedResult = (mint: string, pkg: string): Promise<VouchResult 
 
 export const getLatestResult = (mint: string): Promise<VouchResult | null> =>
   latestCachedResult(AsyncStorage, mint);
+
+export const getCachedWeight = (mint: string, pkg: string): Promise<number | null> =>
+  cachedWeight(AsyncStorage, mint, pkg);
 
 /**
  * At most one Seed Vault prompt, then the same signed payload through every
