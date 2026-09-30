@@ -168,20 +168,24 @@ export const CHIP_MIN_VOICES = 3;        // distinct Genesis mints
 export const CHIP_MIN_WORKS_WEIGHT = 3;  // sum of weight over 'works'
 export const CHIP_MIN_WORKS_PCT = 80;    // HEAD COUNT, not weighted: SKR cannot move it
 
-/** Turn one GROUP BY row (2.6 SQL) into the public aggregate shape. */
+/**
+ * Turn one GROUP BY row (2.6 SQL) into the public aggregate shape: head counts
+ * and the chip, no weighted sum. The row's weight_works still decides
+ * works_on_seeker here (and orders /vouch/aggregate and /vouch/top in SQL), but
+ * it never leaves the worker: on an app with one voice it equals that owner's
+ * weight, which weightFor turns back into roughly what the owner stakes, and
+ * the difference between two reads gives each new voice's weight.
+ */
 export function finishAggregate(row) {
   const voices = Number(row.voices) || 0;
   const worksVoices = Number(row.works_voices) || 0;
   const weightWorks = round2(row.weight_works);
-  const weightBroken = round2(row.weight_broken);
   const worksPct = voices ? Math.round((worksVoices * 100) / voices) : 0;
   return {
     package: row.package,
     voices,
     works_voices: worksVoices,
     broken_voices: voices - worksVoices,
-    weight_works: weightWorks,
-    weight_broken: weightBroken,
     works_pct: worksPct,
     wallet_ok_voices: Number(row.wallet_ok_voices) || 0,
     last_vouch_at: row.last_vouch_at ?? null,

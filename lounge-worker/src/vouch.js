@@ -11,10 +11,15 @@
  *   GET  /vouch/aggregate           -> {generated_at, count, apps}
  *   GET  /vouch/top                 -> {week, start, end, apps} (current week, top 10)
  *
+ * No GET body and no `app` block carries a weight, a weighted sum or a stake:
+ * those go only to the signer, in its own POST /vouch answer (vouchResponse).
  * Every GET is a D1-only read. On the write path everything D1 can answer
  * (kill switch, body shape, same-signature replay, per-mint package cap) runs
- * BEFORE verifyFn, the only place a chain call happens (index.js
- * verifyGenesisSig, behind the RPC budget). The monotonic 409 and the 429 stay
+ * BEFORE verifyFn, the first place a chain call happens (index.js
+ * verifyGenesisSig, behind the RPC budget). The only other one is the stake
+ * read (step 7, skr.js): it runs after verifyFn took its budget unit and after
+ * the per-wallet slot, reads the signer's own wallet only, and is served from
+ * D1 when that wallet was read in the last 60 s. The monotonic 409 and the 429 stay
  * after it (spec 2.3): answered unsigned, they would tell anyone when a given
  * mint last vouched. Pure rules live in vouch-lib.js so node --test can import
  * them without Workers globals.
@@ -48,7 +53,6 @@ const cached = (obj, seconds) => json(obj, 200, { 'cache-control': `public, max-
 
 /** Same rule as index.js:46 (1-100, 101-500, 501+), duplicated so this file owns its helpers. */
 const tierOf = (n) => (n <= 100 ? 'founding' : n <= 500 ? 'early' : 'member');
-const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
 
 /** Copy of alpha.js readJson (152-170): size-capped, never throws. */
 async function readJson(request, maxBytes) {
@@ -112,13 +116,14 @@ async function takeSlot(env, wallet, column) {
 // ---------------------------------------------------------------------------
 // Aggregates (single source of truth for the chip). WHERE excluded = 0 only:
 // a reported note (note_hidden) still counts as a voice. COUNT(*) equals the
-// distinct mints because of UNIQUE (genesis_mint, package).
+// distinct mints because of UNIQUE (genesis_mint, package). weight_works feeds
+// the chip rule and the ORDER BY only; finishAggregate keeps it (and every
+// other weighted number) off the public body.
 // ---------------------------------------------------------------------------
 const AGG_COLUMNS = `package,
        COUNT(*)                                                 AS voices,
        SUM(verdict = 'works')                                   AS works_voices,
        SUM(CASE WHEN verdict = 'works'  THEN weight ELSE 0 END) AS weight_works,
-       SUM(CASE WHEN verdict = 'broken' THEN weight ELSE 0 END) AS weight_broken,
        SUM((tags & 1) > 0)                                      AS wallet_ok_voices,
        MAX(updated_at)                                          AS last_vouch_at`;
 
@@ -162,7 +167,9 @@ async function aggregateAll(env) {
  * packages it vouched this week (sharedStakeWeight's rule, per week), so one
  * Genesis Token spraying ids that sort first (aa.a, aa.b, ...) cannot push
  * apps other owners vouched off the top ten. When every mint vouched one
- * package this week it equals weight_works_week, the spec's tie-break.
+ * package this week it equals weight_works_week, the spec's tie-break. Both
+ * weighted numbers order the rows and stay in SQL: the body carries
+ * finishAggregate's head counts plus voices_week (see finishAggregate).
  */
 async function topThisWeek(env) {
   const now = new Date();
@@ -188,15 +195,23 @@ async function topThisWeek(env) {
   const apps = (rows.results ?? []).map((r) => ({
     ...finishAggregate(r),
     voices_week: Number(r.voices_week) || 0,
-    weight_works_week: round2(r.weight_works_week),
   }));
   return { week: isoWeek(now), start, end, apps };
 }
 
-/** Newest visible notes. No wallet, no mint, no staked_skr: this payload is public. */
+/**
+ * Newest visible notes. No wallet, no mint, no staked_skr and no weight: this
+ * payload is public, and since the SKR reader (D6) stamps real weights, a
+ * weight next to a Lounge number would tell every reader roughly what that
+ * owner stakes (weightFor is invertible to about 2 %). The app's note parser
+ * (parseAppVouches) reads no weight at all. The `app` block beside the notes
+ * carries no weighted sum either (finishAggregate, owner decision 2026-09-30).
+ * What is left is the order of /vouch/aggregate and /vouch/top, which weight
+ * sets server side: it ranks apps, it prints no number.
+ */
 async function recentNotes(env, pkg) {
   const rows = await env.DB.prepare(
-    `SELECT v.id, v.verdict, v.tags, v.note, v.weight, v.updated_at, c.id AS number
+    `SELECT v.id, v.verdict, v.tags, v.note, v.updated_at, c.id AS number
      FROM vouches v LEFT JOIN claims c ON c.genesis_mint = v.genesis_mint
      WHERE v.package = ? AND v.excluded = 0 AND v.note_hidden = 0 AND v.note <> ''
      ORDER BY v.updated_at DESC, v.id DESC
@@ -209,7 +224,6 @@ async function recentNotes(env, pkg) {
       verdict: r.verdict,
       tags: maskToTags(r.tags),
       note: r.note,
-      weight: round2(r.weight),
       number,
       tier: number === null ? null : tierOf(number),
       updated_at: r.updated_at,
@@ -221,7 +235,9 @@ async function recentNotes(env, pkg) {
  * The POST /vouch body. `who` and `stake` are null on a replay: number/tier
  * then come from the same best-effort claims lookup verifyVouchOwner uses,
  * and weight/staked_skr from the stored row (weight_source 'stored'). This is
- * the only place staked_skr leaves the worker, to the wallet that signed.
+ * the only place a weight or staked_skr leaves the worker: the signer's own,
+ * to the wallet that signed. Its `app` block is the public shape
+ * (finishAggregate), with no weighted sum.
  */
 async function vouchResponse(env, id, pkg, who, stake, replayed) {
   const row = await env.DB.prepare(
@@ -328,23 +344,33 @@ async function handleVouchPost(request, env, verifyFn) {
     if (!(await takeSlot(env, wallet, 'last_vouch_at'))) return json({ error: 'slow down' }, 429);
   } catch { return json({ error: 'storage error' }, 500); }
 
-  // 7. Stake from the SKR staking program (third RPC call after D6). Never throws.
+  // 7. Stake from the SKR staking program: one getMultipleAccounts (the third paid
+  //    call of this request), or none when skr_cache holds a read of this wallet
+  //    younger than 60 s. Never throws; a failed read is stakedSkr null (1.00x).
   const stake = await readStakeWeight(env, wallet);
 
   // 8. One stake backs one voice: count the distinct mints this wallet has vouched
-  //    with, including this one if it is new to the wallet.
+  //    with, including this one if it is new to the wallet (`had` = it is not).
   let n = 1;
+  let had = false;
   try {
     const c = await env.DB.prepare(
-      'SELECT COUNT(DISTINCT genesis_mint) AS n FROM vouches WHERE wallet = ? AND genesis_mint <> ?',
-    ).bind(wallet, mint).first();
-    n = (Number(c?.n) || 0) + 1;
+      'SELECT COUNT(DISTINCT genesis_mint) AS n, MAX(genesis_mint = ?) AS had FROM vouches WHERE wallet = ?',
+    ).bind(mint, wallet).first();
+    had = Number(c?.had) === 1;
+    n = (Number(c?.n) || 0) + (had ? 0 : 1);
   } catch { return json({ error: 'storage error' }, 500); }
   const weight = sharedStakeWeight(stake.stakedSkr, n);
 
   // 9. Guarded upsert. The WHERE repeats the monotonic rule so two concurrent
-  //    writes cannot both win; meta.changes === 0 means we lost. Then re-stamp
-  //    every row of this wallet so all its voices carry the same divided weight.
+  //    writes cannot both win; meta.changes === 0 means we lost. Then, on a clean
+  //    read ('chain' or 'cache'), re-stamp every row of this wallet whose weight or
+  //    stake differs, so all its voices carry the same divided weight and the same
+  //    stake (the D16 cron's VOUCH_RESTAMP predicate, SPEC-skr-final 1.10). A failed
+  //    read ('error') stamps only this row, at 1.00x, and keeps the wallet's last
+  //    good stamp on the others: an RPC hiccup never demotes them. When this mint is
+  //    new to the wallet, their division by the old n no longer holds, so their
+  //    weight is re-divided from that last good stake by the new n (lower only).
   const now = new Date().toISOString();
   try {
     const res = await env.DB.prepare(
@@ -362,9 +388,22 @@ async function handleVouchPost(request, env, verifyFn) {
       weight, stake.stakedSkr, stake.checkedAt, now, now,
     ).run();
     if (!res.meta?.changes) return json({ error: 'superseded by a newer vouch from this Seeker' }, 409);
-    await env.DB.prepare(
-      'UPDATE vouches SET weight = ?, staked_skr = ?, weight_checked_at = ? WHERE wallet = ? AND weight <> ?',
-    ).bind(weight, stake.stakedSkr, stake.checkedAt, wallet, weight).run();
+    if (stake.source !== 'error') {
+      await env.DB.prepare(
+        `UPDATE vouches SET weight = ?, staked_skr = ?, weight_checked_at = ?
+         WHERE wallet = ? AND (weight <> ? OR staked_skr IS NOT ?)`,
+      ).bind(weight, stake.stakedSkr, stake.checkedAt, wallet, weight, stake.stakedSkr).run();
+    } else if (!had) {
+      const last = await env.DB.prepare(
+        `SELECT staked_skr FROM vouches WHERE wallet = ? AND staked_skr IS NOT NULL
+         ORDER BY weight_checked_at DESC LIMIT 1`,
+      ).bind(wallet).first();
+      if (last) {
+        const lower = sharedStakeWeight(last.staked_skr, n);
+        await env.DB.prepare('UPDATE vouches SET weight = ? WHERE wallet = ? AND weight > ?')
+          .bind(lower, wallet, lower).run();
+      }
+    }
     memo.clear(); // this isolate serves the new numbers at once; others within MEMO_MS
   } catch { return json({ error: 'storage error' }, 500); }
 
@@ -372,7 +411,9 @@ async function handleVouchPost(request, env, verifyFn) {
   console.log(JSON.stringify({
     evt: 'vouch', ok: true, sig: 'ok', sgt: 'ok',
     mint: `${mint.slice(0, 4)}..${mint.slice(-4)}`, package: shape.pkg, verdict: shape.verdict,
-    weight, mints_in_wallet: n, staked_skr: stake.stakedSkr, weight_source: stake.source, ms: Date.now() - started,
+    // No weight or staked_skr here: they sit next to the package and a mint fingerprint, and would
+    // put an owner's stake into the logs. weight_source is enough to watch the reader.
+    mints_in_wallet: n, weight_source: stake.source, ms: Date.now() - started,
   }));
 
   try {

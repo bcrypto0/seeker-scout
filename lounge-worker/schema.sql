@@ -139,3 +139,5 @@ CREATE INDEX IF NOT EXISTS idx_reactions_message ON reactions (message_id);
 
 -- Scout Vouch tables (vouches, vouch_reports, vouch_members, votes, rpc_budget,
 -- settings) live in migrations/001_vouches.sql; apply with `npm run migrate`.
+-- The SKR stake reader's tables (skr_cache, wallet_pdas) live in
+-- migrations/002_skr_cache.sql; apply with `npm run migrate:skr` after 001.

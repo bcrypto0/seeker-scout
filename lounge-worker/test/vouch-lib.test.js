@@ -162,6 +162,17 @@ test('chip thresholds: no amount of SKR passes alone', () => {
   assert.equal(row(4, 3, 3, 4).works_on_seeker, false);    // pct 75 (head count)
   assert.equal(row(5, 4, 4, 4).works_on_seeker, true);     // pct 80
   assert.equal(row(4, 3, 3, 4).works_pct, 75);
+  assert.equal(row(3, 3, 2.99).works_on_seeker, false);    // the rule still reads the weighted sum
+});
+test('the public aggregate carries head counts only: no weighted sum, whatever the row holds', () => {
+  const a = finishAggregate({
+    package: 'p', voices: 1, works_voices: 1, weight_works: 3.06, weight_broken: 0, weight_works_week: 3.06,
+    works_share_week: 3.06, voices_week: 1, wallet_ok_voices: 1, last_vouch_at: '2026-09-30T10:00:00.000Z',
+  });
+  assert.deepEqual(Object.keys(a).sort(), ['broken_voices', 'last_vouch_at', 'package', 'voices', 'wallet_ok_voices',
+    'works_on_seeker', 'works_pct', 'works_voices']);
+  assert.ok(!/weight|share|staked/.test(JSON.stringify(a)), JSON.stringify(a));
+  assert.deepEqual([a.voices, a.works_voices, a.works_pct, a.works_on_seeker], [1, 1, 100, false]);
 });
 test('ISO weeks in UTC', () => {
   const t = [['2026-09-10T12:00:00Z', '2026-W37'], ['2026-09-13T23:59:59Z', '2026-W37'], ['2026-09-14T00:00:00Z', '2026-W38'],

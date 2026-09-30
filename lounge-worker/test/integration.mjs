@@ -1,24 +1,32 @@
 // lounge-worker/test/integration.mjs
-// Integration harness (SPEC-vouch 7.2), the subset that needs no vote, no
-// report route and no D6 decoder. It lands ahead of the D16-D17 harness
-// (commit 19 grows it) and asserts nothing about routes later days mount.
-// LOCAL ONLY. It assumes:
-//   npm run schema:local && npm run migrate:local
+// Integration harness (SPEC-vouch 7.2), the subset that needs no vote and no
+// report route, plus the D6 SKR stake reader (SPEC-skr-final 7.2: the fake RPC
+// serves getMultipleAccounts from the mainnet fixture). It lands ahead of the
+// D16-D17 harness (commit 19 grows it) and asserts nothing about routes later
+// days mount. LOCAL ONLY. It assumes:
+//   npm run schema:local && npm run migrate:local && npm run migrate:skr:local
 //   npx wrangler dev --port 8787 --ip 127.0.0.1 --var RPC_URL:http://127.0.0.1:8899
-// It starts and stops the fake RPC itself (port 8899 must be free), writes to
-// the local D1 only (it spawns `wrangler d1 execute --local`), prints PASS/FAIL
-// per scenario and exits 1 on any FAIL. Two deliberate departures from 7.2,
-// which leaves the local D1 as-is: it opens with the runbook's local reset of
-// the vouch tables so every count below is exact on a re-run, and one
-// scenario drops rpc_budget and re-creates it with the DDL of migrations/001.
+// (RPC_URL MUST point at the fake: unset, the worker falls back to the public
+// mainnet RPC.) It starts and stops the fake RPC itself (port 8899 must be
+// free), writes to the local D1 only (it spawns `wrangler d1 execute --local`),
+// prints PASS/FAIL per scenario and exits 1 on any FAIL. Two deliberate
+// departures from 7.2, which leaves the local D1 as-is: it opens with the
+// runbook's local reset of the vouch and SKR cache tables so every count below
+// is exact on a re-run, and one scenario drops rpc_budget and re-creates it
+// with the DDL of migrations/001.
 // Each owner posts with its own cf-connecting-ip (wrangler dev keeps it).
+// Chain calls per accepted POST /vouch since D6: the SGT pair (getAccountInfo +
+// getTokenAccountsByOwner) plus one getMultipleAccounts stake read, or none
+// when skr_cache holds a read of that wallet younger than 60 s
+// (weight_source 'cache'). Owners without a registered stake read as "no
+// stake account": weight 1, staked_skr 0, weight_source 'chain'.
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha512';
 import { base58 } from '@scure/base';
-import { startFakeRpc } from './fake-rpc.mjs';
-import { vouchMessage, weekBounds } from '../src/vouch-lib.js';
+import { startFakeRpc, stakePdaOf } from './fake-rpc.mjs';
+import { sharedStakeWeight, vouchMessage, weekBounds } from '../src/vouch-lib.js';
 
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
 
@@ -149,6 +157,18 @@ function expectStatus(r, status, error) {
   check(r.status === status, `expected ${status}, got ${r.status} ${String(r.text).slice(0, 240)}`);
   if (error !== undefined) check(r.body?.error === error, `expected error '${error}', got '${r.body?.error}'`);
 }
+/**
+ * Any JSON key naming a weight, a stake or a weighted share (weight, weight_works,
+ * weight_broken, weight_works_week, works_share_week, staked_skr, ...). Owner decision
+ * 2026-09-30: none may appear in a public body or in the `app` block of a POST answer;
+ * the signer's own weight, staked_skr and weight_source stay on its POST answer only.
+ */
+const WEIGHTY = /"[a-z_]*(weight|staked|share)[a-z_]*":/;
+function checkNoWeights(value, where) {
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  const m = WEIGHTY.exec(text ?? '');
+  check(!m, `${where} carries ${m?.[0]}: ${String(text).slice(0, 240)}`);
+}
 
 const A = newOwner();
 const B = newOwner();
@@ -167,6 +187,19 @@ const Q = newOwner();           // its mint is seeded up to the per-mint package
 const SPRAY_MINT = randomMint(); // one Genesis Token held by eleven wallets
 const sprayers = Array.from({ length: 11 }, () => ({ ...newOwner(), mint: SPRAY_MINT }));
 const aPkgs = new Set();        // packages A holds an accepted row for
+// D6 stake reader. S stakes 11,355.88 SKR (the demo wallet's number, requirement 9)
+// at the fixture's share_price 1147028992: 9,900,255,425 shares * 1147028992 / 1e9
+// = 11,355,880,000 raw exactly. S holds a second Genesis Token (S_MINT2).
+const S = newOwner();
+const S_MINT2 = randomMint();
+const S_SHARES = '9900255425';
+const S_SKR = 11355.88;
+const S_WEIGHT = 3.06;          // weightFor(11355.88)
+const S_WEIGHT_2 = 2.76;        // sharedStakeWeight(11355.88, 2) = weightFor(5677.94)
+const S_MINT3 = randomMint();   // S's third Genesis Token, first used while its stake read fails
+const MS = newOwner();          // its stake read comes back short (value has one entry too few)
+const ML = newOwner();          // its UserStake comes back 168 bytes long
+const SY = newOwner();          // lamports sent to its UserStake PDA: a bare System account, 0 bytes
 
 let fake;
 try {
@@ -176,11 +209,28 @@ try {
   process.exit(1);
 }
 fake.register({
-  sgt: [...owners.map((o) => o.mint), UNHELD, H.mint, Q.mint, SPRAY_MINT],
+  sgt: [...owners.map((o) => o.mint), UNHELD, H.mint, Q.mint, SPRAY_MINT, S.mint, S_MINT2, S_MINT3, MS.mint, ML.mint, SY.mint],
   notSgt: [NOT_SGT],
-  holders: [...[...owners, H, Q, ...sprayers].map((o) => [o.wallet, o.mint]), [A.wallet, NOT_SGT]],
+  holders: [...[...owners, H, Q, ...sprayers, S, MS, ML, SY].map((o) => [o.wallet, o.mint]), [A.wallet, NOT_SGT],
+    [S.wallet, S_MINT2], [S.wallet, S_MINT3]],
+  stakes: [[S.wallet, { shares: S_SHARES }]],
+  badStakes: [[MS.wallet, 'short'], [ML.wallet, 'length'], [SY.wallet, 'system']],
 });
 const hits = () => fake.counts().hits;
+/**
+ * Chain calls an accepted POST /vouch made since `c0` (a fake.counts() snapshot):
+ * exactly the SGT pair, plus one stake read unless the answer says 'cache'.
+ */
+function checkWriteCalls(c0, r) {
+  const c1 = fake.counts();
+  const d = (m) => (c1.byMethod[m] || 0) - (c0.byMethod[m] || 0);
+  const stake = r.body?.weight_source === 'cache' ? 0 : 1;
+  check(d('getAccountInfo') === 1 && d('getTokenAccountsByOwner') === 1,
+    `SGT pair +${d('getAccountInfo')}/+${d('getTokenAccountsByOwner')}, expected +1/+1`);
+  check(d('getMultipleAccounts') === stake,
+    `stake reads +${d('getMultipleAccounts')}, expected +${stake} (weight_source ${r.body?.weight_source})`);
+  check(c1.hits - c0.hits === 2 + stake, `hits +${c1.hits - c0.hits}, expected +${2 + stake}`);
+}
 const minuteKey = (offsetMs = 0) => new Date(Date.now() + offsetMs).toISOString().slice(0, 16);
 const isBusy = (r) => r.status === 503 && /^busy/.test(r.body?.error ?? '');
 const lastVouchAt = async (o) =>
@@ -192,8 +242,8 @@ try {
     console.log(`FAIL preflight: GET ${WORKER}/flags -> ${pre.status} ${pre.text}. Is wrangler dev running on the local D1?`);
     failed += 1;
   } else {
-    console.log(`worker ${WORKER}, fake RPC ${fake.url}; resetting the vouch tables of the LOCAL D1`);
-    await d1("DELETE FROM vouches; DELETE FROM votes; DELETE FROM vouch_reports; DELETE FROM vouch_members; DELETE FROM rpc_budget; UPDATE settings SET value='1' WHERE key='vouch_enabled'");
+    console.log(`worker ${WORKER}, fake RPC ${fake.url}; resetting the vouch and SKR cache tables of the LOCAL D1`);
+    await d1("DELETE FROM vouches; DELETE FROM votes; DELETE FROM vouch_reports; DELETE FROM vouch_members; DELETE FROM rpc_budget; DELETE FROM skr_cache; DELETE FROM wallet_pdas; UPDATE settings SET value='1' WHERE key='vouch_enabled'");
     await run();
   }
 } catch (e) {
@@ -209,20 +259,23 @@ async function run() {
   let first;
   let lvaFirst;
 
-  await scenario('valid vouch -> 200, replayed:false, weight 1, weight_source stub, 2 chain calls', async () => {
+  await scenario('valid vouch, no stake account -> 200, replayed:false, weight 1, weight_source chain, staked_skr 0, 3 chain calls (SGT pair + one stake read)', async () => {
     first = vouch(A, 'x.place', { tags: ['wallet_ok'], note: 'Opens and signs fine on my Seeker.' });
-    const h0 = hits();
+    const c0 = fake.counts();
     const r = await post(first);
     expectStatus(r, 200);
     markAccepted(A);
     aPkgs.add('x.place');
     check(r.body.ok === true && r.body.replayed === false, `ok/replayed ${r.text}`);
     check(r.body.weight === 1 && r.body.vouch?.weight === 1, `weight ${r.body.weight}`);
-    check(r.body.weight_source === 'stub' && r.body.staked_skr === null, `weight_source ${r.body.weight_source}`);
+    check(r.body.weight_source === 'chain' && r.body.staked_skr === 0 && r.body.vouch?.staked_skr === 0,
+      `weight_source ${r.body.weight_source}, staked_skr ${r.body.staked_skr}`);
     check(r.body.mints_in_wallet === 1 && r.body.number === null && r.body.tier === null, 'mints_in_wallet/number/tier');
     check(r.body.vouch.signed_ts === first.ts && r.body.vouch.tags.join() === 'wallet_ok', 'stored receipt');
     check(r.body.app?.voices === 1 && r.body.app?.works_voices === 1, `app ${JSON.stringify(r.body.app)}`);
-    check(hits() - h0 === 2, `fake RPC hits +${hits() - h0}, expected +2 (is RPC_URL pointed at the fake?)`);
+    checkNoWeights(r.body.app, 'the POST answer app block');
+    check(hits() - c0.hits === 3, `fake RPC hits +${hits() - c0.hits}, expected +3 (is RPC_URL pointed at the fake?)`);
+    checkWriteCalls(c0, r);
     lvaFirst = await lastVouchAt(A);
     check(typeof lvaFirst === 'string', 'vouch_members.last_vouch_at was not set');
   });
@@ -232,6 +285,8 @@ async function run() {
     const r = await post(first);
     expectStatus(r, 200);
     check(r.body.replayed === true && r.body.weight_source === 'stored', `replayed ${r.text}`);
+    check(r.body.weight === 1 && r.body.staked_skr === 0, `the replay lost the signer's own weight or stake: ${r.text}`);
+    checkNoWeights(r.body.app, 'the replay answer app block');
     check(hits() === h0, 'the replay reached the chain');
     const mine = await get(`/vouch/mine?mint=${A.mint}`);
     check(mine.status === 200 && mine.body.vouches.length === 1, `rows ${mine.body?.vouches?.length}`);
@@ -355,17 +410,17 @@ async function run() {
     const [m0, m1] = [minuteKey(), minuteKey(60_000)];
     await d1(`INSERT OR REPLACE INTO rpc_budget (minute, n) VALUES ('${m0}', 120), ('${m1}', 120)`);
     try {
-      let h0 = hits();
+      const h0 = hits();
       const r = await post(p);
       check(isBusy(r), `expected 503 busy, got ${r.status} ${r.text}`);
       check(hits() === h0, 'the chain was called past a spent open pool');
       await waitSlot(A);
-      h0 = hits();
+      const c0 = fake.counts();
       const rA = await post(vouch(A, 'm.place'));
       expectStatus(rA, 200);
       markAccepted(A);
       aPkgs.add('m.place');
-      check(hits() - h0 === 2, `member write +${hits() - h0} hits, expected +2`);
+      checkWriteCalls(c0, rA); // was +2 before D6: the SGT pair, now plus a stake read unless cached
     } finally {
       await d1('DELETE FROM rpc_budget');
     }
@@ -403,10 +458,11 @@ async function run() {
       check(isBusy(rA), `A with its mint share spent: ${rA.status} ${rA.text}`);
       check(hits() === h0, 'the chain was called past a spent mint share');
       await waitSlot(C);
-      h0 = hits();
-      expectStatus(await post(vouch(C, 'c2.place')), 200);
+      const c0 = fake.counts();
+      const rC = await post(vouch(C, 'c2.place'));
+      expectStatus(rC, 200);
       markAccepted(C);
-      check(hits() - h0 === 2, `another member +${hits() - h0} hits, expected +2`);
+      checkWriteCalls(c0, rC); // was +2 before D6 (see the m.place write above)
       await d1(`INSERT OR REPLACE INTO rpc_budget (minute, n) VALUES ('${m0}k', 120), ('${m1}k', 120)`);
       await waitSlot(B);
       h0 = hits();
@@ -490,32 +546,40 @@ async function run() {
     check(rows.length === 1 && rows[0].updated_at === beforeWeek, `old.place row ${JSON.stringify(rows)}`);
   });
 
-  await scenario('chip: three wallets vouch works -> /vouch/app voices 3, weight_works 3, works_pct 100, works_on_seeker true', async () => {
+  await scenario('chip: three wallets vouch works -> /vouch/app voices 3, works_pct 100, works_on_seeker true, no weighted total', async () => {
     for (const [i, o] of [D, E, F].entries()) {
-      expectStatus(await post(vouch(o, chipPkg, { tags: ['wallet_ok'], note: `Works fine on Seeker, owner ${i + 1}.` })), 200);
+      const p = await post(vouch(o, chipPkg, { tags: ['wallet_ok'], note: `Works fine on Seeker, owner ${i + 1}.` }));
+      expectStatus(p, 200);
+      checkNoWeights(p.body.app, `the POST answer app block (owner ${i + 1})`);
     }
     const r = await get(`/vouch/app/${chipPkg}`);
     expectStatus(r, 200);
     const a = r.body.app;
-    check(a.voices === 3 && a.weight_works === 3 && a.works_pct === 100 && a.works_on_seeker === true, JSON.stringify(a));
+    check(a.voices === 3 && a.works_pct === 100 && a.works_on_seeker === true, JSON.stringify(a));
     check(a.wallet_ok_voices === 3 && a.broken_voices === 0, JSON.stringify(a));
+    check(!('weight_works' in a) && !('weight_broken' in a), `weighted totals on /vouch/app: ${JSON.stringify(a)}`);
+    checkNoWeights(r.text, `/vouch/app/${chipPkg}`);
     check(r.headers.get('cache-control') === 'public, max-age=60', `cache-control ${r.headers.get('cache-control')}`);
   });
 
-  await scenario('/vouch/aggregate lists the chip package with the same numbers', async () => {
+  await scenario('/vouch/aggregate lists the chip package with the same numbers and no weighted total', async () => {
     const r = await get('/vouch/aggregate');
     expectStatus(r, 200);
     const a = r.body.apps.find((x) => x.package === chipPkg);
-    check(a && a.voices === 3 && a.weight_works === 3 && a.works_pct === 100 && a.works_on_seeker === true, JSON.stringify(a));
+    check(a && a.voices === 3 && a.works_pct === 100 && a.works_on_seeker === true, JSON.stringify(a));
+    check(!('weight_works' in a) && !('weight_broken' in a), `weighted totals on /vouch/aggregate: ${JSON.stringify(a)}`);
+    checkNoWeights(r.text, '/vouch/aggregate');
     check(r.body.count === r.body.apps.length && r.body.apps[0].package === chipPkg, 'count / order by weight_works');
     check(r.body.apps.some((x) => x.package === 'old.place'), 'old.place missing from the all-time aggregate');
   });
 
-  await scenario('/vouch/top ranks the chip package first with voices_week 3', async () => {
+  await scenario('/vouch/top ranks the chip package first with voices_week 3, no weighted total', async () => {
     const r = await get('/vouch/top');
     expectStatus(r, 200);
     const top = r.body.apps[0];
-    check(top?.package === chipPkg && top.voices_week === 3 && top.weight_works_week === 3, JSON.stringify(top));
+    check(top?.package === chipPkg && top.voices_week === 3, JSON.stringify(top));
+    check(!('weight_works_week' in top) && !('weight_works' in top) && !('works_share_week' in top), `weighted totals on /vouch/top: ${JSON.stringify(top)}`);
+    checkNoWeights(r.text, '/vouch/top');
     check(r.body.start === start && typeof r.body.week === 'string', `week ${r.body.week} ${r.body.start}`);
   });
 
@@ -551,18 +615,20 @@ async function run() {
     check(!/"(id|updated_at)":/.test(r.text), 'a join key to the public notes leaked');
   });
 
-  await scenario('public /vouch/app recent rows carry no wallet, no mint, no staked_skr', async () => {
+  await scenario('public /vouch/app recent rows carry no wallet, no mint, no staked_skr, no weight', async () => {
     for (const pkg of [chipPkg, 'x.place']) {
       const r = await get(`/vouch/app/${pkg}`);
       expectStatus(r, 200);
       check(r.body.recent.length >= 1, `no recent rows on ${pkg}`);
       for (const v of r.body.recent) {
-        // Spec 2.4 field list, compared as a sorted set.
-        const want = ['id', 'verdict', 'tags', 'note', 'weight', 'number', 'tier', 'updated_at'].sort().join(',');
+        // Spec 2.4 field list less `weight` (D6 privacy fix: real weights next to a
+        // Lounge number would reveal roughly what that owner stakes), as a sorted set.
+        const want = ['id', 'verdict', 'tags', 'note', 'number', 'tier', 'updated_at'].sort().join(',');
         check(Object.keys(v).sort().join(',') === want, Object.keys(v).join(','));
       }
       for (const o of owners) check(!r.text.includes(o.wallet) && !r.text.includes(o.mint), `a wallet or mint leaked on ${pkg}`);
-      check(!/"(wallet|mint|genesis_mint|staked_skr|signature)":/.test(r.text), `a private key name leaked on ${pkg}`);
+      check(!/"(wallet|mint|genesis_mint|staked_skr|signature|weight)":/.test(r.text), `a private key name leaked on ${pkg}`);
+      checkNoWeights(r.text, `/vouch/app/${pkg}`);
     }
   });
 
@@ -578,5 +644,147 @@ async function run() {
       const r = await call(m, p, m === 'POST' ? {} : undefined);
       check(r.status === 404 && r.body?.error === 'not found', `${m} ${p} -> ${r.status} ${r.text}`);
     }
+  });
+
+  // ---- D6: the SKR stake reader against fixture-shaped chain replies ----------
+  // Last, so their weights (up to 3.06 on one package) cannot reorder the
+  // aggregate and top-ten scenarios above.
+  await scenario('staked owner, 11,355.88 SKR (fixture UserStake at the live share_price) -> 200, weight 3.06, weight_source chain, 3 chain calls; skr_cache and wallet_pdas rows written', async () => {
+    const c0 = fake.counts();
+    const r = await post(vouch(S, 's1.place', { note: 'Staked owner, works fine.' }));
+    expectStatus(r, 200);
+    markAccepted(S);
+    check(r.body.weight === S_WEIGHT && r.body.vouch?.weight === S_WEIGHT, `weight ${r.body.weight}`);
+    check(r.body.staked_skr === S_SKR && r.body.vouch?.staked_skr === S_SKR, `staked_skr ${r.body.staked_skr}`);
+    check(r.body.weight_source === 'chain' && r.body.mints_in_wallet === 1, r.text);
+    checkNoWeights(r.body.app, "the staked signer's app block"); // its own weight and stake above, not in the public block
+    checkWriteCalls(c0, r);
+    const cache = await d1Rows(`SELECT status, staked_raw, unstaking_raw, share_price, weight FROM skr_cache WHERE wallet = '${S.wallet}'`);
+    check(cache.length === 1 && cache[0].status === 'ok' && cache[0].staked_raw === '11355880000' &&
+      cache[0].unstaking_raw === '0' && cache[0].share_price === '1147028992' && cache[0].weight === S_WEIGHT, JSON.stringify(cache));
+    const pdas = await d1Rows(`SELECT pda FROM wallet_pdas WHERE wallet = '${S.wallet}'`);
+    check(pdas.length === 1 && pdas[0].pda === stakePdaOf(S.wallet), JSON.stringify(pdas));
+  });
+
+  await scenario('second vouch from the staked wallet inside 60 s -> weight_source cache, weight 3.06, staked_skr 11355.88, only the SGT pair reaches the chain', async () => {
+    await waitSlot(S);
+    const c0 = fake.counts();
+    const r = await post(vouch(S, 's2.place'));
+    expectStatus(r, 200);
+    markAccepted(S);
+    check(r.body.weight_source === 'cache', `weight_source ${r.body.weight_source} (more than 60 s since the first read?)`);
+    check(r.body.weight === S_WEIGHT && r.body.staked_skr === S_SKR, r.text);
+    checkWriteCalls(c0, r);
+  });
+
+  await scenario('a second Genesis Token in the staked wallet -> mints_in_wallet 2, weight 2.76 = sharedStakeWeight(11355.88, 2) on the new row and on every earlier row of the wallet', async () => {
+    await waitSlot(S);
+    const c0 = fake.counts();
+    const r = await post(vouch(S, 's3.place', { mint: S_MINT2 }));
+    expectStatus(r, 200);
+    markAccepted(S);
+    check(r.body.mints_in_wallet === 2 && r.body.weight === S_WEIGHT_2 && r.body.staked_skr === S_SKR, r.text);
+    checkWriteCalls(c0, r);
+    const rows = await d1Rows(`SELECT package, weight, staked_skr FROM vouches WHERE wallet = '${S.wallet}' ORDER BY package`);
+    check(rows.length === 3 && rows.every((x) => x.weight === S_WEIGHT_2 && x.staked_skr === S_SKR), JSON.stringify(rows));
+  });
+
+  await scenario('malformed stake replies (value one entry short; a 168-byte UserStake) -> 200, weight 1, staked_skr null, weight_source error, nothing cached', async () => {
+    for (const o of [MS, ML]) {
+      const c0 = fake.counts();
+      const r = await post(vouch(o, 'mal.place'));
+      expectStatus(r, 200);
+      markAccepted(o);
+      check(r.body.weight === 1 && r.body.vouch?.weight === 1, `weight ${r.body.weight}`);
+      check(r.body.staked_skr === null && r.body.vouch?.staked_skr === null && r.body.weight_source === 'error', r.text);
+      checkWriteCalls(c0, r);
+    }
+    const cached = await d1Rows(`SELECT wallet FROM skr_cache WHERE wallet IN ('${MS.wallet}', '${ML.wallet}')`);
+    check(cached.length === 0, `an unknown read was cached: ${JSON.stringify(cached)}`);
+  });
+
+  await scenario('lamports sent to a UserStake PDA (a bare System account, 0 bytes) -> no position: weight 1, staked_skr 0, weight_source chain, cached as none; the next vouch inside 60 s is served from the cache', async () => {
+    let c0 = fake.counts();
+    const r = await post(vouch(SY, 'sys.place'));
+    expectStatus(r, 200);
+    markAccepted(SY);
+    check(r.body.weight === 1 && r.body.staked_skr === 0 && r.body.weight_source === 'chain', r.text);
+    checkWriteCalls(c0, r);
+    const cache = await d1Rows(`SELECT status, staked_raw, weight FROM skr_cache WHERE wallet = '${SY.wallet}'`);
+    check(cache.length === 1 && cache[0].status === 'none' && cache[0].staked_raw === '0' && cache[0].weight === 1, JSON.stringify(cache));
+    await waitSlot(SY);
+    c0 = fake.counts();
+    const r2 = await post(vouch(SY, 'sys2.place'));
+    expectStatus(r2, 200);
+    markAccepted(SY);
+    check(r2.body.weight === 1 && r2.body.staked_skr === 0 && r2.body.weight_source === 'cache', r2.text);
+    checkWriteCalls(c0, r2);
+  });
+
+  await scenario("the staked wallet's stake read fails (same Genesis Token, new package) -> 200 at 1.00x with staked_skr null and weight_source error; its earlier rows keep 2.76 and 11,355.88", async () => {
+    fake.register({ badStakes: [[S.wallet, 'length']] });                 // S's UserStake now comes back 168 bytes
+    await d1(`DELETE FROM skr_cache WHERE wallet = '${S.wallet}'`);        // so the next vouch reads the chain
+    await waitSlot(S);
+    const c0 = fake.counts();
+    const r = await post(vouch(S, 's4.place'));
+    expectStatus(r, 200);
+    markAccepted(S);
+    check(r.body.weight === 1 && r.body.staked_skr === null && r.body.weight_source === 'error' && r.body.mints_in_wallet === 2, r.text);
+    checkWriteCalls(c0, r);
+    const rows = await d1Rows(`SELECT package, weight, staked_skr FROM vouches WHERE wallet = '${S.wallet}' ORDER BY package`);
+    const want = [['s1.place', S_WEIGHT_2, S_SKR], ['s2.place', S_WEIGHT_2, S_SKR], ['s3.place', S_WEIGHT_2, S_SKR], ['s4.place', 1, null]];
+    check(JSON.stringify(rows.map((x) => [x.package, x.weight, x.staked_skr])) === JSON.stringify(want), JSON.stringify(rows));
+  });
+
+  await scenario("a third Genesis Token in the staked wallet while its read still fails -> the new row 1.00x; the earlier good rows re-divided from their stored stake by 3 (2.76 -> 2.59), the failed row stays 1.00x", async () => {
+    await waitSlot(S);
+    const c0 = fake.counts();
+    const r = await post(vouch(S, 's5.place', { mint: S_MINT3 }));
+    expectStatus(r, 200);
+    markAccepted(S);
+    check(r.body.weight === 1 && r.body.staked_skr === null && r.body.weight_source === 'error' && r.body.mints_in_wallet === 3, r.text);
+    checkWriteCalls(c0, r);
+    const w3 = sharedStakeWeight(S_SKR, 3);
+    check(w3 === 2.59, `sharedStakeWeight(${S_SKR}, 3) = ${w3}`);
+    const rows = await d1Rows(`SELECT package, weight, staked_skr FROM vouches WHERE wallet = '${S.wallet}' ORDER BY package`);
+    const want = [['s1.place', w3, S_SKR], ['s2.place', w3, S_SKR], ['s3.place', w3, S_SKR], ['s4.place', 1, null], ['s5.place', 1, null]];
+    check(JSON.stringify(rows.map((x) => [x.package, x.weight, x.staked_skr])) === JSON.stringify(want), JSON.stringify(rows));
+  });
+
+  await scenario("public /vouch/app of the staked owner's package: the recent note carries no weight and no stake, the app block no weighted total", async () => {
+    const r = await get('/vouch/app/s1.place');
+    expectStatus(r, 200);
+    check(r.body.recent.length === 1 && r.body.recent[0].note === 'Staked owner, works fine.', r.text);
+    check(!('weight' in r.body.recent[0]) && !('staked_skr' in r.body.recent[0]), JSON.stringify(r.body.recent[0]));
+    check(r.body.app.voices === 1 && !('weight_works' in r.body.app) && !('weight_broken' in r.body.app), JSON.stringify(r.body.app));
+    check(!r.text.includes(S.wallet) && !r.text.includes(S.mint) && !/"(staked_skr|weight)":/.test(r.text), r.text);
+    checkNoWeights(r.text, '/vouch/app/s1.place');
+  });
+
+  await scenario('ordering still follows weight with the totals gone: on /vouch/aggregate the 2.59x one-voice packages rank above a two-voice 1.00x package; on /vouch/top a 2.59x one-voice package ranks above 1.00x one-voice packages that sort first', async () => {
+    const stored = await d1Rows("SELECT package, weight FROM vouches WHERE package IN ('s1.place', 's3.place', 'mal.place', 'b.place') AND excluded = 0 ORDER BY package, weight");
+    const w = (p) => stored.filter((x) => x.package === p).map((x) => x.weight);
+    check(JSON.stringify([w('s1.place'), w('s3.place'), w('mal.place'), w('b.place')]) === JSON.stringify([[2.59], [2.59], [1, 1], [1]]),
+      `stored weights ${JSON.stringify(stored)}`);
+    const agg = await get('/vouch/aggregate');
+    expectStatus(agg, 200);
+    checkNoWeights(agg.text, '/vouch/aggregate');
+    const pk = agg.body.apps.map((x) => x.package);
+    const voicesOf = (p) => agg.body.apps.find((x) => x.package === p)?.voices;
+    check(voicesOf('mal.place') === 2 && voicesOf('s1.place') === 1 && voicesOf('s3.place') === 1 && voicesOf('aa.a') === 1,
+      `voices ${JSON.stringify(['mal.place', 's1.place', 's3.place', 'aa.a'].map(voicesOf))}`);
+    check(pk[0] === chipPkg, `aggregate head ${JSON.stringify(pk.slice(0, 6))}`);
+    for (const heavy of ['s1.place', 's3.place']) {
+      check(pk.indexOf(heavy) > 0 && pk.indexOf(heavy) < pk.indexOf('mal.place') && pk.indexOf(heavy) < pk.indexOf('aa.a'),
+        `${heavy} does not rank by weight: ${JSON.stringify(pk.slice(0, 12))}`);
+    }
+    const top = await get('/vouch/top');
+    expectStatus(top, 200);
+    checkNoWeights(top.text, '/vouch/top');
+    const tk = top.body.apps.map((x) => x.package);
+    const weekOf = (p) => top.body.apps.find((x) => x.package === p)?.voices_week;
+    check(weekOf('s3.place') === 1 && weekOf('b.place') === 1 && weekOf('zz.real') === 1, `voices_week ${JSON.stringify(top.body.apps.map((x) => [x.package, x.voices_week]))}`);
+    check(tk.indexOf('s3.place') >= 0 && tk.indexOf('s3.place') < tk.indexOf('b.place') && tk.indexOf('s3.place') < tk.indexOf('zz.real'),
+      `s3.place does not rank by weight on /vouch/top: ${JSON.stringify(tk)}`);
   });
 }

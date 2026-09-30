@@ -36,6 +36,9 @@ const ALPHA_MESSAGE_AGE_MS = 2 * 60 * 1000;
 // Cap on chain checks: every verified signature costs two RPC calls
 // (verifyGenesisSig step 3) and rpc.js retries 429/5xx three times, so a keypair
 // farm could otherwise burn the paid endpoint without ever touching D1.
+// An accepted POST /vouch spends at most one more call after its unit, the SKR
+// stake read of the signer's own wallet (skr.js, D1-cached 60 s per wallet), so
+// the same unit bounds it: at most three paid calls per unit (plus rpc.js retries).
 // Two pools per UTC minute. A (wallet, mint) pair already in claims or vouches
 // is a member and spends the members' pool, at most RPC_BUDGET_PER_MINT of it
 // per Genesis mint, so a keypair farm cannot lock existing members out. Every

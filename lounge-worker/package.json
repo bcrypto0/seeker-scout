@@ -9,6 +9,8 @@
     "schema:local": "wrangler d1 execute seeker-lounge --local --file=./schema.sql",
     "migrate": "wrangler d1 execute seeker-lounge --remote --file=./migrations/001_vouches.sql",
     "migrate:local": "wrangler d1 execute seeker-lounge --local --file=./migrations/001_vouches.sql",
+    "migrate:skr": "wrangler d1 execute seeker-lounge --remote --file=./migrations/002_skr_cache.sql",
+    "migrate:skr:local": "wrangler d1 execute seeker-lounge --local --file=./migrations/002_skr_cache.sql",
     "test": "node --test \"test/*.test.js\"",
     "check:vouch": "node test/post-vouch.mjs",
     "test:integration": "node test/integration.mjs"
