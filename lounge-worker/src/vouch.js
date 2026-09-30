@@ -27,7 +27,7 @@
 import { base58 } from '@scure/base';
 import { readStakeWeight } from './skr.js';
 import {
-  finishAggregate, hasHiddenLink, isCanonicalTs, isPackageId, isoWeek, maskToTags, sanitizeNote, settingOn,
+  finishAggregate, hasHiddenLink, hasLoneSurrogate, isCanonicalTs, isPackageId, isoWeek, maskToTags, sanitizeNote, settingOn,
   sharedStakeWeight, supersedes, tagsToMask, VERDICTS, weekBounds, MAX_NOTE, NOTE_PLACEHOLDER,
 } from './vouch-lib.js';
 // D11 commit adds: WEEK_RE, tallyResult
@@ -91,6 +91,11 @@ function parseVouchBody(body) {
   }
   if (note === NOTE_PLACEHOLDER) return { error: 'note reserved', status: 400 };
   if (note !== sanitizeNote(note)) {
+    return { error: 'note contains a link or is not normalised', status: 400 };
+  }
+  // Half of a surrogate pair (the 140 cut can leave one after an emoji): D1 would
+  // store U+FFFD instead of the signed character, so it is not a normalised note.
+  if (hasLoneSurrogate(note)) {
     return { error: 'note contains a link or is not normalised', status: 400 };
   }
   // A link the ASCII passes cannot see (U+3002 for the dot, a zero-width space

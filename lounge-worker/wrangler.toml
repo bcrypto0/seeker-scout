@@ -9,6 +9,15 @@ binding = "DB"
 database_name = "seeker-lounge"
 database_id = "7a8a7f11-17cd-40f1-afba-9af1b14af5c8"
 
+# Hourly SKR re-weight of stored vouch and vote weights (src/skr.js reweightVouches,
+# SPEC-skr-final 1.10); the 03:07 UTC tick also runs the drift check. One Cron Trigger
+# (Workers Free allows 5 per account). Paused, with no chain call, by
+#   UPDATE settings SET value='0' WHERE key='skr_read_enabled'
+# Wallets per tick default to 99 (one getMultipleAccounts call, sized for the Free plan's
+# 10 ms cron CPU). On the Paid plan only, add REWEIGHT_MAX_WALLETS = "2000" under [vars].
+[triggers]
+crons = ["7 * * * *"]
+
 # RPC endpoint: set via `wrangler secret put RPC_URL` (Triton recommended).
 # Deliberately NOT in [vars] — a var here would clobber the secret on every
 # deploy. The worker falls back to the public mainnet RPC when unset.

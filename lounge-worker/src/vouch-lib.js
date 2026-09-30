@@ -59,7 +59,8 @@ export function canonicalTags(tags) {
  * pass skipped ('x.io1.2.3.4' -> '[link removed]1.2.3.4'), a second run strips
  * again. Only a note that already held a link gets there, and the worker
  * refuses it with the same 400, so the corner fails closed. Links these ASCII
- * passes cannot see are hasHiddenLink's job.
+ * passes cannot see are hasHiddenLink's job, and half an emoji left by the 140
+ * cut is hasLoneSurrogate's (same 400).
  */
 export function sanitizeNote(raw) {
   if (typeof raw !== 'string') return '';
@@ -126,6 +127,30 @@ export function hasHiddenLink(note) {
   const skeleton = note.normalize('NFKD').toLowerCase().replace(HIDDEN_DROP, '')
     .replace(DOT_RUN, '.').replace(SLASH_LIKE, '/').replace(COLON_LIKE, ':').replace(/\s+/g, ' ');
   return LINK_SHAPES.some((re) => re.test(skeleton));
+}
+
+/**
+ * True when the string holds half of a surrogate pair. sanitizeNote's 140 cut
+ * counts UTF-16 units, so when link removal pushes an emoji across it the cut
+ * keeps only the emoji's first half, and that note is still a fixed point of
+ * sanitizeNote. D1 stores a lone half as U+FFFD, so the public note would
+ * differ from the signed one. The worker refuses such a note with the same
+ * 400 (fail closed); the app's prepareNote already drops the trailing half.
+ * A code-unit loop, the same test String.prototype.isWellFormed makes.
+ */
+export function hasLoneSurrogate(s) {
+  if (typeof s !== 'string') return false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const d = s.charCodeAt(i + 1); // NaN past the end
+      if (!(d >= 0xdc00 && d <= 0xdfff)) return true;
+      i++;
+    } else if (c >= 0xdc00 && c <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** The exact bytes the app asks Seed Vault to sign for a vouch. */

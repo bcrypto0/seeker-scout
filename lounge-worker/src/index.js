@@ -21,6 +21,7 @@ import { handleAlpha } from './alpha.js';
 import { handleVouch } from './vouch.js';
 import { vouchMessage } from './vouch-lib.js';
 import { rpc } from './rpc.js';
+import { reweightVouches } from './skr.js';
 
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
 
@@ -502,5 +503,17 @@ export default {
       return json({ error: 'storage error' }, 500);
     }
     return json({ error: 'not found' }, 404);
+  },
+
+  /**
+   * Cron Trigger (wrangler.toml [triggers], hourly at minute 7): the SKR re-weight of stored
+   * vouch and vote weights (skr.js reweightVouches, SPEC-skr-final 1.10). The 03:07 UTC tick
+   * also runs the drift check. reweightVouches never rejects and logs one summary line per
+   * tick (counts only); settings.skr_read_enabled = '0' skips it without any chain call.
+   * There is one cron today, so the cron string is not checked here.
+   */
+  async scheduled(controller, env, ctx) {
+    const now = new Date(controller.scheduledTime);
+    ctx.waitUntil(reweightVouches(env, { now, drift: now.getUTCHours() === 3 }));
   },
 };

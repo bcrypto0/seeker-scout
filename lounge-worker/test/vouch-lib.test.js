@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  canonicalTags, finishAggregate, hasHiddenLink, isCanonicalTs, isoWeek, isPackageId, previousWeek, sanitizeNote,
+  canonicalTags, finishAggregate, hasHiddenLink, hasLoneSurrogate, isCanonicalTs, isoWeek, isPackageId, previousWeek, sanitizeNote,
   settingOn, sharedStakeWeight, supersedes, tagsToMask, vouchMessage, weekBounds, weightFor,
 } from '../src/vouch-lib.js';
 
@@ -49,6 +49,37 @@ test('sanitizeNote strips links, collapses whitespace, is idempotent, caps at 14
   assert.equal(sanitizeNote('a'.repeat(200)).length, 140);
   assert.equal(sanitizeNote('U.S. rate 3.5 fine'), 'U.S. rate 3.5 fine'); // chat.js:39-41 rule
   assert.equal(sanitizeNote(42), '');
+});
+test('hasLoneSurrogate: half of a pair anywhere is caught, whole pairs and plain text are not; it agrees with a UTF-8 round trip and isWellFormed', () => {
+  const u = (...units) => String.fromCharCode(...units);
+  const rocket = String.fromCodePoint(0x1f680);
+  const flag = String.fromCodePoint(0x1f1f8, 0x1f1e6);
+  for (const ok of ['', 'plain note', rocket, rocket.repeat(3), flag, 'caf' + u(0xe9), 'a' + rocket + 'b']) {
+    assert.equal(hasLoneSurrogate(ok), false, JSON.stringify(ok));
+  }
+  for (const bad of [u(0xd83d), u(0xde80), 'ab' + u(0xd83d), u(0xd83d) + 'ab', u(0xde80, 0xd83d), u(0xd83d, 0xd83d, 0xde80),
+    rocket + u(0xdc00), 'a'.repeat(139) + u(0xd83d)]) {
+    assert.equal(hasLoneSurrogate(bad), true, JSON.stringify(bad));
+  }
+  for (const x of [undefined, null, 42, {}]) assert.equal(hasLoneSurrogate(x), false);
+  // The 140 cut after a stripped link: one sanitize pass keeps the emoji's first half and is a fixed point.
+  const cut = sanitizeNote('see x.io ' + 'a'.repeat(120) + rocket.repeat(5)); // 'see [link removed] ' is 19 units
+  assert.deepEqual([cut.length, sanitizeNote(cut) === cut, hasLoneSurrogate(cut)], [140, true, true]);
+  // Seeded random UTF-16 (surrogates over-weighted): hasLoneSurrogate(s) iff a UTF-8 round trip changes s.
+  let a = 0x5eec3;
+  const r = () => { a = (Math.imul(a, 1664525) + 1013904223) >>> 0; return a / 4294967296; };
+  const pool = [0x61, 0x20, 0xe9, 0x3002, 0xd83d, 0xde80, 0xd800, 0xdbff, 0xdc00, 0xdfff];
+  const td = new TextDecoder();
+  const te = new TextEncoder();
+  let lone = 0;
+  for (let i = 0; i < 5000; i++) {
+    const s = u(...Array.from({ length: 1 + Math.floor(r() * 8) }, () => pool[Math.floor(r() * pool.length)]));
+    const broken = td.decode(te.encode(s)) !== s;
+    assert.equal(hasLoneSurrogate(s), broken, JSON.stringify(s));
+    if (typeof s.isWellFormed === 'function') assert.equal(hasLoneSurrogate(s), !s.isWellFormed());
+    if (broken) lone += 1;
+  }
+  assert.ok(lone > 1000 && lone < 4900, `lone ${lone}`);
 });
 test('hasHiddenLink sees the links the ASCII passes miss and leaves real prose alone', () => {
   const wide = (s) => [...s].map((ch) => String.fromCharCode(ch.charCodeAt(0) + 0xfee0)).join('');

@@ -6,9 +6,13 @@
 //     different mintAuthority for registered NOT_SGT mints, else value null.
 //   getTokenAccountsByOwner(wallet, {mint}, jsonParsed): one token account
 //     holding 1 for registered (wallet, mint) pairs, else value [].
+//   getAccountInfo(PROGRAM_DATA, {dataSlice: {offset: 4, length: 8}}): the
+//     pinned deploy slot (the fixture's program.deploySlot), owned by the
+//     upgradeable loader, for the cron's drift check (skr.js checkDrift).
 //   getMultipleAccounts([addresses], {encoding: 'base64'}): the StakeConfig
-//     bytes of test/fixtures/skr_fixtures.json (mainnet, read-only capture) for
-//     STAKE_CONFIG; for the UserStake PDA of a registered stake, the fixture's
+//     and GuardianDelegationPool bytes of test/fixtures/skr_fixtures.json
+//     (mainnet, read-only capture) for STAKE_CONFIG and the pinned pool; for
+//     the UserStake PDA of a registered stake, the fixture's
 //     sample UserStake with user, bump, shares and the unstake fields rewritten
 //     for that wallet (the decoder asserts user == wallet); null for anything
 //     else, which is "no stake account". A wallet registered as a bad stake gets
@@ -16,7 +20,8 @@
 //     'length' serves its UserStake one byte short (168 B). 'system' is not
 //     malformed: it serves what lamports sent to the PDA create, an account
 //     owned by the System Program with 0 bytes of data (no stake position).
-//     A later registration of the same wallet replaces its mode.
+//     A later registration of the same wallet replaces its mode, and a stakes
+//     entry replaces a badStakes one (and the other way round).
 // Test hooks (not JSON-RPC, not counted as hits):
 //   POST /__register {sgt: [mint], notSgt: [mint], holders: [[wallet, mint]],
 //                     stakes: [[wallet, {shares, unstaking?, unstakeTs?}]] (decimal strings),
@@ -29,7 +34,7 @@ import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { base58, base64 } from '@scure/base';
-import { GUARDIAN_POOLS, SKR_PROGRAM, STAKE_CONFIG, userStakePda } from '../src/skr.js';
+import { GUARDIAN_POOLS, PROGRAM_DATA, SKR_PROGRAM, STAKE_CONFIG, userStakePda } from '../src/skr.js';
 
 const FX = JSON.parse(readFileSync(new URL('./fixtures/skr_fixtures.json', import.meta.url), 'utf8'));
 const POOL0 = base58.decode(GUARDIAN_POOLS[0]);
@@ -41,6 +46,9 @@ const accountInfo = (owner, lamports, bytes) => ({
 });
 const CONFIG_INFO = accountInfo(FX.accounts.stakeConfig.owner, FX.accounts.stakeConfig.lamports,
   base64.decode(FX.accounts.stakeConfig.dataBase64));
+const POOL_INFO = accountInfo(FX.accounts.guardianPool.owner, FX.accounts.guardianPool.lamports,
+  base64.decode(FX.accounts.guardianPool.dataBase64));
+const UPGRADEABLE_LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111';
 const wLE = (b, o, v, n) => { for (let i = 0; i < n; i++) { b[o + i] = Number(v & 0xffn); v >>= 8n; } };
 /** The fixture UserStake rewritten for `wallet`: bump@8, user@41, shares u128@105, unstaking u64@153, ts i64@161. */
 function userStakeBytes(wallet, { shares, unstaking = '0', unstakeTs = '0' }) {
@@ -132,6 +140,7 @@ export function startFakeRpc({ port = 8899, host = '127.0.0.1', log = false } = 
     for (const m of n) notSgt.add(m);
     for (const [w, m] of h) holders.add(`${w}:${m}`);
     for (const [w, st] of stakes) {
+      badByPda.delete(stakePdaOf(w));
       stakeByPda.set(stakePdaOf(w), accountInfo(SKR_PROGRAM, FX.accounts.sampleUserStake.lamports, userStakeBytes(w, st)));
     }
     for (const [w, mode] of badStakes) {
@@ -140,12 +149,21 @@ export function startFakeRpc({ port = 8899, host = '127.0.0.1', log = false } = 
         ? accountInfo(SYSTEM_PROGRAM, 890_880, new Uint8Array(0))
         : accountInfo(SKR_PROGRAM, FX.accounts.sampleUserStake.lamports,
           userStakeBytes(w, { shares: FX.expected.sampleUserStake.shares }).subarray(0, 168));
+      stakeByPda.delete(stakePdaOf(w));
       badByPda.set(stakePdaOf(w), { mode, info });
     }
   };
   const counts = () => ({ hits, byMethod: { ...byMethod } });
 
   const answer = (method, params) => {
+    if (method === 'getAccountInfo' && params?.[0] === PROGRAM_DATA) {
+      const slice = params?.[1]?.dataSlice;
+      if (slice?.offset !== 4 || slice?.length !== 8) return { error: { code: -32602, message: 'Invalid params' } };
+      const slot = new Uint8Array(8);
+      let v = BigInt(FX.program.deploySlot);
+      for (let i = 0; i < 8; i++) { slot[i] = Number(v & 0xffn); v >>= 8n; }
+      return { result: { context: { slot: FX.slot }, value: accountInfo(UPGRADEABLE_LOADER, 1_000_000, slot) } };
+    }
     if (method === 'getAccountInfo') {
       const mint = params?.[0];
       const value = sgt.has(mint) ? mintAccount(mint, SGT_MINT_AUTHORITY)
@@ -166,6 +184,7 @@ export function startFakeRpc({ port = 8899, host = '127.0.0.1', log = false } = 
       let short = false;
       const value = addresses.map((a) => {
         if (a === STAKE_CONFIG) return CONFIG_INFO;
+        if (a === GUARDIAN_POOLS[0]) return POOL_INFO;
         const bad = badByPda.get(a);
         if (bad) {
           if (bad.mode === 'short') short = true;

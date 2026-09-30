@@ -1,9 +1,10 @@
 // lounge-worker/test/skr.test.js. node:test, in-memory D1 (node:sqlite), fake RPC via fetch.
-// SPEC-skr-final 7.2, the D6 part: decoders, PDA derivation, reads, the D1 cache and
-// readStakeWeight, plus POST /vouch through the real router with the real reader. The cron
-// tests join on D16 (1.10) and the POST /skr/read test with 1.11. Chain values come from the
-// fixture's `expected` block (captured read-only 2026-09-30 at slot 451853888), never from
-// literals of an older capture: share_price moves when rewards land.
+// SPEC-skr-final 7.2: decoders, PDA derivation, reads, the D1 cache and readStakeWeight,
+// POST /vouch through the real router with the real reader, and the hourly re-weight cron
+// (1.10: reweightVouches, checkDrift, index.js scheduled()). The POST /skr/read test joins
+// with 1.11. Chain values come from the fixture's `expected` block (captured read-only
+// 2026-09-30 at slot 451853888), never from literals of an older capture: share_price moves
+// when rewards land.
 // RPC_URL is 'http://fake.invalid/redacted' and globalThis.fetch is a shim: no network.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,8 +12,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { base58, base64 } from '@scure/base';
 import * as skr from '../src/skr.js';
+import worker from '../src/index.js';
 import { handleVouch } from '../src/vouch.js';
-import { sharedStakeWeight } from '../src/vouch-lib.js';
+import { hasLoneSurrogate, sanitizeNote, sharedStakeWeight } from '../src/vouch-lib.js';
 import { makeD1 } from './d1.mjs';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
@@ -106,6 +108,70 @@ test('userStakePda re-derives the live accounts (bumps 252 to 255) and the missi
     const r = skr.userStakePda(base58.decode(x.user), pool);
     assert.deepEqual([base58.encode(r.address), r.bump], [x.address, x.bump], x.label);
   }
+});
+
+test('decodeKey32 gives exactly what base58.decode gives for 32 bytes: random keys, leading zeros, extremes, random strings, bad characters', () => {
+  const ref = (s) => {
+    let b;
+    try { b = base58.decode(s); } catch { return 'encoding'; }
+    return b.length === 32 ? b : 'length';
+  };
+  const keys = [new Uint8Array(32), new Uint8Array(32).fill(255), Uint8Array.of(1, ...new Uint8Array(31))];
+  for (let z = 0; z <= 32; z++) { const k = crypto.getRandomValues(new Uint8Array(32)); k.fill(0, 0, z); if (z < 32) k[z] ||= 1; keys.push(k); }
+  for (let i = 0; i < 2000; i++) keys.push(crypto.getRandomValues(new Uint8Array(32)));
+  for (const k of keys) assert.deepEqual(skr.decodeKey32(base58.encode(k)), k, base58.encode(k));
+  const A = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let a = 12345;
+  const r = () => { a = (Math.imul(a, 1103515245) + 12345) >>> 0; return a / 4294967296; };
+  let got32 = 0;
+  for (let i = 0; i < 20000; i++) {
+    const len = 28 + Math.floor(r() * 20);
+    const ones = r() < 0.3 ? Math.floor(r() * 34) : 0;
+    const s = ('1'.repeat(ones) + Array.from({ length: len }, () => A[Math.floor(r() * 58)]).join('')).slice(0, Math.max(len, ones));
+    const want = ref(s);
+    if (want instanceof Uint8Array) got32 += 1;
+    assert.deepEqual(skr.decodeKey32(s), want, s);
+  }
+  assert.ok(got32 > 1000, `random strings that are keys: ${got32}`);
+  for (const s of ['', 'not-a-wallet', '0'.repeat(44), 'O'.repeat(40), 'I' + W.slice(1), 'l' + W.slice(1), W + ' ',
+    W.slice(0, 20) + String.fromCharCode(0xe9) + W.slice(21), W.slice(0, 43) + String.fromCodePoint(0x1f680)]) {
+    assert.deepEqual(skr.decodeKey32(s), ref(s), JSON.stringify(s));
+  }
+  for (const x of [undefined, null, 42, {}]) assert.equal(skr.decodeKey32(x), 'encoding');
+  assert.deepEqual(skr.decodeKey32(W), base58.decode(W));
+});
+
+test('assertAccount decodes account data byte for byte as base64.decode does, and refuses non-string data', () => {
+  for (const a of [fx.accounts.stakeConfig, fx.accounts.guardianPool, fx.accounts.sampleUserStake, ...fx.accounts.userStakes]) {
+    const kind = a === fx.accounts.stakeConfig ? 'config' : a === fx.accounts.guardianPool ? 'pool' : 'user';
+    const r = skr.assertAccount(info(a), kind);
+    assert.ok(r.ok, a.address);
+    assert.deepEqual(r.data, base64.decode(a.dataBase64), a.address);
+  }
+  const g = fx.accounts.sampleUserStake;
+  assert.deepEqual(skr.assertAccount({ ...info(g), data: [12345, 'base64'] }, 'user'), { ok: false, reason: 'user: bad base64' });
+  // Non-canonical base64 (the native decoders accept it, base64.decode does not): refused as 'bad base64'.
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const t = g.dataBase64;
+  const loose = t.slice(0, -3) + A[A.indexOf(t.at(-3)) + 1] + '==';       // a stray bit under the padding
+  for (const s of ['QR==', 'QUJ=', loose, t.replace(/=+$/, ''), ` ${t}`, `${t}\n`, t.slice(0, 40) + ' ' + t.slice(40)]) {
+    assert.throws(() => base64.decode(s), JSON.stringify(s.slice(-6)));
+    assert.deepEqual(skr.assertAccount({ ...info(g), data: [s, 'base64'] }, 'user'), { ok: false, reason: 'user: bad base64' }, JSON.stringify(s.slice(-6)));
+  }
+  // Seeded short strings: assertAccount says 'bad base64' exactly where base64.decode throws.
+  let a = 0xb64;
+  const r = () => { a = (Math.imul(a, 1103515245) + 12345) >>> 0; return a / 4294967296; };
+  const pool = 'AQRgwZz09+/== \n';
+  let bad = 0;
+  for (let i = 0; i < 20000; i++) {
+    const s = Array.from({ length: Math.floor(r() * 13) }, () => pool[Math.floor(r() * pool.length)]).join('');
+    let throws = false;
+    try { base64.decode(s); } catch { throws = true; }
+    const got = skr.assertAccount({ ...info(g), data: [s, 'base64'] }, 'user');
+    assert.equal(got.reason === 'user: bad base64', throws, JSON.stringify(s));
+    if (throws) bad += 1;
+  }
+  assert.ok(bad > 1000 && bad < 19900, `bad ${bad}`);
 });
 
 // ---------------------------------------------------------------- reads
@@ -459,6 +525,511 @@ test('public bodies carry no weighted total, yet /vouch/aggregate and /vouch/top
       assert.deepEqual([app.body.app.voices, app.body.recent.length], [1, 1]);
       assert.ok(!WEIGHTY.test(JSON.stringify(app.body)), JSON.stringify(app.body));
     }
+  } finally {
+    console.log = orig;
+  }
+});
+
+// ---------------------------------------------------------------- hourly re-weight cron (1.10)
+const SP = BigInt(X.testValues.sharePrice);
+const skrOf = (shares) => skr.toSkr(skr.stakedRawOf(shares, SP));
+const wU64 = (b, o, v) => { for (let i = 0; i < 8; i++) { b[o + i] = Number(v & 0xffn); v >>= 8n; } };
+/** A UserStake account for any wallet: the fixture bytes with bump, user, shares and the unstake fields rewritten. */
+function userStakeInfo(wallet, { shares, unstaking = 0n, unstakeTs = 0n }) {
+  const b = new Uint8Array(base64.decode(fx.accounts.sampleUserStake.dataBase64));
+  const { bump } = skr.userStakePda(base58.decode(wallet), base58.decode(skr.GUARDIAN_POOLS[0]));
+  b[8] = bump; b.set(base58.decode(wallet), 41);
+  wU64(b, 105, shares & 0xffffffffffffffffn); wU64(b, 113, shares >> 64n);
+  wU64(b, 153, unstaking); wU64(b, 161, BigInt.asUintN(64, unstakeTs));
+  return { owner: skr.SKR_PROGRAM, lamports: fx.accounts.sampleUserStake.lamports, data: [base64.encode(b), 'base64'], executable: false, rentEpoch: 0 };
+}
+const pdaOf = (wallet) => base58.encode(skr.userStakePda(base58.decode(wallet), base58.decode(skr.GUARDIAN_POOLS[0])).address);
+const withStake = (wallet, opts, m = cfgOnly()) => { m.set(pdaOf(wallet), userStakeInfo(wallet, opts)); return m; };
+const withPool = (m = cfgOnly(), edit = null) => {
+  const b = new Uint8Array(base64.decode(fx.accounts.guardianPool.dataBase64));
+  if (edit) edit(b);
+  m.set(fx.accounts.guardianPool.address, { ...info(fx.accounts.guardianPool), data: [base64.encode(b), 'base64'] });
+  return m;
+};
+const randomWallet = () => base58.encode(crypto.getRandomValues(new Uint8Array(32)));
+const tally = (e, week) => e.DB.raw.prepare('SELECT ROUND(SUM(weight), 2) AS t FROM votes WHERE week = ?').get(week).t;
+const TS0 = '2026-09-30T10:00:00.000Z';
+function addVote(e, { week, mint, wallet = W, weight, staked = SAMPLE_SKR }) {
+  e.DB.raw.prepare(`INSERT INTO votes (week, genesis_mint, wallet, package, weight, staked_skr, signature, signed_ts, created_at, updated_at)
+    VALUES (?, ?, ?, 'x.place', ?, ?, 'sig', ?, ?, ?)`).run(week, mint, wallet, weight, staked, TS0, TS0, TS0);
+}
+function addVouch(e, { mint, wallet = W, pkg, weight = 1, staked = null, checkedAt = null }) {
+  e.DB.raw.prepare(`INSERT INTO vouches (genesis_mint, wallet, package, verdict, signature, signed_ts, weight, staked_skr, weight_checked_at, created_at, updated_at)
+    VALUES (?, ?, ?, 'works', 'sig', ?, ?, ?, ?, ?, ?)`).run(mint, wallet, pkg, TS0, weight, staked, checkedAt, TS0, TS0);
+}
+const vouchRows = (e, wallet = W) => e.DB.raw.prepare('SELECT package, weight, staked_skr FROM vouches WHERE wallet = ? ORDER BY package').all(wallet)
+  .map((r) => [r.package, r.weight, r.staked_skr]);
+const checkedAts = (e, wallet = W) => e.DB.raw.prepare('SELECT weight_checked_at AS t FROM vouches WHERE wallet = ? ORDER BY package').all(wallet).map((r) => r.t);
+const snapshot = (e) => JSON.stringify([
+  e.DB.raw.prepare('SELECT * FROM vouches ORDER BY id').all(),
+  e.DB.raw.prepare('SELECT * FROM votes ORDER BY week, genesis_mint').all(),
+  e.DB.raw.prepare('SELECT * FROM skr_cache ORDER BY wallet').all(),
+]);
+/** One tick at `iso`, console.log captured: { sum, logs }. */
+async function tick(e, iso, opts = {}) {
+  const logs = [];
+  const orig = console.log;
+  console.log = (s) => logs.push(String(s));
+  try {
+    return { sum: await skr.reweightVouches(e, { now: new Date(iso), ...opts }), logs };
+  } finally {
+    console.log = orig;
+  }
+}
+const WED = '2026-09-30T12:07:00.000Z';                              // a Wednesday of 2026-W40
+const hourAfter = (iso, h) => new Date(Date.parse(iso) + h * 3_600_000).toISOString();
+/**
+ * serve(byAddr), except that the first call (the tick's getMultipleAccounts) takes its reply, then
+ * runs `during()` before returning it: a write that lands while the tick's read is in flight. Calls
+ * made inside `during()` are answered from byAddr as it is then, so `during()` may edit it first.
+ */
+function serveRacing(byAddr, during) {
+  serve(byAddr);
+  const inner = globalThis.fetch;
+  let fired = false;
+  globalThis.fetch = async (url, init) => {
+    const reply = await inner(url, init);
+    if (!fired) { fired = true; await during(); }
+    return reply;
+  };
+}
+
+test('cron: flash stake. Vote at 3.66, stake gone, the next tick makes the tally 1.00 (one RPC call, a start line and one summary line)', async () => {
+  const e = env();
+  addVote(e, { week: '2026-W40', mint: 'M1', weight: 3.66 });
+  serve(cfgOnly());                                                   // no UserStake: status none, 0 SKR
+  const { sum, logs } = await tick(e, WED);
+  assert.equal(tally(e, '2026-W40'), 1);
+  assert.equal(e.DB.raw.prepare('SELECT staked_skr FROM votes').get().staked_skr, 0);
+  assert.equal(hits, 1);
+  assert.deepEqual([sum.selected, sum.read, sum.ok, sum.unknown, sum.chunks, sum.vote_rows, sum.vouch_rows, sum.cache_rows, sum.closed_week],
+    [1, 1, 1, 0, 1, 1, 0, 1, null]);
+  assert.deepEqual(logs.map((l) => JSON.parse(l)), [{ evt: 'reweight', phase: 'start' }, sum]);
+});
+
+test('cron: votes never go UP, and an unchanged stake writes no vote row', async () => {
+  const e = env();
+  addVote(e, { week: '2026-W40', mint: 'M1', weight: 1, staked: 0 });            // voted before staking
+  addVote(e, { week: '2026-W40', mint: 'M2', wallet: MISSING, weight: 1, staked: 0 });
+  serve(withFixture());                                                // W now holds the 3.66x stake
+  const { sum } = await tick(e, WED);
+  assert.equal(tally(e, '2026-W40'), 2);
+  assert.deepEqual(e.DB.raw.prepare('SELECT weight, staked_skr FROM votes ORDER BY genesis_mint').all().map((r) => [r.weight, r.staked_skr]), [[1, 0], [1, 0]]);
+  assert.deepEqual([sum.ok, sum.vote_rows, sum.cache_rows], [2, 0, 2]);
+});
+
+test('cron: per-wallet division. Two Seekers behind one stake stay at 3.36 each, then fall to 1.00', async () => {
+  const e = env();
+  const shared = sharedStakeWeight(SAMPLE_SKR, 2);
+  assert.equal(shared, X.testValues.sampleWeightSharedBy2);          // 3.36
+  addVote(e, { week: '2026-W40', mint: 'M1', weight: shared });
+  addVote(e, { week: '2026-W40', mint: 'M2', weight: shared });
+  serve(withFixture());
+  let { sum } = await tick(e, WED);
+  assert.deepEqual([tally(e, '2026-W40'), sum.vote_rows, hits], [6.72, 0, 1]);
+  serve(cfgOnly());
+  ({ sum } = await tick(e, hourAfter(WED, 1)));
+  assert.deepEqual([tally(e, '2026-W40'), sum.vote_rows, hits], [2, 2, 1]);
+});
+
+test('cron: vouches follow the stake both ways with the division POST /vouch stores; a failed read moves nothing', async () => {
+  const orig = console.log;
+  console.log = () => {};
+  try {
+    serve(withFixture());
+    const e = env();
+    const shared = sharedStakeWeight(SAMPLE_SKR, 2);
+    // Two Genesis Tokens in one wallet vouch through the real router: n = 2, both rows 3.36.
+    let r = await call(e, 'POST', '/vouch', vouchBody(W, MINT_A, 'x.place', SIG('1')));
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    e.DB.raw.exec('UPDATE vouch_members SET last_vouch_at = NULL');
+    r = await call(e, 'POST', '/vouch', vouchBody(W, MINT_B, 'y.place', SIG('2')));
+    assert.deepEqual([r.status, r.body.weight, r.body.mints_in_wallet], [200, shared, 2], JSON.stringify(r.body));
+
+    // Same stake: the cron's divisor and weight equal the router's, so no vouch row is written.
+    // The ticks run from an hour after the real clock: the router stamps real time, and a tick
+    // leaves rows stamped after its scheduled time alone (the race tests below).
+    const T0 = hourAfter(new Date().toISOString(), 1);
+    serve(withFixture());
+    let { sum } = await tick(e, T0);
+    assert.deepEqual([sum.ok, sum.vouch_rows, sum.cache_rows, hits], [1, 0, 1, 1]);
+    assert.deepEqual(vouchRows(e), [['x.place', shared, SAMPLE_SKR], ['y.place', shared, SAMPLE_SKR]]);
+
+    // The stake doubles: both rows go UP, stamped at the tick's time.
+    const up = skrOf(80000000000n);
+    const upW = sharedStakeWeight(up, 2);
+    assert.ok(upW > shared);
+    serve(withStake(W, { shares: 80000000000n }));
+    const t1 = hourAfter(T0, 1);
+    ({ sum } = await tick(e, t1));
+    assert.deepEqual(vouchRows(e), [['x.place', upW, up], ['y.place', upW, up]]);
+    assert.deepEqual([sum.vouch_rows, checkedAts(e)], [2, [t1, t1]]);
+
+    // POST /vouch reading the same stake stamps the same weight and re-stamps no other row.
+    e.DB.raw.exec("UPDATE vouch_members SET last_vouch_at = NULL; UPDATE skr_cache SET checked_at = '2000-01-01T00:00:00.000Z'");
+    r = await call(e, 'POST', '/vouch', vouchBody(W, MINT_A, 'z.place', SIG('3')));
+    assert.deepEqual([r.status, r.body.weight, r.body.staked_skr, r.body.weight_source, r.body.mints_in_wallet], [200, upW, up, 'chain', 2], JSON.stringify(r.body));
+    assert.deepEqual(checkedAts(e).slice(0, 2), [t1, t1]);
+
+    // The RPC fails: weights, stakes, stamps and the cache stay exactly as they were.
+    const before = snapshot(e);
+    rpcDown();
+    ({ sum } = await tick(e, hourAfter(T0, 2)));
+    assert.equal(snapshot(e), before);
+    assert.deepEqual([sum.ok, sum.unknown, sum.vouch_rows, sum.cache_rows, hits], [0, 1, 0, 0, 1]);
+
+    // The stake is gone: every row falls to 1.00 with staked_skr 0.
+    serve(cfgOnly());
+    ({ sum } = await tick(e, hourAfter(T0, 3)));
+    assert.deepEqual(vouchRows(e), [['x.place', 1, 0], ['y.place', 1, 0], ['z.place', 1, 0]]);
+    assert.equal(sum.vouch_rows, 3);
+  } finally {
+    console.log = orig;
+  }
+});
+
+test('cron race: a POST /vouch with a second Genesis Token lands while the tick reads; the tick does not undo its division (the divisor changed)', async () => {
+  const orig = console.log;
+  console.log = () => {};
+  let r2;
+  try {
+    serve(withFixture());
+    const e = env();
+    assert.equal((await call(e, 'POST', '/vouch', vouchBody(W, MINT_A, 'x.place', SIG('1')))).body.weight, 3.66);
+    const shared = sharedStakeWeight(SAMPLE_SKR, 2);
+    serveRacing(withFixture(), async () => {
+      e.DB.raw.exec('UPDATE vouch_members SET last_vouch_at = NULL');
+      r2 = await call(e, 'POST', '/vouch', vouchBody(W, MINT_B, 'y.place', SIG('2')));
+    });
+    const T = new Date().toISOString();                                 // the tick selected n_vouch = 1
+    console.log = orig;
+    const { sum } = await tick(e, T);
+    assert.deepEqual([r2.status, r2.body.weight, r2.body.mints_in_wallet], [200, shared, 2], JSON.stringify(r2.body));
+    assert.deepEqual(vouchRows(e), [['x.place', shared, SAMPLE_SKR], ['y.place', shared, SAMPLE_SKR]]);
+    assert.deepEqual([sum.ok, sum.vouch_rows], [1, 0]);
+    // The next tick selects n_vouch = 2: same weights, nothing to write.
+    serve(withFixture());
+    const next = await tick(e, hourAfter(T, 1));
+    assert.deepEqual([next.sum.ok, next.sum.vouch_rows], [1, 0]);
+    assert.deepEqual(vouchRows(e), [['x.place', shared, SAMPLE_SKR], ['y.place', shared, SAMPLE_SKR]]);
+  } finally {
+    console.log = orig;
+  }
+});
+
+test('cron race: the owner unstakes and vouches while the tick reads the old stake; the tick keeps the newer stamp and the newer cache row', async () => {
+  const orig = console.log;
+  console.log = () => {};
+  let r2;
+  try {
+    serve(withFixture());
+    const e = env();
+    assert.equal((await call(e, 'POST', '/vouch', vouchBody(W, MINT_A, 'x.place', SIG('1')))).body.weight, 3.66);
+    const m = withFixture();
+    serveRacing(m, async () => {
+      m.delete(fx.accounts.sampleUserStake.address);                     // unstaked after the tick's read
+      e.DB.raw.exec("UPDATE vouch_members SET last_vouch_at = NULL; UPDATE skr_cache SET checked_at = '2000-01-01T00:00:00.000Z'");
+      await new Promise((r) => setTimeout(r, 5));                        // the POST reads after the tick's scheduled time
+      r2 = await call(e, 'POST', '/vouch', vouchBody(W, MINT_A, 'y.place', SIG('2')));
+    });
+    const T = new Date().toISOString();
+    console.log = orig;
+    const { sum } = await tick(e, T);
+    assert.deepEqual([r2.status, r2.body.weight, r2.body.staked_skr, r2.body.weight_source], [200, 1, 0, 'chain'], JSON.stringify(r2.body));
+    assert.deepEqual(vouchRows(e), [['x.place', 1, 0], ['y.place', 1, 0]]);
+    const stamps = checkedAts(e);
+    assert.ok(stamps[0] === stamps[1] && stamps[0] > T, JSON.stringify([T, stamps]));
+    const c = e.DB.raw.prepare('SELECT status, staked_raw, checked_at FROM skr_cache WHERE wallet = ?').get(W);
+    assert.deepEqual([c.status, c.staked_raw, c.checked_at], ['none', '0', stamps[0]]);
+    assert.deepEqual([sum.ok, sum.vouch_rows, sum.cache_rows], [1, 0, 0]);
+  } finally {
+    console.log = orig;
+  }
+});
+
+test('cron race: a vote written while the tick reads is not demoted by the older read, and a wallet whose vote divisor changed is left for the next tick', async () => {
+  const e = env();
+  const W2 = randomWallet();
+  addVote(e, { week: '2026-W40', mint: 'M1', weight: 1, staked: 0 });              // W voted before staking
+  addVote(e, { week: '2026-W40', mint: 'M3', wallet: W2, weight: 2, staked: 300 }); // W2: nothing staked now
+  const later = new Date(Date.parse(WED) + 1000).toISOString();
+  serveRacing(cfgOnly(), async () => {
+    // W stakes and re-votes (the tick's read is older: no stake); W2 votes with a second Genesis Token.
+    e.DB.raw.prepare("UPDATE votes SET weight = 3.66, staked_skr = ?, updated_at = ? WHERE genesis_mint = 'M1'").run(SAMPLE_SKR, later);
+    e.DB.raw.prepare(`INSERT INTO votes (week, genesis_mint, wallet, package, weight, staked_skr, signature, signed_ts, created_at, updated_at)
+      VALUES ('2026-W40', 'M4', ?, 'x.place', 1, 0, 'sig', ?, ?, ?)`).run(W2, later, later, later);
+  });
+  const { sum } = await tick(e, WED);
+  const votes = () => e.DB.raw.prepare('SELECT genesis_mint, weight FROM votes ORDER BY genesis_mint').all().map((r) => [r.genesis_mint, r.weight]);
+  assert.deepEqual(votes(), [['M1', 3.66], ['M3', 2], ['M4', 1]]);
+  assert.deepEqual([sum.ok, sum.vote_rows], [2, 0]);
+  // An hour later the tick reads W's stake (3.66 stands) and selects W2 with its divisor of 2, so
+  // W2's 2.00 vote falls to 1.00.
+  serve(withFixture());
+  const next = await tick(e, hourAfter(WED, 1));
+  assert.deepEqual(votes(), [['M1', 3.66], ['M3', 1], ['M4', 1]]);
+  assert.equal(next.sum.vote_rows, 1);
+});
+
+test('cron: a failed read for one wallet leaves its rows as they were while the rest of the chunk is re-stamped', async () => {
+  const e = env();
+  addVouch(e, { mint: 'M1', pkg: 'x.place', weight: 1, staked: 0 });                        // W: rises to 3.66
+  addVouch(e, { mint: 'M2', wallet: MISSING, pkg: 'x.place', weight: 2.5, staked: 1500 });
+  addVote(e, { week: '2026-W40', mint: 'M2', wallet: MISSING, weight: 2.5, staked: 1500 });
+  const m = withFixture();
+  m.set(fx.accounts.missingUserStake.address, info(fx.accounts.sampleUserStake));        // W's position at MISSING's PDA
+  serve(m);
+  const { sum } = await tick(e, WED);
+  assert.deepEqual(vouchRows(e), [['x.place', 3.66, SAMPLE_SKR]]);
+  assert.deepEqual(vouchRows(e, MISSING), [['x.place', 2.5, 1500]]);
+  assert.equal(tally(e, '2026-W40'), 2.5);
+  assert.equal(e.DB.raw.prepare('SELECT COUNT(*) AS n FROM skr_cache WHERE wallet = ?').get(MISSING).n, 0);
+  assert.deepEqual([sum.read, sum.ok, sum.unknown, sum.chunks, hits], [2, 1, 1, 1, 1]);
+});
+
+test('cron: closed-week grace. Inside 8 h of the close an unstake begun before it demotes the closed week, one begun after it does not; this week demotes either way; from 08:00Z the closed week is frozen', async () => {
+  const mon = '2026-10-05T03:07:00.000Z';                               // Monday of 2026-W41; W40 closed at 00:00Z
+  const before = BigInt(Date.parse('2026-10-04T23:30:00.000Z') / 1000);
+  const after = BigInt(Date.parse('2026-10-05T01:00:00.000Z') / 1000);
+  const unstaked = (ts) => withStake(W, { shares: 0n, unstaking: BigInt(X.sampleUserStake.stakedRaw), unstakeTs: ts });
+  for (const [ts, expectClosed] of [[before, 1], [after, 3.66]]) {
+    const e = env();
+    addVote(e, { week: '2026-W40', mint: 'M1', weight: 3.66 });
+    addVote(e, { week: '2026-W41', mint: 'M1', weight: 3.66 });
+    serve(unstaked(ts));
+    const { sum } = await tick(e, mon);
+    assert.equal(sum.closed_week, '2026-W40');
+    assert.equal(tally(e, '2026-W40'), expectClosed, `unstake at ${ts}`);
+    assert.equal(tally(e, '2026-W41'), 1, 'this week has no grace');
+  }
+  const e = env();
+  addVote(e, { week: '2026-W40', mint: 'M1', weight: 3.66 });
+  serve(unstaked(before));
+  const { sum } = await tick(e, '2026-10-05T08:00:00.000Z');
+  assert.deepEqual([sum.closed_week, sum.selected, hits, tally(e, '2026-W40')], [null, 0, 0, 3.66]);
+});
+
+test('cron: a short reply demotes nothing, re-stamps nothing and caches nothing', async () => {
+  const e = env();
+  addVote(e, { week: '2026-W40', mint: 'M1', weight: 3.66 });
+  addVouch(e, { mint: 'M1', pkg: 'x.place', weight: 3.66, staked: SAMPLE_SKR, checkedAt: TS0 });
+  serve(cfgOnly(), { shortBy: 1 });
+  const before = snapshot(e);
+  const { sum } = await tick(e, WED);
+  assert.equal(snapshot(e), before);
+  assert.equal(tally(e, '2026-W40'), 3.66);
+  assert.equal(count(e, 'skr_cache'), 0);
+  assert.deepEqual([sum.ok, sum.unknown, sum.vote_rows, sum.vouch_rows, sum.cache_rows, hits], [0, 1, 0, 0, 0, 1]);
+});
+
+test('cron: the switch read fails CLOSED on a D1 error and skr_read_enabled off (any value but 1) skips the tick, both with zero RPC calls; a D1 error on the selection or the write skips it too', async () => {
+  serve(withFixture());
+  const a = await tick(env({ failWhen: (sql) => sql.includes('settings') }), WED);
+  assert.equal(a.sum.skipped, 'settings unavailable');
+  for (const v of ['0', 'false']) {
+    const e = env();
+    e.DB.raw.prepare("UPDATE settings SET value = ? WHERE key = 'skr_read_enabled'").run(v);
+    addVote(e, { week: '2026-W40', mint: 'M1', weight: 3.66 });
+    const b = await tick(e, WED);
+    assert.deepEqual([b.sum.skipped, tally(e, '2026-W40')], ['disabled', 3.66], v);
+  }
+  const c = await tick(env({ failWhen: (sql) => sql.includes('WITH sel') }), WED);
+  assert.equal(c.sum.skipped, 'storage error');
+  assert.equal(hits, 0);
+  for (const s of [a, c]) assert.equal(s.logs.length, 2);
+  // The batch fails: it rolls back, so the vote keeps 3.66 and nothing is cached.
+  const e = env({ failWhen: (sql) => sql.startsWith('INSERT INTO skr_cache') });
+  addVote(e, { week: '2026-W40', mint: 'M1', weight: 3.66 });
+  serve(cfgOnly());
+  const d = await tick(e, WED);
+  assert.deepEqual([d.sum.skipped, tally(e, '2026-W40'), count(e, 'skr_cache')], ['write failed', 3.66, 0]);
+  // A missing settings row reads as on (settingOn), as GET /flags reads it.
+  const f = env();
+  f.DB.raw.exec("DELETE FROM settings WHERE key = 'skr_read_enabled'");
+  addVote(f, { week: '2026-W40', mint: 'M1', weight: 3.66 });
+  serve(cfgOnly());
+  const g = await tick(f, WED);
+  assert.deepEqual([g.sum.skipped, g.sum.ok, tally(f, '2026-W40'), hits], [undefined, 1, 1, 1]);
+});
+
+test('cron: REWEIGHT_MAX_WALLETS is clamped; 3 x 99 wallets under "297" stay inside the Free plan caps; the default reads the 99 stalest in ONE call', async () => {
+  assert.deepEqual(['', undefined, null, '0', '-5', '1.5', 'abc', '297', ' 50 ', '999999', 2000].map(skr.reweightCap),
+    [99, 99, 99, 99, 99, 99, 99, 297, 50, 2000, 2000]);
+  assert.deepEqual([skr.REWEIGHT_DEFAULT, skr.REWEIGHT_CEILING, skr.DERIVE_BUDGET], [99, 2000, 4]);
+  const e = env();
+  const m = cfgOnly();
+  const wallets = Array.from({ length: 297 }, randomWallet);
+  const insV = e.DB.raw.prepare(`INSERT INTO vouches (genesis_mint, wallet, package, verdict, signature, signed_ts, created_at, updated_at)
+    VALUES (?, ?, 'a.app', 'works', 's', ?, ?, ?)`);
+  const insP = e.DB.raw.prepare('INSERT INTO wallet_pdas (wallet, pool, pda, bump) VALUES (?, ?, ?, ?)');
+  e.DB.raw.exec('BEGIN');
+  for (const w of wallets) {
+    insV.run('M' + w.slice(0, 8), w, TS0, TS0, TS0);
+    const r = skr.userStakePda(base58.decode(w), base58.decode(skr.GUARDIAN_POOLS[0]));
+    insP.run(w, skr.GUARDIAN_POOLS[0], base58.encode(r.address), r.bump);
+    m.set(base58.encode(r.address), userStakeInfo(w, { shares: 1_000_000_000n }));
+  }
+  e.DB.raw.exec('COMMIT');
+  e.REWEIGHT_MAX_WALLETS = '297';                                      // a Paid-plan [vars] override
+  serve(m);
+  let q0 = e.DB.stats.queries;
+  let { sum } = await tick(e, WED);
+  const queries = e.DB.stats.queries - q0;
+  assert.equal(hits, 3);
+  assert.ok(queries + hits <= 50, `queries ${queries} + fetches ${hits}`);
+  assert.deepEqual([sum.selected, sum.read, sum.chunks, sum.ok, sum.vouch_rows, sum.cache_rows, sum.deferred], [297, 297, 3, 297, 297, 297, 0]);
+  assert.equal(count(e, 'skr_cache'), 297);
+  assert.equal(e.DB.raw.prepare('SELECT MIN(weight) AS w FROM vouches').get().w, X.testValues.oneShareUnitWeight); // 1,147.03 SKR each
+  console.log(`# tick of 297 wallets: ${queries} D1 queries, ${hits} RPC calls`);
+  delete e.REWEIGHT_MAX_WALLETS;                                       // Free-plan default
+  serve(m);
+  q0 = e.DB.stats.queries;
+  const t1 = hourAfter(WED, 1);
+  ({ sum } = await tick(e, t1));
+  assert.equal(hits, 1);                                               // 99 wallets = one getMultipleAccounts
+  assert.deepEqual([sum.selected, sum.read, sum.chunks, sum.vouch_rows, sum.cache_rows], [99, 99, 1, 0, 99]);
+  assert.equal(e.DB.raw.prepare('SELECT COUNT(*) AS n FROM skr_cache WHERE checked_at = ?').get(t1).n, 99);
+  console.log(`# default tick: ${e.DB.stats.queries - q0} D1 queries, ${hits} RPC call`);
+});
+
+test('cron: at most DERIVE_BUDGET wallets without a stored PDA are derived per tick; the rest wait and come first next tick; a wallet that is not a key is never read', async () => {
+  const e = env();
+  const m = cfgOnly();
+  const wallets = Array.from({ length: 10 }, randomWallet);
+  wallets.forEach((w, i) => { addVouch(e, { mint: `M${i}`, wallet: w, pkg: 'a.app' }); withStake(w, { shares: 1_000_000_000n }, m); });
+  addVouch(e, { mint: 'MX', wallet: 'not-a-wallet', pkg: 'a.app' });
+  const expected = [[11, 4, 6, 1, 4], [11, 8, 2, 1, 8], [11, 10, 0, 1, 10]];
+  for (const [k, want] of expected.entries()) {
+    serve(m);
+    const { sum } = await tick(e, hourAfter(WED, k));
+    assert.deepEqual([sum.selected, sum.read, sum.deferred, sum.invalid, count(e, 'wallet_pdas')], want, `tick ${k}`);
+    assert.equal(hits, 1);
+  }
+  assert.equal(count(e, 'skr_cache'), 10);
+  assert.deepEqual(vouchRows(e, 'not-a-wallet'), [['a.app', 1, null]]);
+});
+
+// checkDrift and the scheduled() handler: getAccountInfo(ProgramData, dataSlice) plus getMultipleAccounts.
+const LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111';
+function serveDrift(byAddr, { deploySlot = BigInt(fx.program.deploySlot), owner = LOADER } = {}) {
+  hits = 0;
+  globalThis.fetch = async (_url, init) => {
+    hits++;
+    const { method, params } = JSON.parse(init.body);
+    let value;
+    if (method === 'getAccountInfo') {
+      assert.equal(params[0], skr.PROGRAM_DATA);
+      assert.deepEqual(params[1], { encoding: 'base64', dataSlice: { offset: 4, length: 8 } });
+      const b = new Uint8Array(8);
+      wU64(b, 0, deploySlot);
+      value = { owner, lamports: 1, data: [base64.encode(b), 'base64'], executable: false, rentEpoch: 0 };
+    } else {
+      assert.equal(method, 'getMultipleAccounts');
+      value = params[0].map((a) => byAddr.get(a) ?? null);
+    }
+    return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { context: { slot: fx.slot }, value } }));
+  };
+}
+
+test('checkDrift: the pinned deploy slot and an active pool read clean; a new slot, a foreign owner, an inactive or missing pool and an RPC error are reported, never thrown', async () => {
+  const e = { RPC_URL: 'http://fake.invalid/redacted' };
+  serveDrift(withPool());
+  assert.deepEqual(await skr.checkDrift(e), { deploy_slot: fx.program.deploySlot, deploy_slot_changed: false, pool_active: true });
+  assert.equal(hits, 2);
+  serveDrift(withPool(), { deploySlot: skr.PINNED_DEPLOY_SLOT + 1n });
+  assert.deepEqual(await skr.checkDrift(e), { deploy_slot: fx.program.deploySlot + 1, deploy_slot_changed: true, pool_active: true });
+  serveDrift(withPool(), { owner: '11111111111111111111111111111111' });
+  assert.deepEqual(await skr.checkDrift(e), { deploy_slot: null, deploy_slot_changed: true, pool_active: true });
+  serveDrift(withPool(cfgOnly(), (b) => { b[171] = 0; }));
+  assert.equal((await skr.checkDrift(e)).pool_active, false);
+  serveDrift(cfgOnly());                                               // pool account missing
+  assert.equal((await skr.checkDrift(e)).pool_active, null);
+  rpcDown();
+  assert.deepEqual(await skr.checkDrift(e), { drift_error: 'rpc: error' });
+});
+
+test('index.js scheduled(): the 03:07 UTC tick re-weights and runs the drift check through waitUntil; 04:07 re-weights only', async () => {
+  const e = env();
+  addVote(e, { week: '2026-W41', mint: 'M1', weight: 3.66 });
+  const logs = [];
+  const orig = console.log;
+  console.log = (s) => logs.push(String(s));
+  try {
+    for (const iso of ['2026-10-05T03:07:00.000Z', '2026-10-05T04:07:00.000Z']) {
+      serveDrift(withPool(cfgOnly()));                                // no UserStake: the vote falls
+      const waits = [];
+      await worker.scheduled({ scheduledTime: Date.parse(iso), cron: '7 * * * *' }, e, { waitUntil: (p) => waits.push(p) });
+      assert.equal(waits.length, 1);
+      await Promise.all(waits);
+      logs.push(`# hits ${hits}`);
+    }
+  } finally {
+    console.log = orig;
+  }
+  const sums = logs.filter((l) => l.startsWith('{') && !l.includes('"phase"')).map((l) => JSON.parse(l));
+  assert.equal(sums.length, 2);
+  assert.deepEqual([sums[0].ok, sums[0].vote_rows, sums[0].closed_week, sums[0].deploy_slot, sums[0].deploy_slot_changed, sums[0].pool_active],
+    [1, 1, '2026-W40', fx.program.deploySlot, false, true]);
+  assert.ok(!('deploy_slot' in sums[1]) && sums[1].ok === 1 && sums[1].vote_rows === 0, JSON.stringify(sums[1]));
+  assert.deepEqual(logs.filter((l) => l.startsWith('# hits')), ['# hits 3', '# hits 1']);
+  assert.equal(tally(e, '2026-W41'), 1);
+});
+
+test('cron log lines carry counts, a week key and drift flags only: no wallet, no stake, no URL', async () => {
+  const e = env();
+  addVote(e, { week: '2026-W41', mint: 'M1', weight: 3.66 });
+  addVouch(e, { mint: 'M1', pkg: 'x.place' });
+  addVouch(e, { mint: 'M2', wallet: MISSING, pkg: 'x.place', weight: 2, staked: 300 });
+  serveDrift(withPool(withFixture()));
+  const { logs, sum } = await tick(e, '2026-10-05T03:07:00.000Z', { drift: true });
+  assert.equal(logs.length, 2);
+  assert.equal(sum.deploy_slot_changed, false);
+  const ALLOWED = new Set(['evt', 'phase', 'skipped', 'selected', 'read', 'deferred', 'invalid', 'chunks', 'ok', 'unknown',
+    'vouch_rows', 'vote_rows', 'cache_rows', 'closed_week', 'deploy_slot', 'deploy_slot_changed', 'pool_active', 'drift_error', 'ms']);
+  for (const l of logs) {
+    for (const k of Object.keys(JSON.parse(l))) assert.ok(ALLOWED.has(k), `log key ${k}`);
+    assert.ok(![W, MISSING, pdaOf(W), String(SAMPLE_SKR), X.sampleUserStake.stakedRaw].some((x) => l.includes(x)), l);
+    assert.ok(!/https?:|fake\.invalid|redacted/.test(l), l);
+  }
+});
+
+// ---------------------------------------------------------------- notes: half of a surrogate pair
+test('POST /vouch: a note holding half of a surrogate pair (the 140 cut after an emoji) is refused 400 before verifyFn and the chain; the whole emoji passes', async () => {
+  const rocket = String.fromCodePoint(0x1f680);
+  let note = null;
+  for (let j = 0; j < 140 && note === null; j++) {
+    const n = sanitizeNote('see x.io ' + 'a'.repeat(j) + rocket.repeat(20)); // the stripped link pushes the emoji across 140
+    if (hasLoneSurrogate(n)) note = n;
+  }
+  assert.ok(note, 'the generator reaches the cut');
+  assert.equal(note.length, 140);
+  assert.equal(sanitizeNote(note), note);                               // a fixed point: only the new check refuses it
+  const lowAlone = 'fine' + String.fromCharCode(0xdc00) + 'app';
+  let verified = 0;
+  const verifyCount = async () => { verified++; return { number: null, tier: null }; };
+  const post = async (e, body) => {
+    const req = new Request('https://w.test/vouch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await handleVouch(req, e, new URL('https://w.test/vouch'), verifyCount);
+    return { status: r.status, body: await r.json() };
+  };
+  serve(withFixture());
+  const e = env();
+  for (const bad of [note, lowAlone]) {
+    const r = await post(e, { ...vouchBody(W, MINT_A, 'x.place', SIG('1')), note: bad });
+    assert.deepEqual([r.status, r.body.error], [400, 'note contains a link or is not normalised']);
+  }
+  assert.deepEqual([verified, hits, count(e, 'vouches')], [0, 0, 0]);
+  const orig = console.log;
+  console.log = () => {};
+  try {
+    const whole = note.slice(0, -1);                                    // ends on a complete emoji
+    const r = await post(e, { ...vouchBody(W, MINT_A, 'x.place', SIG('2')), note: whole });
+    assert.deepEqual([r.status, r.body.vouch?.note, verified], [200, whole, 1], JSON.stringify(r.body));
   } finally {
     console.log = orig;
   }
