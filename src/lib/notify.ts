@@ -71,6 +71,8 @@ export async function fireReplyAlert(title: string, body: string): Promise<boole
   try {
     await ensureReplyChannel();
     await Notifications.scheduleNotificationAsync({
+      // One fixed identifier: a newer reply alert replaces the one still in the shade.
+      identifier: REPLY_ALERT_KIND,
       content: { title, body, data: { kind: REPLY_ALERT_KIND } },
       trigger: Platform.OS === 'android' ? { channelId: REPLY_CHANNEL_ID } : null,
     });

@@ -45,7 +45,7 @@ export const REPLY_ALERTS_NO_PERMISSION =
 export const REPLY_ALERTS_FAILED = "Couldn't turn on reply alerts right now.";
 export const REPLY_ALERTS_OFFER_TITLE = 'Reply alerts';
 export const REPLY_ALERTS_OFFER_BODY =
-  `Get a notification when a member replies to you? The app checks in the background, at most once every ${REPLY_CHECK_MINUTES} minutes. You can turn this off on the Lounge tab.`;
+  `Get a notification when a member replies to you? The app would then check in the background, at most once every ${REPLY_CHECK_MINUTES} minutes. You can turn this off on the Lounge tab.`;
 
 type BackgroundTaskModule = typeof import('expo-background-task');
 type TaskManagerModule = typeof import('expo-task-manager');

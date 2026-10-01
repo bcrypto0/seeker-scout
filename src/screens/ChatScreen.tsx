@@ -28,6 +28,8 @@ import {
   sendMessage,
 } from '../lib/chat';
 import { freshlyListed, scoutPick, topClimbers } from '../lib/collections';
+import { getNotForMe, onNotForMeChange } from '../lib/notForMe';
+import { visiblePick, withoutHidden } from '../lib/notForMeFilter';
 import { isShare, parseShare } from '../lib/game';
 import { useMyNumber } from '../lib/loungeNumber';
 import { latestKnownReplyId, markRepliesSeen } from '../lib/replies';
@@ -138,17 +140,38 @@ export function ChatScreen() {
     if (token) poll();
   }, [token, poll]);
 
+  // The Not for me list: the radar never suggests an app this owner hid (the
+  // Scout Pick stays the one Discover shows, via visiblePick).
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    let live = true;
+    const read = () => {
+      getNotForMe()
+        .then((ids) => {
+          if (live) setHidden(new Set(ids));
+        })
+        .catch(() => {});
+    };
+    read();
+    const off = onNotForMeChange(read);
+    return () => {
+      live = false;
+      off();
+    };
+  }, []);
+
   const radar = useMemo(() => {
     if (!catalog.length) return [];
+    const shown = withoutHidden(catalog, hidden);
     const out: { label: string; app: DappEntry }[] = [];
-    const pick = scoutPick(catalog);
+    const pick = visiblePick(catalog, hidden, scoutPick);
     if (pick) out.push({ label: 'Scout Pick', app: pick });
-    const climb = topClimbers(catalog, 3).find((a) => a.id !== pick?.id);
+    const climb = topClimbers(shown, 3).find((a) => a.id !== pick?.id);
     if (climb) out.push({ label: `Climbing ▲${climb.rankDelta}`, app: climb });
-    const fresh = freshlyListed(catalog, 3).find((a) => !out.some((o) => o.app.id === a.id));
+    const fresh = freshlyListed(shown, 3).find((a) => !out.some((o) => o.app.id === a.id));
     if (fresh) out.push({ label: 'New in store', app: fresh });
     return out;
-  }, [catalog]);
+  }, [catalog, hidden]);
 
   async function onSend() {
     const t = text.trim();

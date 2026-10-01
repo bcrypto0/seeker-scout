@@ -140,17 +140,17 @@ export function ProfileScreen() {
             )}
             {verify === 'verified' && (
               <Text style={styles.ok}>
-                ✓ Verified Seeker owner — Genesis Token found
+                ✓ Verified Seeker owner: Genesis Token found
               </Text>
             )}
             {verify === 'not-found' && (
               <Text style={styles.warn}>
-                No Genesis Token in this wallet — reviews stay locked
+                No Genesis Token in this wallet, so reviews stay locked
               </Text>
             )}
             {verify === 'error' && (
               <Text style={styles.warn}>
-                Couldn't reach the network to verify — try again
+                Couldn't reach the network to verify. Try again
               </Text>
             )}
 

@@ -16,7 +16,9 @@ if (bg) {
   try {
     const { BackgroundTask, TaskManager } = bg;
     TaskManager.defineTask(REPLY_TASK, async () => {
-      await runReplyCheck();
+      const outcome = await runReplyCheck();
+      // Dev builds only: the outcome shows in Metro, so a device test can see why a run skipped.
+      if (__DEV__) console.log(`reply check: ${outcome}`);
       return BackgroundTask.BackgroundTaskResult.Success;
     });
   } catch {

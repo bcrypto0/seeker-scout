@@ -9,7 +9,16 @@ import { signMessageBytes } from './wallet';
  * message, same format as the claim) to get a 24h bearer token — then post
  * without re-signing. Read is public.
  */
-const BASE = 'https://seeker-lounge.bcrypto-eth.workers.dev';
+const PROD_BASE = 'https://seeker-lounge.bcrypto-eth.workers.dev';
+/**
+ * Dev builds only: EXPO_PUBLIC_CHAT_URL points the chat and the reply checks
+ * at a local relay for device tests (the vouch.ts VOUCH_BASE pattern). A
+ * release build always uses PROD_BASE.
+ */
+const BASE: string =
+  __DEV__ && typeof process.env.EXPO_PUBLIC_CHAT_URL === 'string' && process.env.EXPO_PUBLIC_CHAT_URL
+    ? process.env.EXPO_PUBLIC_CHAT_URL
+    : PROD_BASE;
 const TOKEN_KEY = 'seekerscout.chat.token.v1';
 /** The Lounge worker (replies.ts and the background reply check read it too). */
 export const CHAT_BASE = BASE;
