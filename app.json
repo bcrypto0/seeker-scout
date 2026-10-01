@@ -2,14 +2,14 @@
   "expo": {
     "name": "Seeker Scout",
     "slug": "seeker-scout",
-    "version": "0.10.1",
+    "version": "0.11.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0E0E12",
     "icon": "./assets/icon.png",
     "android": {
       "package": "com.bilal.seekerscout",
-      "versionCode": 13,
+      "versionCode": 14,
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
