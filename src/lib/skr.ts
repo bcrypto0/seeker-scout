@@ -420,7 +420,7 @@ export const STAKE_READ_ERROR = "Couldn't read your stake right now.";
 
 const commas = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-/** Raw SKR (6 decimals) to "11,470.29": exact bigint math, rounded half up to 2 dp. No Intl. */
+/** Raw SKR (6 decimals) to "9,176.23": exact bigint math, rounded half up to 2 dp. No Intl. */
 export function formatSkrRaw(raw: bigint): string {
   const r = raw > B0 ? raw : B0;
   const cents = (r + BigInt(5_000)) / BigInt(10_000);
@@ -440,7 +440,7 @@ export function cooldownLine(withdrawableAt: number, nowMs: number): string {
 
 export interface StakeCardView {
   ok: boolean;
-  /** "11,470.29 SKR" */
+  /** "11,400.00 SKR" */
   amount: string | null;
   /** "Vouch weight 3.06x"; null when `noGenesis` (weightNote says why) or on an error. */
   weight: string | null;

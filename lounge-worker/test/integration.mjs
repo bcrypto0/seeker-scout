@@ -204,15 +204,15 @@ const Q = newOwner();           // its mint is seeded up to the per-mint package
 const SPRAY_MINT = randomMint(); // one Genesis Token held by eleven wallets
 const sprayers = Array.from({ length: 11 }, () => ({ ...newOwner(), mint: SPRAY_MINT }));
 const aPkgs = new Set();        // packages A holds an accepted row for
-// D6 stake reader. S stakes 11,355.88 SKR (the demo wallet's number, requirement 9)
-// at the fixture's share_price 1147028992: 9,900,255,425 shares * 1147028992 / 1e9
-// = 11,355,880,000 raw exactly. S holds a second Genesis Token (S_MINT2).
+// D6 stake reader. S stakes 11,400 SKR (a synthetic stake on the 3.06x step of the curve)
+// at the fixture's share_price 1147028992: 9,938,720,015 shares * 1147028992 / 1e9
+// = 11,400,000,000 raw exactly. S holds a second Genesis Token (S_MINT2).
 const S = newOwner();
 const S_MINT2 = randomMint();
-const S_SHARES = '9900255425';
-const S_SKR = 11355.88;
-const S_WEIGHT = 3.06;          // weightFor(11355.88)
-const S_WEIGHT_2 = 2.76;        // sharedStakeWeight(11355.88, 2) = weightFor(5677.94)
+const S_SHARES = '9938720015';
+const S_SKR = 11400;
+const S_WEIGHT = 3.06;          // weightFor(11400)
+const S_WEIGHT_2 = 2.76;        // sharedStakeWeight(11400, 2) = weightFor(5700)
 const S_MINT3 = randomMint();   // S's third Genesis Token, first used while its stake read fails
 const MS = newOwner();          // its stake read comes back short (value has one entry too few)
 const ML = newOwner();          // its UserStake comes back 168 bytes long
@@ -678,7 +678,7 @@ async function run() {
   // ---- D6: the SKR stake reader against fixture-shaped chain replies ----------
   // Last, so their weights (up to 3.06 on one package) cannot reorder the
   // aggregate and top-ten scenarios above.
-  await scenario('staked owner, 11,355.88 SKR (fixture UserStake at the live share_price) -> 200, weight 3.06, weight_source chain, 3 chain calls; skr_cache and wallet_pdas rows written', async () => {
+  await scenario('staked owner, 11,400 SKR (fixture UserStake at the live share_price) -> 200, weight 3.06, weight_source chain, 3 chain calls; skr_cache and wallet_pdas rows written', async () => {
     const c0 = fake.counts();
     const r = await post(vouch(S, 's1.place', { note: 'Staked owner, works fine.' }));
     expectStatus(r, 200);
@@ -689,13 +689,13 @@ async function run() {
     checkNoWeights(r.body.app, "the staked signer's app block"); // its own weight and stake above, not in the public block
     checkWriteCalls(c0, r);
     const cache = await d1Rows(`SELECT status, staked_raw, unstaking_raw, share_price, weight FROM skr_cache WHERE wallet = '${S.wallet}'`);
-    check(cache.length === 1 && cache[0].status === 'ok' && cache[0].staked_raw === '11355880000' &&
+    check(cache.length === 1 && cache[0].status === 'ok' && cache[0].staked_raw === '11400000000' &&
       cache[0].unstaking_raw === '0' && cache[0].share_price === '1147028992' && cache[0].weight === S_WEIGHT, JSON.stringify(cache));
     const pdas = await d1Rows(`SELECT pda FROM wallet_pdas WHERE wallet = '${S.wallet}'`);
     check(pdas.length === 1 && pdas[0].pda === stakePdaOf(S.wallet), JSON.stringify(pdas));
   });
 
-  await scenario('second vouch from the staked wallet inside 60 s -> weight_source cache, weight 3.06, staked_skr 11355.88, only the SGT pair reaches the chain', async () => {
+  await scenario('second vouch from the staked wallet inside 60 s -> weight_source cache, weight 3.06, staked_skr 11400, only the SGT pair reaches the chain', async () => {
     await waitSlot(S);
     const c0 = fake.counts();
     const r = await post(vouch(S, 's2.place'));
@@ -706,7 +706,7 @@ async function run() {
     checkWriteCalls(c0, r);
   });
 
-  await scenario('a second Genesis Token in the staked wallet -> mints_in_wallet 2, weight 2.76 = sharedStakeWeight(11355.88, 2) on the new row and on every earlier row of the wallet', async () => {
+  await scenario('a second Genesis Token in the staked wallet -> mints_in_wallet 2, weight 2.76 = sharedStakeWeight(11400, 2) on the new row and on every earlier row of the wallet', async () => {
     await waitSlot(S);
     const c0 = fake.counts();
     const r = await post(vouch(S, 's3.place', { mint: S_MINT2 }));
@@ -750,7 +750,7 @@ async function run() {
     checkWriteCalls(c0, r2);
   });
 
-  await scenario("the staked wallet's stake read fails (same Genesis Token, new package) -> 200 at 1.00x with staked_skr null and weight_source error; its earlier rows keep 2.76 and 11,355.88", async () => {
+  await scenario("the staked wallet's stake read fails (same Genesis Token, new package) -> 200 at 1.00x with staked_skr null and weight_source error; its earlier rows keep 2.76 and 11,400", async () => {
     fake.register({ badStakes: [[S.wallet, 'length']] });                 // S's UserStake now comes back 168 bytes
     await d1(`DELETE FROM skr_cache WHERE wallet = '${S.wallet}'`);        // so the next vouch reads the chain
     await waitSlot(S);
@@ -877,11 +877,11 @@ async function run() {
     check((await snapshot()) === before, 'a tick with a short reply changed a row');
   });
 
-  await scenario("cron tick, Wednesday 12:07Z: S's stake doubles, so all five of its rows (the two its failed reads stamped 1.00x included) rise to sharedStakeWeight(22,711.76, 3); V's 3.66 vote with nothing staked falls to 1.00; S's 1.00 vote is not raised; ML's failed read leaves its rows as they were", async () => {
+  await scenario("cron tick, Wednesday 12:07Z: S's stake doubles, so all five of its rows (the two its failed reads stamped 1.00x included) rise to sharedStakeWeight(22,800, 3); V's 3.66 vote with nothing staked falls to 1.00; S's 1.00 vote is not raised; ML's failed read leaves its rows as they were", async () => {
     const s2Shares = String(BigInt(S_SHARES) * 2n);
     const s2Skr = skrOfShares(s2Shares);
     const want = sharedStakeWeight(s2Skr, 3);
-    check(Math.abs(s2Skr - 22711.76) < 0.01 && want === 2.88, `stake ${s2Skr}, weight ${want}`);
+    check(Math.abs(s2Skr - 22800) < 0.01 && want === 2.89, `stake ${s2Skr}, weight ${want}`);
     fake.register({ stakes: [[S.wallet, { shares: s2Shares }], [MS.wallet, { shares: '0' }]] }); // MS: no position now, no short reply
     await insertVotes([voteRow(WEEK, V, 3.66, 45881.15968), voteRow(WEEK, S, 1, 0)]);
     const mlSql = `SELECT id, weight, staked_skr, weight_checked_at FROM vouches WHERE wallet = '${ML.wallet}' ORDER BY id`;

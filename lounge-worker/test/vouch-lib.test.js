@@ -171,7 +171,7 @@ test('hasHiddenLink sees the links the ASCII passes miss and leaves real prose a
   assert.ok(checked > 2900, `only ${checked} fixed points`);
 });
 test('weight curve reference points', () => {
-  const table = [[0, 1], [100, 1.3], [1000, 2.04], [10000, 3], [11355.88, 3.06], [99900, 4], [1e9, 4]];
+  const table = [[0, 1], [100, 1.3], [1000, 2.04], [10000, 3], [11400, 3.06], [99900, 4], [1e9, 4]];
   for (const [skr, w] of table) assert.equal(weightFor(skr), w, String(skr));
   for (const bad of [null, undefined, NaN, -5, 'x', Infinity]) assert.equal(weightFor(bad), 1);
 });
@@ -179,8 +179,8 @@ test('one stake backs one voice: n Genesis Tokens in one wallet split the stake'
   assert.equal(sharedStakeWeight(99900, 1), 4);
   assert.equal(sharedStakeWeight(99900, 2), 3.7);      // 2 x 3.70 = 7.40, not 8.00
   assert.equal(sharedStakeWeight(99900, 4), 3.4);      // weightFor(24975)
-  assert.equal(sharedStakeWeight(11355.88, 1), 3.06);  // the demo wallet
-  assert.equal(sharedStakeWeight(11355.88, 0), 3.06);  // n <= 0 counts as 1
+  assert.equal(sharedStakeWeight(11400, 1), 3.06);     // a mid-size stake
+  assert.equal(sharedStakeWeight(11400, 0), 3.06);     // n <= 0 counts as 1
   assert.equal(sharedStakeWeight(null, 3), 1);
 });
 test('chip thresholds: no amount of SKR passes alone', () => {

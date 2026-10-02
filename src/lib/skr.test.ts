@@ -276,17 +276,17 @@ test('readStakeOnce: one retry on 429, 5xx and a dropped connection; none on a t
 });
 
 // ---------------------------------------------------------------- weight, amounts, sentences
-test('weight curve: the worker\'s table, the demo wallet (3.06x), the cap and junk', () => {
+test('weight curve: the worker\'s table, a mid-size stake (3.06x), the cap and junk', () => {
   const table: Array<[unknown, number]> = [[null, 1], [undefined, 1], [0, 1], [-5, 1], [Number.NaN, 1], [Number.POSITIVE_INFINITY, 1],
-    [100, 1.3], [1000, 2.04], [10000, 3], [11355.88, 3.06], [1355.88, 2.16], [45465.44, 3.66], [99900, 4], [1e9, 4]];
+    [100, 1.3], [1000, 2.04], [10000, 3], [11400, 3.06], [1400, 2.18], [45465.44, 3.66], [99900, 4], [1e9, 4]];
   for (const [s, w] of table) assert.equal(skr.weightFor(s as number), w, String(s));
   for (const x of WALLETS.map((w) => w.x)) assert.equal(skr.weightFor(x.stakedSkr), x.weight);
-  // The demo wallet (HuiUjM...) on 2026-09-30: 10,000,000,000 shares at share price 1147028992.
-  const raw = skr.stakedRawOf(BigInt(10_000_000_000), BigInt(1147028992));
-  assert.equal(raw, BigInt(11_470_289_920));
-  assert.equal(skr.toSkr(raw), 11470.28992);
-  assert.equal(skr.weightFor(skr.toSkr(raw)), 3.06);
-  assert.equal(skr.formatSkrRaw(raw), '11,470.29');
+  // A synthetic stake account: 8,000,000,000 shares at share price 1147028992.
+  const raw = skr.stakedRawOf(BigInt(8_000_000_000), BigInt(1147028992));
+  assert.equal(raw, BigInt(9_176_231_936));
+  assert.equal(skr.toSkr(raw), 9176.231936);
+  assert.equal(skr.weightFor(skr.toSkr(raw)), 2.97);
+  assert.equal(skr.formatSkrRaw(raw), '9,176.23');
 });
 
 test('formatSkrRaw and cooldownLine', () => {

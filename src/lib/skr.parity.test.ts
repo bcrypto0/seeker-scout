@@ -167,7 +167,7 @@ test('transport failures are "unknown" on both sides, and neither side keeps pro
 test('weightFor: the app and the worker agree on a seeded sweep and the edges', () => {
   const r = rng(0x5eec6);
   const values: unknown[] = [null, undefined, 0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, '100', 1e-9, 0.5,
-    99.999, 100, 1000, 11470.28992, 99_899, 99_900, 99_900.0001, 1e12];
+    99.999, 100, 1000, 9176.231936, 99_899, 99_900, 99_900.0001, 1e12];
   for (let i = 0; i < 20_000; i++) values.push(r() * 10 ** (r() * 7));
   for (const x of fx.expected.userStakes) values.push(x.stakedSkr);
   for (const v of values) assert.equal(app.weightFor(v as number), workerWeightFor(v), String(v));

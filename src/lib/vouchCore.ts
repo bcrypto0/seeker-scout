@@ -589,7 +589,7 @@ export function tierLabel(number: number | null, tier: VouchTier | null): string
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** 11355.88 -> "11,355.88". No Intl, so Hermes and Node print the same. */
+/** 11400 -> "11,400.00". No Intl, so Hermes and Node print the same. */
 export function formatSkr(n: number): string {
   const [whole, frac] = n.toFixed(2).split('.');
   return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${frac}`;

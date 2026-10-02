@@ -214,8 +214,8 @@ test('weight copy is honest in every state the worker answers', () => {
     [v.weightLine(null), 'Staked SKR can raise your voice up to 4x. Your stake is read when you sign.'],
     // 'stub': only a worker without the reader answers it.
     [v.weightLine(result()), UNREAD],
-    [v.weightLine(result({ weightSource: 'chain', weight: 3.06, stakedSkr: 11355.88 })),
-      'Your voice counts 3.06x on 11,355.88 SKR staked.'],
+    [v.weightLine(result({ weightSource: 'chain', weight: 3.06, stakedSkr: 11400 })),
+      'Your voice counts 3.06x on 11,400.00 SKR staked.'],
     [v.weightLine(result({ weightSource: 'cache', weight: 3.7, stakedSkr: 99900, mintsInWallet: 2 })),
       'Your voice counts 3.70x on 99,900.00 SKR staked, shared by 2 Seekers.'],
     [v.weightLine(result({ weightSource: 'chain', weight: 1, stakedSkr: 5 })), 'Your voice counts 1.00x on 5.00 SKR staked.'],
@@ -379,10 +379,10 @@ test("the card's weight follows the worker's re-stamp, and agrees with the sheet
     result({ ...over, vouch: { ...base.vouch, package: pkg, weight: over.weight ?? 1 } });
   const A = 'x.place';
   const B = 'a.b';
-  const staked = { weightSource: 'chain' as const, weight: 3.06, stakedSkr: 11355.88 };
+  const staked = { weightSource: 'chain' as const, weight: 3.06, stakedSkr: 11400 };
   const sheetNumber = async (kv: KV) => /(\d+\.\d\d)x/.exec(v.weightLine(await v.latestCachedResult(kv, M)))?.[1];
 
-  // A under the stub (1.00x), then B with 11,355.88 SKR staked: the read re-stamps A too.
+  // A under the stub (1.00x), then B with 11,400 SKR staked: the read re-stamps A too.
   let kv = memKV();
   await v.rememberResult(kv, M, on(A, { weightSource: 'stub', weight: 1 }), 1000);
   await v.rememberResult(kv, M, on(B, staked), 2000);
